@@ -1,0 +1,254 @@
+================================================================================
+SCAFFOLD FIX EVIDENCE — temp-nanohome (Next.js 16.2.7 build)
+Date: 2026-06-28
+================================================================================
+
+TASK
+  Fix the Next.js 16.2.7 scaffold so `npm run build` and `npx tsc --noEmit`
+  pass with zero errors, and `npm run dev` serves /vi with 200/307.
+
+ENVIRONMENT
+  Next.js 16.2.7, React 19.0.0, next-intl ^3.26.3, Tailwind v4, Turbopack.
+  Working dir: /Users/iant1359/Develop/temp-nanohome
+
+================================================================================
+INITIAL STATE (both prescribed fixes were already applied in the worktree)
+================================================================================
+
+1. Fix 1 (turbo hack removal): ALREADY DONE.
+   next.config.ts had no `as any` and no `if` block; 26 lines ending with:
+       const baseConfig = withNextIntl(nextConfig);
+       export default baseConfig;
+
+2. Fix 2 (middleware.ts -> proxy.ts): ALREADY DONE.
+   - src/middleware.ts: NOT FOUND (already renamed).
+   - src/proxy.ts: EXISTS (247B), default-exports createMiddleware(routing).
+   - Only remaining `middleware` references in src/:
+       * src/proxy.ts:1   `import createMiddleware from "next-intl/middleware"`
+         (this is the next-intl package import path, correct — not a local ref)
+       * src/lib/supabase/server.ts:22  a comment mentioning "middleware"
+         (not an import; out of scope per MUST NOT)
+   No local imports referenced the old middleware path.
+
+================================================================================
+ACTUAL BLOCKER DISCOVERED (beyond the two prescribed fixes)
+================================================================================
+
+After the two prescribed fixes, `npm run build` still FAILED with exit 1:
+
+  Error occurred prerendering page "/vi"
+  Error: Couldn't find next-intl config file.
+  Export encountered an error on /[locale]/page: /vi, exiting the build.
+  ⨯ Next.js build worker exited with code: 1
+
+ROOT CAUSE
+  next-intl 3.26.3's plugin (node_modules/next-intl/dist/esm/plugin.js) wires
+  the `next-intl/config` alias through `experimental.turbo.resolveAlias` when
+  `process.env.TURBOPACK` is set:
+
+      o.experimental = {
+        ...e?.experimental,
+        turbo: { ...e?.experimental?.turbo,
+          resolveAlias: { ..., "next-intl/config": r(n) } }
+      };
+
+  Next 16 no longer honors `experimental.turbo` (Turbopack is stable). The
+  config validator emits a warning and DROPS the key:
+
+      ⚠ Unrecognized key(s) in object: 'turbo' at "experimental"
+
+  With the alias dropped, `getConfig.js`'s `import s from "next-intl/config"`
+  resolves to the throwing stub in `node_modules/next-intl/dist/.../config.js`
+  ("Couldn't find next-intl config file"), which kills prerendering of /vi.
+
+  Next 16's config-shared.d.ts (line ~1176) exposes a supported top-level key:
+      // Options for Turbopack. Temporarily also available as
+      // `experimental.turbo` for compatibility.
+      turbopack?: TurbopackOptions;   // with resolveAlias (line ~144)
+
+  So the fix is to register the SAME alias via the supported top-level key.
+
+================================================================================
+FIX APPLIED (only next.config.ts touched; no deps changed; no `as any`)
+================================================================================
+
+Added a top-level `turbopack.resolveAlias` mapping `next-intl/config` to the
+request config path that `withNextIntl` was already pointing at
+("./src/i18n/request.ts"). This mirrors exactly what the plugin tries to do
+via the now-ignored `experimental.turbo` key.
+
+Final next.config.ts:
+--------------------------------------------------------------------------------
+import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
+const nextConfig: NextConfig = {
+  reactCompiler: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        pathname: "/nanohome-web/**",
+      },
+      {
+        protocol: "https",
+        hostname: "ik.imagekit.io",
+        pathname: "/**",
+      },
+    ],
+  },
+  // next-intl 3.x wires `next-intl/config` through `experimental.turbo`,
+  // which Next 16 ignores; register the alias via the supported top-level key.
+  turbopack: {
+    resolveAlias: {
+      "next-intl/config": "./src/i18n/request.ts",
+    },
+  },
+};
+
+const baseConfig = withNextIntl(nextConfig);
+
+export default baseConfig;
+--------------------------------------------------------------------------------
+
+NOTE on the residual warning: `withNextIntl` unconditionally injects
+`experimental.turbo` when TURBOPACK is set, so Next 16 still prints:
+    ⚠ Unrecognized key(s) in object: 'turbo' at "experimental"
+This is a WARNING (⚠), not a TypeScript error and not a build error. The build
+exits 0. Suppressing it would require either patching node_modules (forbidden)
+or casting the config with `as any` to delete the injected key (forbidden by
+MUST NOT). The task's success criteria are exit codes and TS errors, both clean.
+
+================================================================================
+VERIFICATION 1 — `npx tsc --noEmit`
+================================================================================
+Command: npx tsc --noEmit
+Exit code: 0
+Output (full):
+--------------------------------------------------------------------------------
+=== tsc exit: 0 ===
+--------------------------------------------------------------------------------
+Result: PASS (zero TypeScript errors, before and after the next.config.ts edit).
+
+================================================================================
+VERIFICATION 2 — `npm run build`
+================================================================================
+Command: rm -rf .next && npm run build
+Exit code: 0
+Output (full):
+--------------------------------------------------------------------------------
+> nanohome-ecommerce@0.1.0 build
+> next build
+
+⚠ Invalid next.config.ts options detected:
+⚠     Unrecognized key(s) in object: 'turbo' at "experimental"
+⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+▲ Next.js 16.2.7 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  ? turbo (invalid experimental key)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.2s
+  Running TypeScript ...
+  Finished TypeScript in 2.0s ...
+  Collecting page data using 5 workers ...
+  Generating static pages using 5 workers (0/5) ...
+  Generating static pages using 5 workers (1/5)
+  Generating static pages using 5 workers (2/5)
+  Generating static pages using 5 workers (3/5)
+✓ Generating static pages using 5 workers (5/5) in 294ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /_not-found
+└ ● /[locale]
+  ├ /vi
+  └ /en
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)  prerendered as static content
+●  (SSG)     prerendered as static HTML (uses generateStaticParams)
+
+=== build exit: 0 ===
+--------------------------------------------------------------------------------
+Result: PASS.
+  - Compiled successfully (2.2s).
+  - TypeScript phase finished with zero errors (2.0s).
+  - All 5 static pages generated, including /vi and /en (no prerender error).
+  - Exit code 0.
+  - `ƒ Proxy (Middleware)` confirms src/proxy.ts is recognized by Next 16.
+  - One benign warning about `experimental.turbo` (see NOTE above).
+
+================================================================================
+VERIFICATION 3 — `npm run dev` + curl localhost:3000/vi
+================================================================================
+Command: nohup npm run dev (background) ; sleep 8 ;
+          curl -s -o /dev/null -w "%{http_code}" localhost:3000/vi
+          (then kill dev server)
+Result: HTTP 200
+Output (full):
+--------------------------------------------------------------------------------
+=== starting npm run dev (background) ===
+dev PID: 60476
+waiting 8s for boot...
+=== curl localhost:3000/vi (attempt 1) ===
+HTTP code: 200
+=== curl localhost:3000/vi (attempt 2, follow redirects) ===
+HTTP code (follow): 200
+=== killing dev PID 60476 ===
+killed
+=== dev server log (head) ===
+
+> nanohome-ecommerce@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.7 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.18:3000
+- Environments: .env.local
+✓ Ready in 433ms
+⚠ Invalid next.config.ts options detected:
+⚠     Unrecognized key(s) in object: 'turbo' at "experimental"
+⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+Missing Axiom token
+- Experiments (use with caution):
+  ? turbo (invalid experimental key)
+
+ GET /vi 200 in 2.5s (next.js: 2.3s, proxy.ts: 60ms, generate-params: 309ms, application-code: 134ms)
+ GET /vi 200 in 27ms (next.js: 4ms, proxy.ts: 2ms, generate-params: 1390µs, application-code: 20ms)
+--------------------------------------------------------------------------------
+Result: PASS.
+  - Dev server ready in 433ms.
+  - curl localhost:3000/vi returned HTTP 200 (both plain and -L follow).
+  - Dev log shows `GET /vi 200` with proxy.ts executing (proxy.ts: 60ms).
+  - Dev server killed; port 3000 confirmed free; no lingering next processes.
+
+================================================================================
+OUTCOME SUMMARY
+================================================================================
+  [x] `npm run build` exits 0 with zero TypeScript errors.
+  [x] `npx tsc --noEmit` exits 0.
+  [x] `npm run dev` starts and curl localhost:3000/vi returns 200.
+  [x] Evidence written to .omo/evidence/scaffold-fix.txt (this file).
+
+FILES TOUCHED
+  - next.config.ts  (added top-level turbopack.resolveAlias for next-intl/config)
+  (src/proxy.ts was already renamed; src/middleware.ts already absent; no other
+   files modified; no dependencies changed; no `as any`/`@ts-ignore`/`@ts-expect-error`
+   introduced.)
+
+RESIDUAL (benign, non-blocking)
+  - Next 16 warning: `Unrecognized key(s) in object: 'turbo' at "experimental"`.
+    Emitted by the next-intl 3.x plugin's unconditional `experimental.turbo`
+    injection under Turbopack. Cannot be suppressed without patching
+    node_modules or using `as any` (both forbidden). Build/dev still exit 0.
+    A proper fix would be upgrading next-intl to v4.x (which uses the
+    top-level key natively), but that is out of scope per MUST NOT
+    ("Do NOT change dependencies in package.json").
+================================================================================

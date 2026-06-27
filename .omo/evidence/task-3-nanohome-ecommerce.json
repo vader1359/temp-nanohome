@@ -1,0 +1,47 @@
+{
+  "task": "3. C2a — Commerce schema: carts, cart_items, orders, order_items, order_status_history + RLS",
+  "project_id": "ithwvxvaomqbtlxbubtj",
+  "migration_name": "add_commerce_tables",
+  "remote_apply": {
+    "status": "blocked",
+    "tool": "supabase_apply_migration",
+    "error": "MCP error -32600: OAuth token requires the database:write scope"
+  },
+  "baseline_public_tables": [
+    "brands",
+    "designers",
+    "categories",
+    "products",
+    "variants",
+    "news",
+    "catalogs",
+    "product_designers",
+    "news_products",
+    "news_variants"
+  ],
+  "post_attempt_public_tables": [
+    "brands",
+    "designers",
+    "categories",
+    "products",
+    "variants",
+    "news",
+    "catalogs",
+    "product_designers",
+    "news_products",
+    "news_variants"
+  ],
+  "commerce_tables_verified": false,
+  "security_advisors_after_attempt": [
+    {
+      "name": "function_search_path_mutable",
+      "level": "WARN",
+      "detail": "Function `public.touch_updated_at` has a role mutable search_path",
+      "status": "pre-existing_or_still_present_because_remote_migration_did_not_apply"
+    }
+  ],
+  "local_artifacts": [
+    "supabase/migrations/20260628000000_add_commerce_tables.sql"
+  ],
+  "summary": "Prepared add_commerce_tables migration locally, but remote DDL was not applied because the Supabase MCP OAuth token lacks database:write scope. Verification confirms commerce tables are still absent."
+}

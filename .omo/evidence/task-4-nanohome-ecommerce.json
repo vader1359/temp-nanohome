@@ -1,0 +1,63 @@
+{
+  "task": "4. C2b — Auth schema: profiles + on_auth_user_created trigger + RLS",
+  "project_id": "ithwvxvaomqbtlxbubtj",
+  "migration_name": "add_profiles_and_trigger",
+  "status": "blocked_by_supabase_write_scope",
+  "baseline": {
+    "public_tables": [
+      { "name": "public.brands", "rls_enabled": true },
+      { "name": "public.designers", "rls_enabled": true },
+      { "name": "public.categories", "rls_enabled": true },
+      { "name": "public.products", "rls_enabled": true },
+      { "name": "public.variants", "rls_enabled": true },
+      { "name": "public.news", "rls_enabled": true },
+      { "name": "public.catalogs", "rls_enabled": true },
+      { "name": "public.product_designers", "rls_enabled": true },
+      { "name": "public.news_products", "rls_enabled": true },
+      { "name": "public.news_variants", "rls_enabled": true }
+    ],
+    "profiles_present": false,
+    "security_advisors": [
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "detail": "Function `public.touch_updated_at` has a role mutable search_path",
+        "cache_key": "function_search_path_mutable_public_touch_updated_at_9b1889f56258bf9d6554213c05019c76"
+      }
+    ]
+  },
+  "local_migration_artifact": {
+    "written": true,
+    "path": "supabase/migrations/202606280004_add_profiles_and_trigger.sql",
+    "reason": "No local supabase/ tree existed at baseline, but concurrent task work created supabase/migrations before finalization, so the audit migration was added there."
+  },
+  "attempted_migration_sql": "create extension if not exists citext with schema extensions;\n\ncreate table if not exists public.profiles (\n  id uuid primary key references auth.users(id) on delete cascade,\n  email extensions.citext,\n  full_name text,\n  phone text,\n  avatar_url text,\n  preferred_locale text not null default 'vi',\n  created_at timestamp with time zone not null default now(),\n  updated_at timestamp with time zone not null default now()\n);\n\nalter table public.profiles enable row level security;\n\ncreate or replace function public.set_profiles_updated_at()\nreturns trigger\nlanguage plpgsql\nsecurity definer\nset search_path = public\nas $$\nbegin\n  new.updated_at = now();\n  return new;\nend;\n$$;\n\ndrop trigger if exists set_profiles_updated_at on public.profiles;\ncreate trigger set_profiles_updated_at\nbefore update on public.profiles\nfor each row\nexecute function public.set_profiles_updated_at();\n\ncreate or replace function public.handle_new_user()\nreturns trigger\nlanguage plpgsql\nsecurity definer\nset search_path = public\nas $$\nbegin\n  insert into public.profiles (id, email, full_name, phone)\n  values (\n    new.id,\n    new.email,\n    new.raw_user_meta_data ->> 'full_name',\n    new.raw_user_meta_data ->> 'phone'\n  )\n  on conflict (id) do update\n  set\n    email = excluded.email,\n    full_name = coalesce(excluded.full_name, public.profiles.full_name),\n    phone = coalesce(excluded.phone, public.profiles.phone),\n    updated_at = now();\n\n  return new;\nend;\n$$;\n\ndrop trigger if exists on_auth_user_created on auth.users;\ncreate trigger on_auth_user_created\nafter insert on auth.users\nfor each row\nexecute function public.handle_new_user();\n\ndrop policy if exists \"Users can select own profile\" on public.profiles;\ncreate policy \"Users can select own profile\"\non public.profiles\nfor select\nto authenticated\nusing (id = auth.uid());\n\ndrop policy if exists \"Users can update own profile\" on public.profiles;\ncreate policy \"Users can update own profile\"\non public.profiles\nfor update\nto authenticated\nusing (id = auth.uid())\nwith check (id = auth.uid());",
+  "apply_migration_result": {
+    "ok": false,
+    "error": "MCP error -32600: OAuth token requires the database:write scope"
+  },
+  "post_attempt_verification": {
+    "public_tables": [
+      { "name": "public.brands", "rls_enabled": true },
+      { "name": "public.designers", "rls_enabled": true },
+      { "name": "public.categories", "rls_enabled": true },
+      { "name": "public.products", "rls_enabled": true },
+      { "name": "public.variants", "rls_enabled": true },
+      { "name": "public.news", "rls_enabled": true },
+      { "name": "public.catalogs", "rls_enabled": true },
+      { "name": "public.product_designers", "rls_enabled": true },
+      { "name": "public.news_products", "rls_enabled": true },
+      { "name": "public.news_variants", "rls_enabled": true }
+    ],
+    "profiles_present": false,
+    "security_advisors": [
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "detail": "Function `public.touch_updated_at` has a role mutable search_path",
+        "cache_key": "function_search_path_mutable_public_touch_updated_at_9b1889f56258bf9d6554213c05019c76"
+      }
+    ],
+    "advisor_delta": "No new advisor warnings were observed because the migration did not apply. Existing touch_updated_at warning remains."
+  }
+}

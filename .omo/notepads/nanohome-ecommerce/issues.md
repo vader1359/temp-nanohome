@@ -1,0 +1,7 @@
+2026-06-28 — Task 5 blocker: `supabase_apply_migration` on project `ithwvxvaomqbtlxbubtj` failed before DDL with `MCP error -32600: OAuth token requires the database:write scope`. Remote migrations `add_amis_sync_log`, `add_pgroonga_extension`, and `add_slug_unique_indexes` remain unapplied. Re-run after granting database:write scope; duplicate slug fallback was not reached.
+## 2026-06-28 — Task 4 blocked: Supabase write scope
+- Applying remote migration `add_profiles_and_trigger` to project `ithwvxvaomqbtlxbubtj` failed through `supabase_apply_migration` with `MCP error -32600: OAuth token requires the database:write scope`.
+- Post-attempt verification still shows no `public.profiles` table. Re-run the same migration after refreshing Supabase MCP credentials with `database:write` scope.
+2026-06-28 — BLOCKED: `supabase_apply_migration` for project `ithwvxvaomqbtlxbubtj` failed with `MCP error -32600: OAuth token requires the database:write scope`. Remote migration `add_commerce_tables` was not applied; post-attempt `supabase_list_tables` still shows no carts/cart_items/orders/order_items/order_status_history. Need Supabase MCP OAuth token with `database:write` scope, then rerun migration.
+
+2026-06-28 — Existing Supabase security advisor still reports `function_search_path_mutable` for `public.touch_updated_at`. The prepared migration would replace it with fixed `SECURITY DEFINER SET search_path = public`, but could not apply due missing `database:write` scope.

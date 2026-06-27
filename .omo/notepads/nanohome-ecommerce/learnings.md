@@ -1,0 +1,8 @@
+2026-06-28 — Task 5 baseline: Supabase project `ithwvxvaomqbtlxbubtj` has `pgroonga` available at default version 3.2.5 but not installed. Existing public tables include products, variants, brands, designers, categories, and news with required search/slug columns; `amis_sync_log` did not exist in baseline. Local audit migrations were created under `supabase/migrations/` because no prior local `supabase/` tree existed.
+## 2026-06-28 — Task 4 auth profiles schema
+- Baseline public schema has 10 RLS-enabled tables and no `public.profiles` table before the auth-profile migration attempt.
+- Existing security advisor warning remains `function_search_path_mutable` for `public.touch_updated_at`; the planned profile functions use fixed `set search_path = public` to avoid adding another search_path warning.
+- No local `supabase/` directory existed at baseline; concurrent task work created `supabase/migrations/`, so the auth profile audit migration was saved as `supabase/migrations/202606280004_add_profiles_and_trigger.sql`.
+2026-06-28 — Task 3 commerce schema: baseline Supabase public tables were brands, designers, categories, products, variants, news, catalogs, product_designers, news_products, and news_variants. No commerce tables existed before the migration attempt. Local Supabase scaffold was absent at first check, so `supabase/migrations/` was created for auditability.
+
+2026-06-28 — Prepared `add_commerce_tables` SQL with carts, cart_items, orders, order_items, order_status_history, RLS policies, guest order lookup via `current_setting('app.order_number', true)`, and `public.touch_updated_at()` using `SECURITY DEFINER SET search_path = public` to avoid adding a mutable search_path warning.

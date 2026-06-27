@@ -1,0 +1,5 @@
+wing: temp_nanohome
+rooms:
+- name: general
+  description: All project files
+  keywords: []

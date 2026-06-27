@@ -1,0 +1,141 @@
+{
+  "task": "5. C2c — Sync + search schema: amis_sync_log + pgroonga + slug unique indexes",
+  "project_id": "ithwvxvaomqbtlxbubtj",
+  "status": "blocked_before_remote_ddl",
+  "blocked_by": {
+    "tool": "supabase_apply_migration",
+    "migration": "add_amis_sync_log",
+    "error": "MCP error -32600: OAuth token requires the database:write scope"
+  },
+  "baseline": {
+    "extensions": {
+      "pgroonga": {
+        "available": true,
+        "default_version": "3.2.5",
+        "installed_version": null
+      },
+      "pg_cron": {
+        "available": true,
+        "default_version": "1.6.4",
+        "installed_version": null,
+        "note": "Not enabled; task forbids pg_cron."
+      }
+    },
+    "tables": {
+      "amis_sync_log": {
+        "exists": false
+      },
+      "products": {
+        "exists": true,
+        "rls_enabled": true,
+        "rows": 1083,
+        "columns_verified": ["name", "name_vi", "description", "description_vi", "slug", "slug_vi", "approved", "validated"]
+      },
+      "variants": {
+        "exists": true,
+        "rls_enabled": true,
+        "rows": 2209,
+        "columns_verified": ["name", "sku", "finish", "finish_vi", "slug", "slug_vi", "approved", "validated"]
+      },
+      "brands": {
+        "exists": true,
+        "rls_enabled": true,
+        "rows": 30,
+        "columns_verified": ["slug", "approved", "validated"]
+      },
+      "designers": {
+        "exists": true,
+        "rls_enabled": true,
+        "rows": 192,
+        "columns_verified": ["slug", "approved", "validated"]
+      },
+      "categories": {
+        "exists": true,
+        "rls_enabled": true,
+        "rows": 15,
+        "columns_verified": ["slug", "approved", "validated"]
+      },
+      "news": {
+        "exists": true,
+        "rls_enabled": true,
+        "rows": 61,
+        "columns_verified": ["slug", "approved", "validated"]
+      }
+    },
+    "advisors": {
+      "security": [
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "detail": "Function `public.touch_updated_at` has a role mutable search_path"
+        }
+      ],
+      "performance_summary": {
+        "lint_count": 15,
+        "categories": ["unindexed_foreign_keys", "unused_index"]
+      }
+    }
+  },
+  "local_migrations_created": [
+    {
+      "name": "add_amis_sync_log",
+      "path": "supabase/migrations/202606280001_add_amis_sync_log.sql",
+      "summary": "Creates public.amis_sync_log with UUID PK, run timestamps, status check, counters, error, watermark, RLS enabled, and anon/authenticated FOR ALL blocking policies."
+    },
+    {
+      "name": "add_pgroonga_extension",
+      "path": "supabase/migrations/202606280002_add_pgroonga_extension.sql",
+      "summary": "Creates pgroonga extension and products/variants PGroonga indexes for required columns."
+    },
+    {
+      "name": "add_slug_unique_indexes",
+      "path": "supabase/migrations/202606280003_add_slug_unique_indexes.sql",
+      "summary": "Creates duplicate-safe partial unique indexes for products.slug, products.slug_vi, variants.slug, variants.slug_vi, brands.slug, designers.slug, categories.slug, and news.slug where each slug column is not null."
+    }
+  ],
+  "remote_migrations": [
+    {
+      "name": "add_amis_sync_log",
+      "applied": false,
+      "error": "OAuth token requires the database:write scope"
+    },
+    {
+      "name": "add_pgroonga_extension",
+      "applied": false,
+      "error": "Not attempted because first DDL migration failed authorization."
+    },
+    {
+      "name": "add_slug_unique_indexes",
+      "applied": false,
+      "error": "Not attempted because first DDL migration failed authorization."
+    }
+  ],
+  "fallbacks": {
+    "duplicate_slug_predicate_fallback": "Not reached; unique indexes not attempted remotely because database write scope is missing.",
+    "trigram_fallback": "Not used; pgroonga is available."
+  },
+  "verification": {
+    "post_failed_migration_extensions": {
+      "pgroonga_installed_version": null,
+      "note": "Still not installed after failed migration attempt; remote DDL was blocked before schema changes."
+    },
+    "post_failed_migration_tables": {
+      "amis_sync_log_exists": false,
+      "public_tables": ["brands", "designers", "categories", "products", "variants", "news", "catalogs", "product_designers", "news_products", "news_variants"]
+    },
+    "post_failed_migration_advisors": {
+      "security": [
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "detail": "Function `public.touch_updated_at` has a role mutable search_path"
+        }
+      ],
+      "new_security_issues": "None observed after failed migration attempt; schema remained unchanged."
+    }
+  },
+  "risks": [
+    "Remote Supabase schema is unchanged until credentials include database:write scope and migrations are applied.",
+    "Slug duplicate fallback could not be tested because unique index creation was not authorized."
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "Common": {
+    "welcome": "Chào mừng đến với NanoHome"
+  },
+  "Nav": {
+    "home": "Trang chủ",
+    "products": "Sản phẩm"
+  },
+  "Home": {
+    "title": "Trang chủ"
+  },
+  "Products": {},
+  "ProductDetail": {},
+  "News": {},
+  "Cart": {},
+  "Checkout": {},
+  "Auth": {},
+  "Search": {},
+  "Brands": {},
+  "Designers": {},
+  "Catalogs": {},
+  "Static": {},
+  "Footer": {}
+}

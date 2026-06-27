@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "active_work_id": null,
+  "works": {},
+  "active_plan": null,
+  "started_at": null,
+  "status": "stopped",
+  "updated_at": "2026-06-27T19:18:12.364Z",
+  "session_ids": [],
+  "session_origins": {},
+  "plan_name": null,
+  "task_sessions": {},
+  "agent": "hephaestus"
+}
