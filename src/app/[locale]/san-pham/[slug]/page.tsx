@@ -8,7 +8,8 @@ import { Section5Benefits } from "@/components/product-detail/section-5-benefits
 import { Section6Recommended } from "@/components/product-detail/section-6-recommended";
 import type { RelatedProduct } from "@/components/product-detail/mock-data";
 import { COLORS } from "@/components/product-detail/mock-data";
-import { getVariantProducts } from "@/lib/queries/products";
+import { getVariantProducts, type VariantProductListItem } from "@/lib/queries/products";
+import { variantDetailHref } from "@/lib/queries/variant-url";
 import { getVariantBySlug, getVariantsByProductId } from "@/lib/queries/variants";
 import type { Variant } from "@/types/db";
 
@@ -34,16 +35,18 @@ function variantText(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
-function variantRawText(variant: Variant, key: string): string {
+type VariantRawSource = { readonly raw?: unknown };
+
+function variantRawText(variant: VariantRawSource, key: string): string {
   const raw = variant.raw;
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     return "";
   }
 
-  return variantText(raw[key]);
+  return variantText((raw as Record<string, unknown>)[key]);
 }
 
-function getVariantPackshotUrl(variant: Variant): string {
+function getVariantPackshotUrl(variant: Pick<Variant, "packshot_url"> & { readonly raw?: unknown }): string {
   return (
     variantRawText(variant, "cldr_packshot_url") ||
     variantRawText(variant, "cldr_packshot") ||
@@ -55,14 +58,31 @@ function getVariantImages(variant: Variant): string[] {
   return [getVariantPackshotUrl(variant), ...variant.gallery_urls].filter((url): url is string => Boolean(url));
 }
 
-function toRelatedProduct(variant: Variant): RelatedProduct {
+type RelatedVariant = Pick<
+  Variant,
+  | "id"
+  | "name"
+  | "slug"
+  | "slug_vi"
+  | "price"
+  | "on_sale"
+  | "in_stock"
+  | "packshot_url"
+  | "gallery_urls"
+  | "finish"
+  | "finish_vi"
+  | "size"
+>;
+
+function toRelatedProduct(variant: RelatedVariant | VariantProductListItem): RelatedProduct {
   return {
-    name: variantText(variant.name_vi, variantText(variant.name, "Sản phẩm")),
+    name: variantText(variant.name, "Sản phẩm"),
     brand: "nanoHome",
     category: [variantText(variant.finish_vi, variantText(variant.finish)), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
     price: formatPrice(variant.price),
     image: getVariantPackshotUrl(variant) || variant.gallery_urls[0] || "/images/p_lc2.png",
     available: variant.in_stock,
+    href: variantDetailHref(variant),
     tags: variant.on_sale ? ["Sale"] : undefined,
   };
 }
@@ -111,9 +131,12 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
     notFound();
   }
 
-  const siblingVariants = variant.product_id !== null ? await getVariantsByProductId(variant.product_id) : [];
+  const [siblingVariants, recommendedVariants] = await Promise.all([
+    variant.product_id !== null ? getVariantsByProductId(variant.product_id) : Promise.resolve([]),
+    getVariantProducts({ pageSize: 4 }),
+  ]);
   const related = siblingVariants.filter((item) => item.id !== variant.id).slice(0, 4).map(toRelatedProduct);
-  const recommended = (await getVariantProducts({ pageSize: 4 })).filter((item) => item.id !== variant.id).map(toRelatedProduct);
+  const recommended = recommendedVariants.filter((item) => item.id !== variant.id).map(toRelatedProduct);
   const galleryImages = getVariantImages(variant);
 
   return (

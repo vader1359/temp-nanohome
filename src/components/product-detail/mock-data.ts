@@ -52,6 +52,7 @@ export type RelatedProduct = {
   price: string;
   image: string;
   available: boolean;
+  href?: string;
   tags?: string[];
 };
 

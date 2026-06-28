@@ -1,7 +1,8 @@
 import { setRequestLocale } from "next-intl/server";
 import { ProductsPage } from "@/components/products/products-page";
 import type { ProductGridItem } from "@/components/products/ProductGrid";
-import { getVariantProducts } from "@/lib/queries/products";
+import { getVariantProducts, type VariantProductListItem } from "@/lib/queries/products";
+import { variantDetailHref } from "@/lib/queries/variant-url";
 import type { Variant } from "@/types/db";
 
 interface PageProps {
@@ -26,7 +27,7 @@ function variantText(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
-function variantRawText(variant: Variant, key: string): string {
+function variantRawText(variant: VariantProductListItem, key: string): string {
   const raw = variant.raw;
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     return "";
@@ -35,7 +36,7 @@ function variantRawText(variant: Variant, key: string): string {
   return variantText(raw[key]);
 }
 
-function getVariantImageUrl(variant: Variant): string {
+function getVariantImageUrl(variant: VariantProductListItem): string {
   return (
     variantRawText(variant, "cldr_packshot_url") ||
     variantRawText(variant, "cldr_packshot") ||
@@ -45,11 +46,10 @@ function getVariantImageUrl(variant: Variant): string {
   );
 }
 
-function variantToGridItem(variant: Variant): ProductGridItem {
+function variantToGridItem(variant: VariantProductListItem): ProductGridItem {
   const imageUrl = getVariantImageUrl(variant);
   const discount = variant.discount_percent !== null ? `-${variant.discount_percent}%` : null;
-  const name = variantText(variant.name_vi, variantText(variant.name, "Sản phẩm"));
-  const detailSlug = variantText(variant.slug_vi, variantText(variant.slug, variant.id));
+  const name = variantText(variant.name, "Sản phẩm");
 
   return {
     id: variant.id,
@@ -58,7 +58,7 @@ function variantToGridItem(variant: Variant): ProductGridItem {
     subtitle: [variantText(variant.finish_vi, variantText(variant.finish)), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
     status: variant.on_sale ? "SALE" : variant.in_stock ? "ĐANG CÓ HÀNG" : "HẾT HÀNG",
     imageUrl,
-    href: `/san-pham/${encodeURIComponent(detailSlug)}`,
+    href: variantDetailHref(variant),
     oldPrice: variant.compare_at_price !== null ? formatPrice(variant.compare_at_price) : null,
     discount,
     price: formatPrice(variant.price),
