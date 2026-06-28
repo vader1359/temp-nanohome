@@ -20,7 +20,8 @@ const geistMono = Geist_Mono({
 
 const libreFranklin = Libre_Franklin({
   variable: "--font-libre-franklin",
-  subsets: ["latin"],
+subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -67,7 +68,7 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
           />
         )}
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} ${libreFranklin.variable} antialiased`}>
+<body className={`${geistSans.variable} ${geistMono.variable} ${libreFranklin.variable} antialiased font-[family-name:var(--font-libre-franklin)]`}>
         <NextIntlClientProvider messages={messages} locale={locale}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>

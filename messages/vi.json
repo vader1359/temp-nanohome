@@ -6,8 +6,79 @@
     "home": "Trang chủ",
     "products": "Sản phẩm"
   },
+  "Header": {
+    "brandFurniture": "nanoHome Nội Thất",
+    "brandLighting": "nanoHome Chiếu Sáng",
+    "brandPreLove": "nanoHome Pre - Love",
+    "showrooms": "Showrooms",
+    "about": "Về chúng tôi",
+    "news": "Tin tức",
+    "contact": "Liên hệ",
+    "signIn": "Đăng nhập",
+    "products": "Sản phẩm",
+    "livingRoom": "Phòng khách",
+    "diningRoom": "Phòng Ăn",
+    "bedroom": "Phòng Ngủ",
+    "workspace": "Không Gian Làm Việc",
+    "outdoor": "Ngoài Trời",
+    "accessories": "Phụ kiện & trang trí",
+    "bySet": "Theo bộ",
+    "cartCount": "1"
+  },
   "Home": {
     "title": "Trang chủ"
+  },
+"Hero": {
+    "titleLine1": "Thanh lịch tuyệt đối",
+    "titleLine2": "tinh tế đến từng chi tiết",
+    "cta": "Khám phá"
+  },
+  "Instagram": {
+    "eyebrow": "REEL VÀ HÌNH ẢNH MỚI NHẤT TỪ NANOHOME, CHẠM ĐỂ XEM SẢN PHẨM TRONG KHUNG HÌNH",
+    "heading": "Cảm hứng từ Instagram"
+  },
+  "ProductGrid": {
+    "tabTrending": "Xu hướng",
+    "tabBestSeller": "Bán chạy",
+    "tabNew": "Mới về",
+    "inStock": "ĐANG CÓ HÀNG",
+    "price": "10.000.000 đ"
+  },
+  "About": {
+    "eyebrow": "Chào mừng đến với nanoHome",
+    "heading": "Điểm đến nội thất cao cấp tại Việt Nam",
+    "leftHeading": "Tại nanoHome, chúng tôi tin vào \"sống đẹp mỗi ngày\" từ những khoảnh khắc bình dị đến những dịp đặc biệt.",
+    "p1": "Là nhà phân phối chính thức của các thương hiệu biểu tượng như Cassina, Malxato, Knoll, B&B Italia, Fritz Hansen, Vitra, USM và Flos, nanoHome mang đến hệ sinh thái sản phẩm toàn diện cho phòng khách, phòng ngủ, bếp – ăn và không gian làm việc. Chúng tôi đồng hành từ tư vấn thẩm mỹ, giải pháp bố trí, đến hậu mãi chu đáo, để mỗi lựa chọn đều thật \"đúng\" với bạn.",
+    "p2": "Hãy ghé thăm showroom của nanoHome để trải nghiệm những bộ sưu tập mới nhất và tìm cảm hứng cho ngôi nhà của mình."
+  },
+  "Featured": {
+    "eyebrow": "Nội thất cao cấp",
+    "heading": "Sản phẩm nổi bật tuần",
+    "inStock": "ĐANG CÓ HÀNG",
+    "price": "10,000,000 vnđ",
+    "eggName": "Egg Chair",
+    "eggBrand": "FRITZ HANSEN",
+    "eggCategory": "Fritz Hansen / Ghế thư giãn",
+    "huskName": "Husk Chair",
+    "huskBrand": "B&B ITALIA",
+    "huskCategory": "B&B Italia / Ghế thư giãn"
+  },
+  "Rooms": {
+    "eyebrow": "Nội thất theo phòng",
+    "heading": "Sản phẩm theo phòng",
+    "cta": "Khám phá",
+    "sub1": "Sự cân bằng hoàn hảo",
+    "title1": "Phòng khách",
+    "desc1": "Đường cong mềm mại kết hợp chất liệu sang trọng, mang lại một không gian vừa hiện đại vừa ấm cúng.",
+    "sub2": "Tỉ mỉ trong từng chi tiết",
+    "title2": "Phòng ăn",
+    "desc2": "Sự tinh tế trong thiết kế tạo nên những khoảnh khắc dùng bữa đầy nghệ thuật.",
+    "sub3": "Không gian nghỉ ngơi",
+    "title3": "Phòng ngủ",
+    "desc3": "Chất liệu tự nhiên và dáng vẻ êm ái mang đến giấc ngủ ngon và tinh thần thư thái.",
+    "sub4": "Hòa hợp với thiên nhiên",
+    "title4": "Ngoài trời",
+    "desc4": "Nội thất bền bỉ, thiết kế mở, kết nối mượt mà giữa trong và ngoài."
   },
   "Products": {
     "title": "SẢN PHẨM NỘI THẤT",
@@ -33,9 +104,52 @@
   "Checkout": {},
   "Auth": {},
   "Search": {},
-  "Brands": {},
+  "Brands": {
+    "eyebrow": "Nhà phân phối chính hãng"
+  },
+  "Newsletter": {
+    "title": "Tham gia danh sách ưu tiên",
+    "subtitle": "Thông báo sớm về sản phẩm hiếm, mở bán Pre-Loved và lời mời sự kiện riêng.",
+    "emailLabel": "Email của bạn",
+    "emailPlaceholder": "nhập email",
+    "phoneLabel": "Số điện thoại",
+    "phonePlaceholder": "nhập số điện thoại",
+    "cta": "Đặt lịch hẹn"
+  },
   "Designers": {},
   "Catalogs": {},
   "Static": {},
-  "Footer": {}
+  "Footer": {
+    "col1Heading": "Về chúng tôi",
+    "col1Link1": "Về nanoHome",
+    "col1Link2": "Chính sách bán hàng",
+    "col1Link3": "Hướng dẫn bảo trì",
+    "col1Link4": "Tin tức / Báo chí",
+    "col1Link5": "Tuyển dụng",
+    "col2Heading": "Dịch vụ",
+    "col2Link1": "Trang trí nội thất",
+    "col2Link2": "Tư vấn Chiếu sáng",
+    "col3Heading": "Sản phẩm",
+    "col3Link1": "USM",
+    "col3Link2": "Nội thất",
+    "col3Link3": "Ánh sáng",
+    "col3Link4": "Đồ Trang Trí",
+    "col4Heading": "Tài nguyên",
+    "col4Link1": "Thương hiệu",
+    "col4Link2": "Nhà thiết kế",
+    "col4Link3": "#Beautifulliving",
+    "col4Link4": "Catalogs",
+    "col5Heading": "Các Showrooms",
+    "showroom1": "nanoHome HCM - Gallery",
+    "showroom2": "nanoHome HCM - Lake View",
+    "showroom3": "nanoHome HCM - House",
+    "showroom4": "nanoHome HaNoi - Gallery",
+    "showroom5": "nanoHome HaNoi - West Lake",
+    "showroom1Address": "675-677 Điện Biên Phủ, Phường 25, Quận Bình Thạnh, Thành phố Hồ Chí Minh",
+    "showroom1Hours": "Từ Thứ Hai đến Thứ Bảy | 9AM - 6PM",
+    "col6Heading": "Liên hệ",
+    "phone": "(+84) 33 948 7632",
+    "email": "info@nanohome.vn",
+    "website": "nanohome.vn"
+  }
 }
