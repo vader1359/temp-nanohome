@@ -1,11 +1,12 @@
 import { z } from "zod";
 
 import type { Env } from "@/lib/env";
+import { assertAmisRequestAllowed } from "@/lib/remote-read-only";
 
 export type AmisClientConfig = {
   readonly baseUrl: string;
-  readonly apiKey: string;
-  readonly tenant?: string;
+  readonly clientId: string;
+  readonly clientSecret: string;
 };
 
 export type AmisVariantRecord = {
@@ -22,29 +23,55 @@ export type FetchAmisVariantsResult =
   | { readonly kind: "http_error"; readonly status: number; readonly message: string }
   | { readonly kind: "malformed"; readonly message: string };
 
+type AccessTokenResult =
+  | { readonly kind: "success"; readonly token: string }
+  | { readonly kind: "http_error"; readonly status: number; readonly message: string }
+  | { readonly kind: "malformed"; readonly message: string };
+
+const AMIS_PRODUCT_PAGE_SIZE = "100";
+
 export function createAmisClientConfig(env: Env): AmisClientConfig | null {
-  if (env.AMIS_API_BASE_URL === undefined || env.AMIS_API_KEY === undefined) {
+  if (
+    env.AMIS_API_BASE_URL === undefined
+    || env.AMIS_CLIENT_ID === undefined
+    || env.AMIS_CLIENT_SECRET === undefined
+  ) {
     return null;
   }
 
   return {
     baseUrl: env.AMIS_API_BASE_URL,
-    apiKey: env.AMIS_API_KEY,
-    tenant: env.AMIS_TENANT,
+    clientId: env.AMIS_CLIENT_ID,
+    clientSecret: env.AMIS_CLIENT_SECRET,
   };
 }
 
-export async function fetchAmisVariants(config: AmisClientConfig, watermark: string | null): Promise<FetchAmisVariantsResult> {
-  const url = new URL("/api/v1/inventory/items", config.baseUrl);
-  url.searchParams.set("limit", "200");
-
-  if (watermark !== null) {
-    url.searchParams.set("updated_since", watermark);
+export async function fetchAmisVariants(
+  config: AmisClientConfig,
+  watermark: string | null,
+): Promise<FetchAmisVariantsResult> {
+  const accessToken = await requestAccessToken(config);
+  if (accessToken.kind !== "success") {
+    return accessToken;
   }
 
+  const url = new URL("/api/v2/Products", config.baseUrl);
+  url.searchParams.set("page", "0");
+  url.searchParams.set("pageSize", AMIS_PRODUCT_PAGE_SIZE);
+  url.searchParams.set("orderBy", "modified_date");
+  url.searchParams.set("isDescending", "true");
+
+  // This is the only AMIS business-data request in this client. Its method is
+  // intentionally fixed to GET so callers cannot issue writes to CRM.
+  assertAmisRequestAllowed(url, "GET");
   const response = await fetch(url, {
     method: "GET",
-    headers: createHeaders(config),
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken.token}`,
+      Clientid: config.clientId,
+    },
+    cache: "no-store",
     signal: AbortSignal.timeout(20_000),
   });
 
@@ -52,53 +79,105 @@ export async function fetchAmisVariants(config: AmisClientConfig, watermark: str
     return { kind: "http_error", status: response.status, message: await response.text() };
   }
 
-  const parsed = amisPayloadSchema.safeParse(await response.json());
+  const parsed = amisProductsResponseSchema.safeParse(await response.json());
   if (!parsed.success) {
     return { kind: "malformed", message: parsed.error.message };
   }
 
-  return { kind: "success", records: parsed.data.data.map(toAmisVariantRecord) };
-}
-
-function createHeaders(config: AmisClientConfig): Headers {
-  const headers = new Headers({
-    Accept: "application/json",
-    "X-API-Key": config.apiKey,
-  });
-
-  if (config.tenant !== undefined) {
-    headers.set("X-Tenant", config.tenant);
+  if (!parsed.data.success || parsed.data.code !== 200) {
+    return {
+      kind: "http_error",
+      status: parsed.data.code,
+      message: parsed.data.error_message ?? "AMIS rejected the product read request",
+    };
   }
 
-  return headers;
+  return {
+    kind: "success",
+    records: parsed.data.data
+      .filter((record) => isAfterWatermark(record.modified_date, watermark))
+      .map(toAmisVariantRecord),
+  };
 }
 
-const amisRecordSchema = z.object({
-  sku: z.string().min(1),
-  price: z.number().finite().nullable().optional(),
-  compare_at_price: z.number().finite().nullable().optional(),
-  compareAtPrice: z.number().finite().nullable().optional(),
-  discount_percent: z.number().finite().nullable().optional(),
-  discountPercent: z.number().finite().nullable().optional(),
-  in_stock: z.boolean().optional(),
-  inStock: z.boolean().optional(),
-  source_updated_at: z.string().datetime({ offset: true }).nullable().optional(),
-  sourceUpdatedAt: z.string().datetime({ offset: true }).nullable().optional(),
+async function requestAccessToken(config: AmisClientConfig): Promise<AccessTokenResult> {
+  const url = new URL("/api/v2/Account", config.baseUrl);
+  assertAmisRequestAllowed(url, "POST");
+  const response = await fetch(url, {
+    // MISA documents this POST as the authentication/token exchange endpoint.
+    // It does not create, update, or delete CRM business data.
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+    }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
+  });
+
+  if (!response.ok) {
+    return { kind: "http_error", status: response.status, message: await response.text() };
+  }
+
+  const parsed = amisTokenResponseSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    return { kind: "malformed", message: parsed.error.message };
+  }
+
+  if (!parsed.data.success || parsed.data.code !== 0) {
+    return {
+      kind: "http_error",
+      status: parsed.data.code,
+      message: parsed.data.error_message ?? "AMIS rejected the token request",
+    };
+  }
+
+  return { kind: "success", token: parsed.data.data };
+}
+
+function isAfterWatermark(modifiedDate: string, watermark: string | null): boolean {
+  return watermark === null || Date.parse(modifiedDate) > Date.parse(watermark);
+}
+
+const amisTokenResponseSchema = z.object({
+  success: z.boolean(),
+  code: z.number().int(),
+  data: z.string().min(1),
+  error_message: z.string().nullable().optional(),
 });
 
-const amisPayloadSchema = z.object({
-  data: z.array(amisRecordSchema),
+const numericValueSchema = z.union([z.number(), z.string()]).transform((value, context) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    context.addIssue({ code: "custom", message: "Expected a finite numeric value" });
+    return z.NEVER;
+  }
+  return parsed;
 });
 
-type ParsedAmisRecord = z.infer<typeof amisRecordSchema>;
+const amisProductSchema = z.object({
+  product_code: z.string().min(1),
+  unit_price: numericValueSchema.nullable().optional(),
+  modified_date: z.string().datetime({ offset: true }),
+});
 
-function toAmisVariantRecord(record: ParsedAmisRecord): AmisVariantRecord {
+const amisProductsResponseSchema = z.object({
+  success: z.boolean(),
+  code: z.number().int(),
+  data: z.array(amisProductSchema),
+  error_message: z.string().nullable().optional(),
+});
+
+type ParsedAmisProduct = z.infer<typeof amisProductSchema>;
+
+function toAmisVariantRecord(product: ParsedAmisProduct): AmisVariantRecord {
   return {
-    sku: record.sku,
-    price: record.price,
-    compareAtPrice: record.compare_at_price ?? record.compareAtPrice,
-    discountPercent: record.discount_percent ?? record.discountPercent,
-    inStock: record.in_stock ?? record.inStock,
-    sourceUpdatedAt: record.source_updated_at ?? record.sourceUpdatedAt,
+    sku: product.product_code,
+    price: product.unit_price,
+    sourceUpdatedAt: product.modified_date,
   };
 }

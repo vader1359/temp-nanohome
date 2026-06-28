@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 import { env } from "@/lib/env";
+import { supabaseReadOnlyFetch } from "@/lib/remote-read-only";
 import type { Database } from "@/types/db";
 
 export async function createClient() {
@@ -11,6 +12,9 @@ export async function createClient() {
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
+      global: {
+        fetch: supabaseReadOnlyFetch,
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll();

@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 
 import { routing } from "./i18n/routing";
 import { env } from "./lib/env";
+import { supabaseReadOnlyFetch } from "./lib/remote-read-only";
 import type { Database } from "./types/db";
 
 const handleI18nRouting = createMiddleware(routing);
@@ -15,6 +16,9 @@ export default async function middleware(request: NextRequest) {
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
+      global: {
+        fetch: supabaseReadOnlyFetch,
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll();

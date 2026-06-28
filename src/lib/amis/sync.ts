@@ -2,7 +2,7 @@ import "server-only";
 
 import { createAmisClientConfig, fetchAmisVariants, type AmisVariantRecord } from "@/lib/amis/client";
 import { env } from "@/lib/env";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAmisSyncAdminClient } from "@/lib/supabase/admin";
 import type { TablesUpdate, TypedSupabaseClient } from "@/types/db";
 
 export type AmisSyncStatus = "success" | "partial" | "failed";
@@ -31,11 +31,11 @@ type SyncVariantsInput = {
   readonly previousWatermark: string | null;
 };
 
-const STATIC_API_KEY_MISSING_MESSAGE =
-  "Missing AMIS static API key credentials. Configure AMIS_API_BASE_URL and AMIS_API_KEY, or provide the AMIS auth pattern for AMIS_CLIENT_ID/AMIS_CLIENT_SECRET/AMIS_TENANT.";
+const AMIS_CREDENTIALS_MISSING_MESSAGE =
+  "Missing AMIS credentials. Configure AMIS_API_BASE_URL, AMIS_CLIENT_ID, and AMIS_CLIENT_SECRET.";
 
 export async function runAmisSync(): Promise<AmisSyncResult> {
-  const supabase = createAdminClient();
+  const supabase = createAmisSyncAdminClient();
   const logId = await createSyncLog(supabase);
   const watermark = await readWatermark(supabase);
   const config = createAmisClientConfig(env);
@@ -45,7 +45,7 @@ export async function runAmisSync(): Promise<AmisSyncResult> {
       status: "failed",
       items_processed: 0,
       items_failed: 0,
-      error: STATIC_API_KEY_MISSING_MESSAGE,
+      error: AMIS_CREDENTIALS_MISSING_MESSAGE,
       watermark,
       finished_at: new Date().toISOString(),
     });
@@ -127,9 +127,8 @@ async function syncVariants(input: SyncVariantsInput): Promise<AmisSyncResult> {
     }
   }
 
-  const status = statusFromCounts(itemsProcessed, itemsFailed);
   return finishSyncLog(input.supabase, input.logId, {
-    status,
+    status: statusFromCounts(itemsFailed),
     items_processed: itemsProcessed,
     items_failed: itemsFailed,
     error: lastError,
@@ -141,38 +140,17 @@ async function syncVariants(input: SyncVariantsInput): Promise<AmisSyncResult> {
 function toVariantUpdate(record: AmisVariantRecord): TablesUpdate<"variants"> {
   const update: TablesUpdate<"variants"> = {};
 
-  if (record.price !== undefined) {
-    update.price = record.price;
-  }
-
-  if (record.compareAtPrice !== undefined) {
-    update.compare_at_price = record.compareAtPrice;
-  }
-
-  if (record.discountPercent !== undefined) {
-    update.discount_percent = record.discountPercent;
-  }
-
-  if (record.inStock !== undefined) {
-    update.in_stock = record.inStock;
-  }
-
-  if (record.sourceUpdatedAt !== undefined) {
-    update.source_updated_at = record.sourceUpdatedAt;
-  }
+  if (record.price !== undefined) update.price = record.price;
+  if (record.compareAtPrice !== undefined) update.compare_at_price = record.compareAtPrice;
+  if (record.discountPercent !== undefined) update.discount_percent = record.discountPercent;
+  if (record.inStock !== undefined) update.in_stock = record.inStock;
+  if (record.sourceUpdatedAt !== undefined) update.source_updated_at = record.sourceUpdatedAt;
 
   return update;
 }
 
-function statusFromCounts(itemsProcessed: number, itemsFailed: number): AmisSyncStatus {
-  if (itemsFailed > 0) {
-    return "partial";
-  }
-
-  if (itemsProcessed > 0) {
-    return "success";
-  }
-
+function statusFromCounts(itemsFailed: number): AmisSyncStatus {
+  if (itemsFailed > 0) return "partial";
   return "success";
 }
 

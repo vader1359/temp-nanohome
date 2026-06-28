@@ -25,10 +25,8 @@ const envSchema = z.object({
 
   // --- AMIS (server-only) ---
   AMIS_API_BASE_URL: optionalEnvUrl,
-  AMIS_API_KEY: optionalEnvString,
   AMIS_CLIENT_ID: optionalEnvString,
   AMIS_CLIENT_SECRET: optionalEnvString,
-  AMIS_TENANT: optionalEnvString,
 });
 
 /**
