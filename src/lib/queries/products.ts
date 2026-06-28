@@ -14,6 +14,29 @@ export type ProductListOptions = {
   readonly pageSize?: number;
 };
 
+export type VariantProductListItem = Pick<
+  Variant,
+  | "id"
+  | "name"
+  | "slug"
+  | "slug_vi"
+  | "price"
+  | "compare_at_price"
+  | "discount_percent"
+  | "on_sale"
+  | "in_stock"
+  | "packshot_url"
+  | "gallery_urls"
+  | "finish"
+  | "finish_vi"
+  | "size"
+  | "raw"
+  | "product_id"
+>;
+
+const VARIANT_PRODUCT_LIST_COLUMNS =
+  "id,name,slug,slug_vi,price,compare_at_price,discount_percent,on_sale,in_stock,packshot_url,gallery_urls,finish,finish_vi,size,raw,product_id";
+
 export function productRange(page = 1, pageSize = 24): readonly [number, number] {
   if (!Number.isInteger(page) || !Number.isInteger(pageSize) || page < 1 || pageSize < 1) {
     throw new RangeError("page and pageSize must be positive integers");
@@ -75,12 +98,12 @@ export async function getProducts(options: ProductListOptions = {}): Promise<rea
   return data ?? [];
 }
 
-export async function getVariantProducts(options: Pick<ProductListOptions, "page" | "pageSize" | "search" | "sort"> = {}): Promise<readonly Variant[]> {
+export async function getVariantProducts(options: Pick<ProductListOptions, "page" | "pageSize" | "search" | "sort"> = {}): Promise<readonly VariantProductListItem[]> {
   const supabase = await createClient();
   const [from, to] = productRange(options.page, options.pageSize);
   let query = supabase
     .from("variants")
-    .select("*")
+    .select(VARIANT_PRODUCT_LIST_COLUMNS)
     .eq("validated", true)
     .eq("approved", true);
 
