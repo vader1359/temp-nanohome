@@ -1,0 +1,73 @@
+# Local Supabase configuration for nanohome-ecommerce.
+#
+# Generated as part of task T8 (test infrastructure). The contents of this
+# file reflect the standard `supabase init` defaults with the project_id set
+# to match the remote project so that `supabase link` works without edits.
+#
+# Default local connections:
+#   API (PostgREST):     http://localhost:54321
+#   PostgreSQL:          postgresql://postgres:postgres@localhost:54322/postgres
+#   Studio:              http://localhost:54323
+#   Inbucket (SMTP):     http://localhost:54324
+#   Storage:             http://localhost:54321/storage/v1
+#
+# Per T8 instructions this config was authored by hand and `supabase start`
+# was NOT run during the task — the developer runs `supabase start` later.
+# Teardown: `supabase stop`.
+project_id = "nanohome-ecommerce"
+
+[api]
+enabled = true
+# Port to use for the API URL. Default: 54321
+port = 54321
+# Schemas to expose through the API. Default: ["public", "graphql_public"].
+schemas = ["public", "graphql_public"]
+# Extra search path to add when resolving unqualified names. Default: ["public", "extensions"].
+extra_search_path = ["public", "extensions"]
+# Maximum number of rows returned by a single API call. Default: 1000.
+max_rows = 1000
+
+[db]
+enabled = true
+# Port to use for the local PostgreSQL database. Default: 54322.
+port = 54322
+# Port used by the shadow database (used by `supabase db diff`).
+shadow_port = 54320
+# Major Postgres version to use. Default: 15.
+major_version = 15
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[studio]
+enabled = true
+# Port to use for the local Supabase Studio dashboard. Default: 54323.
+port = 54323
+
+[inbucket]
+enabled = true
+# Port to use for the local Inbucket (email capture) web UI. Default: 54324.
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+# Local Next.js dev server URL — Supabase Auth emails link back here.
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback"]
+# Auth sessions default expiry (seconds). Default: 3600.
+jwt_expiry = 3600
+# Disable email confirmation for local dev so the test user is immediately active.
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_confirmations = false
+double_confirm_changes = false
+
+[analytics]
+enabled = false
