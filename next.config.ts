@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
+// Side-effect import: validates required env vars via the zod schema in
+// `src/lib/env.ts` at config-load time. `next build` / `next dev` / `next start`
+// all evaluate next.config.ts eagerly, so a missing SUPABASE_SERVICE_ROLE_KEY
+// or CRON_SECRET (or invalid NEXT_PUBLIC_SUPABASE_URL) aborts the build with a
+// zod error before any code runs.
+import "./src/lib/env";
+
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
