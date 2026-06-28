@@ -1,4 +1,4 @@
-wing: temp_nanohome_slimd_project
+wing: temp_nanohome
 rooms:
 - name: messages
   description: Files from messages/
@@ -26,10 +26,10 @@ rooms:
   - src
   - src
 - name: testing
-  description: Files from test/
+  description: Files from tests/
   keywords:
   - testing
-  - test
+  - tests
 - name: frontend
   description: Files from components/
   keywords:
