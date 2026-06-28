@@ -6,8 +6,79 @@
     "home": "Home",
     "products": "Products"
   },
+  "Header": {
+    "brandFurniture": "nanoHome Furniture",
+    "brandLighting": "nanoHome Lighting",
+    "brandPreLove": "nanoHome Pre - Love",
+    "showrooms": "Showrooms",
+    "about": "About us",
+    "news": "News",
+    "contact": "Contact",
+    "signIn": "Sign in",
+    "products": "Products",
+    "livingRoom": "Living Room",
+    "diningRoom": "Dining Room",
+    "bedroom": "Bedroom",
+    "workspace": "Workspace",
+    "outdoor": "Outdoor",
+    "accessories": "Accessories & Decor",
+    "bySet": "By Set",
+    "cartCount": "1"
+  },
   "Home": {
     "title": "Home"
+  },
+  "Hero": {
+    "titleLine1": "Absolute elegance",
+    "titleLine2": "refined to every detail",
+    "cta": "Discover"
+  },
+  "Instagram": {
+    "eyebrow": "LATEST REELS AND IMAGES FROM NANOHOME, TAP TO SHOP PRODUCTS IN FRAME",
+    "heading": "Inspiration from Instagram"
+  },
+  "ProductGrid": {
+    "tabTrending": "Trending",
+    "tabBestSeller": "Best Seller",
+    "tabNew": "New In",
+    "inStock": "IN STOCK",
+    "price": "10.000.000 đ"
+  },
+  "About": {
+    "eyebrow": "Welcome to nanoHome",
+    "heading": "The premium furniture destination in Vietnam",
+    "leftHeading": "At nanoHome, we believe in \"living beautifully every day\" — from ordinary moments to special occasions.",
+    "p1": "As the official distributor of iconic brands such as Cassina, Maxalto, Knoll, B&B Italia, Fritz Hansen, Vitra, USM and Flos, nanoHome offers a comprehensive product ecosystem for the living room, bedroom, kitchen-dining and workspace. We accompany you from aesthetic advice, layout solutions to dedicated after-sales care, so every choice is truly \"right\" for you.",
+    "p2": "Visit a nanoHome showroom to experience the latest collections and find inspiration for your home."
+  },
+  "Featured": {
+    "eyebrow": "Premium furniture",
+    "heading": "Featured products of the week",
+    "inStock": "IN STOCK",
+    "price": "10,000,000 vnđ",
+    "eggName": "Egg Chair",
+    "eggBrand": "FRITZ HANSEN",
+    "eggCategory": "Fritz Hansen / Lounge chair",
+    "huskName": "Husk Chair",
+    "huskBrand": "B&B ITALIA",
+    "huskCategory": "B&B Italia / Lounge chair"
+  },
+  "Rooms": {
+    "eyebrow": "Furniture by room",
+    "heading": "Products by room",
+    "cta": "Discover",
+    "sub1": "Perfect balance",
+    "title1": "Living room",
+    "desc1": "Soft curves combined with luxurious materials create a space that is both modern and cozy.",
+    "sub2": "Meticulous detail",
+    "title2": "Dining room",
+    "desc2": "Refined design creates artistic dining moments.",
+    "sub3": "Space to rest",
+    "title3": "Bedroom",
+    "desc3": "Natural materials and gentle forms bring restful sleep and a calm spirit.",
+    "sub4": "Harmony with nature",
+    "title4": "Outdoor",
+    "desc4": "Durable furniture, open design, seamless connection between indoors and out."
   },
   "Products": {},
   "ProductDetail": {},
@@ -16,9 +87,52 @@
   "Checkout": {},
   "Auth": {},
   "Search": {},
-  "Brands": {},
+  "Brands": {
+    "eyebrow": "Official Authorized Distributor"
+  },
+  "Newsletter": {
+    "title": "Join the Priority List",
+    "subtitle": "Early notice of rare pieces, Pre-Loved drops, and private event invitations.",
+    "emailLabel": "Your Email",
+    "emailPlaceholder": "nhập email",
+    "phoneLabel": "Your Phone",
+    "phonePlaceholder": "nhập số điện thoại",
+    "cta": "Book an Appointment"
+  },
   "Designers": {},
   "Catalogs": {},
   "Static": {},
-  "Footer": {}
+  "Footer": {
+    "col1Heading": "About us",
+    "col1Link1": "About nanoHome",
+    "col1Link2": "Sales Policy",
+    "col1Link3": "Maintenance Guide",
+    "col1Link4": "News / Press",
+    "col1Link5": "Careers",
+    "col2Heading": "Services",
+    "col2Link1": "Interior Decoration",
+    "col2Link2": "Lighting Consultation",
+    "col3Heading": "Products",
+    "col3Link1": "USM",
+    "col3Link2": "Furniture",
+    "col3Link3": "Lighting",
+    "col3Link4": "Decor",
+    "col4Heading": "Resources",
+    "col4Link1": "Brands",
+    "col4Link2": "Designers",
+    "col4Link3": "#Beautifulliving",
+    "col4Link4": "Catalogs",
+    "col5Heading": "Showrooms",
+    "showroom1": "nanoHome HCM - Gallery",
+    "showroom2": "nanoHome HCM - Lake View",
+    "showroom3": "nanoHome HCM - House",
+    "showroom4": "nanoHome HaNoi - Gallery",
+    "showroom5": "nanoHome HaNoi - West Lake",
+    "showroom1Address": "675-677 Dien Bien Phu, Ward 25, Binh Thanh District, Ho Chi Minh City",
+    "showroom1Hours": "Monday to Saturday | 9AM - 6PM",
+    "col6Heading": "Contact",
+    "phone": "(+84) 33 948 7632",
+    "email": "info@nanohome.vn",
+    "website": "nanohome.vn"
+  }
 }
