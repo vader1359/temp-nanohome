@@ -1,8 +1,9 @@
-create extension if not exists citext with schema extensions;
+-- citext extension is installed in public schema by 20260628000000_add_commerce_tables.sql
+-- (re-running this file requires that file to have been applied first).
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  email extensions.citext,
+  email public.citext,
   full_name text,
   phone text,
   avatar_url text,

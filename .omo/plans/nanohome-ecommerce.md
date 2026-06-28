@@ -78,6 +78,18 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
 ### Parallel execution waves
 > Target 5-8 todos per wave. Fewer than 3 (except the final) means you under-split.
 
+### Fast-path amendment (2026-06-28)
+User priority changed to a working website fast before full production hardening. Preserve existing task definitions and evidence rules, but execute the remaining work in this MVP-first order after T9 completes: T10-T14 content routes, T16 search, T19 cart, T20 checkout, then T21 SEO/build basics. Defer T15 full auth/OAuth, T17 AMIS sync, T18 full RLS tests, and final hardening unless a later fast-path task explicitly needs them. Guest cart + checkout quote flow is acceptable for the first working demo; persistent accounts and automated AMIS updates are production-hardening follow-ups.
+
+### Backend-only amendment (2026-06-28)
+User clarified homepage and design-related work is handled in a separate UI worktree. This worktree must focus on backend/server/data/infrastructure only. Do not dispatch UI/design/homepage/page-presentation implementation here. After T9, prioritize backend fast-path tasks: T16 search server/query contract, T19 cart backend/store/server actions, T20 checkout/order capture backend, T21 backend SEO endpoints/config only where not owned by UI. Defer T10-T14 route/page presentation and any design/content UI implementation to the UI worktree unless the user explicitly reassigns them here.
+
+### Auth + AMIS priority amendment (2026-06-28)
+User clarified the backend lane should focus specifically on simple Supabase auth and AMIS data fetch. Prioritize T15 as a simple backend auth slice and T17 as AMIS fetch/sync. Keep auth minimal: Supabase session refresh/callback/server actions or route handlers as needed, no account/profile UI, no extra auth UX. AMIS work should fetch data and update backend records/logs, one-way only. Deprioritize search/cart/checkout/SEO until these two are done or the user reorders again.
+
+### Backend-only T9/T16/T19 amendment (2026-06-28)
+User clarified T9, T16, and T19 are needed, but only backend work should happen in this worktree. Execute T9 first as middleware/request-validation and route-smoke infrastructure without UI/design changes. After T9 is verified, execute T16 as search server/query contract only and T19 as cart backend/server-action or route/query contract only. Do not implement search UI, search page, cart UI, cart store, cart provider, cart icon, add-to-cart UI, product page presentation, or design/styling here.
+
 **Wave 1 (Foundation — 5 todos, parallel):** T1 scaffold, T2 env validation, T3 commerce schema, T4 auth schema, T5 sync+search schema. All independent.
 
 **Wave 2 (Infrastructure — 4 todos, parallel, after W1):** T6 type gen + data layer, T7 route shells, T8 test infra, T9 i18n middleware + smoke test.
@@ -140,7 +152,7 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
   QA scenarios: Playwright `e2e/smoke-i18n.spec.ts` — `/vi` + `/en` resolve, html lang attr correct. Failure: `/de` returns 404 or redirect. Evidence: .omo/evidence/task-1-nanohome-ecommerce.txt
   Commit: Y | feat(scaffold): init Next 16 + Tailwind v4 + next-intl + Supabase + providers
 
-- [ ] 2. C1.1 — Env validation + security guards
+- [x] 2. C1.1 — Env validation + security guards
   What to do:
   - `src/lib/env.ts`: zod schema. Public: `NEXT_PUBLIC_SUPABASE_URL`(url), `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`(str), `NEXT_PUBLIC_CLARITY_ID`(str opt), `NEXT_PUBLIC_AXIOM_DATASET`(str opt), `NEXT_PUBLIC_AXIOM_TOKEN`(str opt). Server: `SUPABASE_SERVICE_ROLE_KEY`(str), `AMIS_API_BASE_URL`(url opt), `AMIS_API_KEY`(str opt), `AMIS_CLIENT_ID`(str opt), `AMIS_CLIENT_SECRET`(str opt), `AMIS_TENANT`(str opt), `CRON_SECRET`(str). Export parsed `env`.
   - `import 'server-only'` in `src/lib/supabase/admin.ts` (already in T1, verify).
@@ -153,7 +165,7 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
   QA scenarios: Happy: `bunx eslint src/lib/supabase/admin.ts` passes. Failure: temp client file importing admin → eslint error → delete temp. Evidence: .omo/evidence/task-2-nanohome-ecommerce.txt
   Commit: Y | feat(env): zod env validation + server-only guards + ESLint restrictions
 
-- [~] 3. C2a — Commerce schema: carts, cart_items, orders, order_items, order_status_history + RLS
+- [x] 3. C2a — Commerce schema: carts, cart_items, orders, order_items, order_status_history + RLS
   What to do:
   - `supabase_apply_migration(project_id='ithwvxvaomqbtlxbubtj', name='add_commerce_tables', query=...)`:
   - `carts`: id uuid PK default gen_random_uuid(), user_id uuid FK auth.users on delete cascade, guest_id text, merged_from_guest_id text, created_at, updated_at. Unique(user_id) where not null. Unique(guest_id) where not null.
@@ -171,7 +183,7 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
   QA scenarios: Verify via list_tables verbose. Advisors check for RLS gaps. Evidence: .omo/evidence/task-3-nanohome-ecommerce.json
   Commit: Y | feat(schema): add commerce tables + RLS
 
-- [~] 4. C2b — Auth schema: profiles + on_auth_user_created trigger + RLS
+- [x] 4. C2b — Auth schema: profiles + on_auth_user_created trigger + RLS
   What to do:
   - `supabase_apply_migration(project_id='ithwvxvaomqbtlxbubtj', name='add_profiles_and_trigger', query=...)`:
   - `profiles`: id uuid PK references auth.users(id) on delete cascade, email citext, full_name text, phone text, avatar_url text, preferred_locale text default 'vi', created_at, updated_at.
@@ -186,7 +198,7 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
   QA scenarios: Advisors security check. Evidence: .omo/evidence/task-4-nanohome-ecommerce.json
   Commit: Y | feat(schema): add profiles table + auth trigger + RLS
 
-- [~] 5. C2c — Sync + search schema: amis_sync_log + pgroonga + slug unique indexes
+- [x] 5. C2c — Sync + search schema: amis_sync_log + pgroonga + slug unique indexes
   What to do:
   - First: `supabase_list_extensions(project_id='ithwvxvaomqbtlxbubtj')` — confirm pgroonga available.
   - Migration `add_amis_sync_log`: amis_sync_log id uuid PK, started_at timestamptz default now(), finished_at timestamptz, status text default 'running' check(in ('running','success','partial','failed')), items_processed int default 0, items_failed int default 0, error text, watermark timestamptz. RLS: `FOR ALL USING(false) WITH CHECK(false)` (service role only).
@@ -199,7 +211,7 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
   QA scenarios: If pgroonga unavailable → fall back to pg_trgm `gin_trgm_ops` + note. If duplicate slugs → add `WHERE approved=true AND validated=true`. Evidence: .omo/evidence/task-5-nanohome-ecommerce.json
   Commit: Y | feat(schema): add amis_sync_log + pgroonga FTS + slug unique indexes
 
-- [ ] 6. C1.5 — Type generation + data access layer (lib/queries + 3 Supabase clients typed)
+- [x] 6. C1.5 — Type generation + data access layer (lib/queries + 3 Supabase clients typed)
   What to do:
   - `bunx supabase gen types typescript --project-id ithwvxvaomqbtlxbubtj > src/types/database.types.ts` (or `supabase_generate_typescript_types` MCP tool).
   - `src/types/db.ts`: re-export Database type, typed query helpers.
@@ -224,7 +236,7 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
   QA scenarios: Vitest `products.test.ts` — mock client, call `getProducts({page:1})`, assert `.eq('validated',true).eq('approved',true)`. Failure: `getProductByAirtableId('nonexistent')` returns null. Evidence: .omo/evidence/task-6-nanohome-ecommerce.txt
   Commit: Y | feat(data): generate types + data access layer with typed queries
 
-- [ ] 7. C0.5 — Route shells: error/not-found/loading at root + [locale]
+- [x] 7. C0.5 — Route shells: error/not-found/loading at root + [locale]
   What to do:
   - `src/app/global-error.tsx`: 'use client', html+body, error message + retry (shadcn Button).
   - `src/app/error.tsx`: 'use client', error + reset.
@@ -240,7 +252,7 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
   QA scenarios: Playwright — `/vi/nonexistent` → 404 + "not found" text. `/en/nonexistent` → English text. Temp throw → error.tsx renders. Evidence: .omo/evidence/task-7-nanohome-ecommerce.txt
   Commit: Y | feat(routes): add error/not-found/loading route shells
 
-- [ ] 8. C12.5 — Test infrastructure: local Supabase, seed, pgTAP roles, Playwright config
+- [x] 8. C12.5 — Test infrastructure: local Supabase, seed, pgTAP roles, Playwright config
   What to do:
   - `supabase/config.toml`: local Supabase config. `supabase start` to initialize local stack. Document `supabase stop` for teardown. Local DB URL: `postgresql://postgres:postgres@localhost:54322/postgres` (default).
   - `supabase/seed.sql`: insert test data — 2 brands, 3 categories, 5 products (3 approved+validated, 1 approved=false, 1 validated=false), 8 variants, 2 news, 1 catalog. Use fixed UUIDs from `supabase/tests/fixtures.sql` (constants block at top) for deterministic tests.
@@ -255,7 +267,7 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
   QA scenarios: `bunx vitest run src/test/setup.test.ts` — passes. Evidence: .omo/evidence/task-8-nanohome-ecommerce.txt
   Commit: Y | feat(test): add test infra — seed data, pgTAP RLS skeleton, Playwright fixtures
 
-- [ ] 9. i18n middleware + route smoke test
+- [x] 9. i18n middleware + route smoke test
   What to do:
   - Verify `src/middleware.ts` (from T1) uses `createIntlMiddleware` with `localePrefix:'always'` and matcher config excluding `/_next`, `/auth`, `/api`, static files.
   - Add `hasLocale` validation in `src/i18n/request.ts` — throw if requested locale not in `['vi','en']`.
@@ -347,7 +359,7 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
   QA scenarios: Playwright — brands page renders brand names, catalogs page has download links (not embed). Evidence: .omo/evidence/task-14-nanohome-ecommerce.txt
   Commit: Y | feat(static): brands/designers/catalogs/showrooms/static pages routes
 
-- [ ] 15. C8 — Auth: email/pass + Google + Facebook, middleware update, callback
+- [x] 15. C8 — Auth: email/pass + Google + Facebook, middleware update, callback
   What to do:
   - `src/app/[locale]/login/page.tsx`: login form (react-hook-form + zod). Email/password fields. Google + Facebook OAuth buttons (Supabase Auth `signInWithOAuth`).
   - `src/app/[locale]/signup/page.tsx`: signup form. Email/password + optional full_name/phone (passed to `raw_user_meta_data` for trigger).
@@ -363,7 +375,7 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
   QA scenarios: Playwright — signup with test email → verify profile created in Supabase. Login → session cookie set. Logout → cookie cleared. OAuth buttons render (mock click — full OAuth flow needs real credentials). Failure: wrong password → error message. Evidence: .omo/evidence/task-15-nanohome-ecommerce.txt
   Commit: Y | feat(auth): email/pass + Google + Facebook OAuth + middleware session refresh
 
-- [ ] 16. C12 — Search: pgroonga FTS, search bar, /search route, bilingual ranking
+- [x] 16. C12 — Search: pgroonga FTS, search bar, /search route, bilingual ranking
   What to do:
   - `src/components/search/search-bar.tsx` ('use client'): input with debounce, navigates to `/[locale]/search?q={query}` on submit.
   - `src/app/[locale]/search/page.tsx`: server component. Reads `q` from searchParams. Calls `searchProducts(q, locale, opts)`. Renders results grid (reuses product card from C4).
@@ -377,7 +389,7 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
   QA scenarios: Playwright — search "den" on /vi/search → results render. Search "lamp" on /en/search → results. Empty search → empty state. Evidence: .omo/evidence/task-16-nanohome-ecommerce.txt
   Commit: Y | feat(search): pgroonga FTS search route with bilingual ranking
 
-- [ ] 17. C9 — AMIS sync: Vercel Cron + Next Route Handler, delta sync, batched
+- [x] 17. C9 — AMIS sync: Vercel Cron + Next Route Handler, delta sync, batched
   What to do:
   - Step 1 — AMIS auth discovery: fetch AMIS OpenAPI docs (provider has them). Identify auth pattern: (a) HMAC signature (AMIS_API_KEY + AMIS_HMAC_SECRET), (b) OAuth2 client_credentials (CLIENT_ID/CLIENT_SECRET/TENANT), or (c) static API key header. Update T2 env schema if new vars needed (e.g. AMIS_HMAC_SECRET). If unknown, log warning and skip sync gracefully.
   - Step 2 — implement: `src/app/api/cron/amis-sync/route.ts`: POST handler. Auth via `CRON_SECRET` header (Vercel Cron sends `Authorization: Bearer ${CRON_SECRET}`). `withAxiom` wrapper for logging. Sync logic: fetch from AMIS OpenAPI using auth pattern from step 1. Delta sync: watermark = `MAX(started_at)` of previous successful log row. Only advance watermark on `status IN ('success','partial')`. On `status='failed'`, leave watermark unchanged so next run retries. Batch 200 items per request. Update variants table (price, compare_at_price, in_stock, discount_percent, source_updated_at) via admin client.
@@ -403,7 +415,7 @@ Your next move: approve the plan, or run a high-accuracy review. Full execution 
   QA scenarios: `supabase db test` — all pass. Failure: insert test that should fail → assert throws_ok. Evidence: .omo/evidence/task-18-nanohome-ecommerce.txt
   Commit: Y | test(rls): pgTAP RLS policy tests for all new tables
 
-- [ ] 19. C7a — Cart: hybrid guest localStorage + authed Supabase, merge on login
+- [x] 19. C7a — Cart: hybrid guest localStorage + authed Supabase, merge on login
   What to do:
   - `src/lib/stores/cart-store.ts`: zustand store with `persist` middleware (localStorage). State: `items: {variant_id, quantity, product_name, variant_name, price, packshot_url}[]`. Actions: addItem, removeItem, updateQuantity, clearCart. `skipHydration: true` to prevent SSR hydration mismatch.
   - `src/components/cart/cart-provider.tsx` ('use client'): mounts after hydration (`useEffect` flag). If user logged in (from auth provider T15), loads cart from Supabase via `getCartItems()`. If guest, uses zustand persisted state.

@@ -1,6 +1,12 @@
 {
   "Common": {
-    "welcome": "Chào mừng đến với NanoHome"
+    "welcome": "Chào mừng đến với NanoHome",
+    "error_title": "Đã xảy ra lỗi",
+    "error_description": "Vui lòng thử lại. Nếu lỗi vẫn tiếp diễn, hãy tải lại trang.",
+    "error_retry": "Thử lại",
+    "not_found_title": "Không tìm thấy trang",
+    "not_found_description": "Trang bạn tìm không tồn tại hoặc đã được di chuyển.",
+    "not_found_home": "Về trang chủ"
   },
   "Nav": {
     "home": "Trang chủ",

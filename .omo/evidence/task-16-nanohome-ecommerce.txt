@@ -1,0 +1,124 @@
+Task: T16 backend-only search server/query contract
+Date: 2026-06-28
+
+Plan reread:
+- Read `.omo/plans/nanohome-ecommerce.md` amendments and T16.
+- Backend-only T9/T16/T19 amendment overrides original UI requirements for T16.
+- Implemented only `src/lib/queries/search.ts` and its focused test file.
+- Did not create `src/components/search/search-bar.tsx`.
+- Did not create `src/app/[locale]/search/page.tsx`.
+- Did not edit plan checkboxes or `.omo/start-work/ledger.jsonl`.
+
+Files read before editing:
+- `.omo/plans/nanohome-ecommerce.md`
+- `src/lib/queries/search.ts`
+- `src/lib/queries/search.test.ts`
+- `src/lib/queries/products.ts`
+- `src/lib/queries/products.test.ts`
+- `src/types/db.ts`
+- `src/types/database.types.ts`
+- `package.json`
+- `eslint.config.mjs`
+- `vitest.config.ts`
+- `src/lib/supabase/server.ts`
+
+Changed files:
+- `src/lib/queries/search.ts`
+  - Empty/whitespace query still returns `[]` before creating a Supabase client.
+  - PostgREST `.or()` filter operands now quote search terms containing reserved grammar characters before interpolation.
+  - Literal double quotes and backslashes inside quoted filter operands are backslash-escaped.
+  - Product visibility filters: `validated=true`, `approved=true`.
+  - Variant visibility filters in embedded contract: `variants.validated=true`, `variants.approved=true`.
+  - Variant match prequery on `variants` with `&@~` across `name`, `sku`, `finish`, `finish_vi`, filtered to visible variants with non-null `product_id`.
+  - Product query uses PGroonga `&@~` across locale-prioritized product fields and includes product IDs matched by variants.
+  - Vietnamese field priority: product `name_vi`, `description_vi`; variant `finish_vi` first.
+  - English field priority: product `name`, `description`; variant `name`, `sku`, `finish` first.
+  - Cross-locale matches remain included at lower priority order in the filter lists.
+  - Pagination preserved with `productRange()` and `.range(from, to)`.
+- `src/lib/queries/search.test.ts`
+  - Added focused Supabase query-builder mock tests for empty query, visibility filters, PGroonga operator strings, locale-prioritized cross-locale matching, variant search, ordering, and pagination.
+  - Added malformed-input regression coverage for comma, parentheses, and dot characters in user search terms.
+
+Narrowed contract:
+- Backend-only T16 implemented products + variants only, no news.
+- Variant search is implemented as a typed prequery for visible variant `product_id` values, then product retrieval by product-field PGroonga OR matched variant product IDs. This avoids risky cross-table embedded OR syntax in Supabase/PostgREST while preserving a testable product-returning contract.
+- Locale-aware ranking is represented by deterministic preferred-field ordering in the PGroonga disjunction plus locale-specific `.order(name_vi|name)`, not a raw SQL rank expression, because no RPC/schema change was requested and no Supabase remote mutation tools are allowed.
+
+RED evidence:
+- Command: `bunx vitest run src/lib/queries/search.test.ts`
+  - Failed before test execution because default `vitest.config.ts` is blocked by `@vitejs/plugin-react` ESM/CJS loading.
+- Temporary config created: `vitest.search.config.ts`.
+- Command: `bunx vitest run --config vitest.search.config.ts src/lib/queries/search.test.ts`
+  - Failed 2 tests against old implementation: `filter is not a function`, because tests expected `.or(...)` PGroonga/cross-locale contract and the old implementation used single-column `.filter(...)`.
+- Added stricter variant visibility assertion.
+- Command: `bunx vitest run --config vitest.search.config.ts src/lib/queries/search.test.ts`
+  - Failed 1 test until `variants.validated` and `variants.approved` filters were added.
+- Independent verifier blocker found after the first DoneClaim:
+  - `src/lib/queries/search.ts` interpolated raw `query.trim()` into `.or()` strings such as `${column}.&@~.${searchTerm}`.
+  - User input containing PostgREST grammar characters could split or malform the OR filter.
+- Added regression test for `lamp,shade.(sale)`.
+- Command: `bunx vitest run --config vitest.search.config.ts src/lib/queries/search.test.ts`
+  - Failed 1 test against the unsafe implementation.
+  - Failure showed the variant OR filter split into eight top-level clauses: `name.&@~.lamp`, `shade.(sale)`, `sku.&@~.lamp`, `shade.(sale)`, `finish.&@~.lamp`, `shade.(sale)`, `finish_vi.&@~.lamp`, `shade.(sale)`.
+
+GREEN evidence:
+- Command: `bunx vitest run --config vitest.search.config.ts src/lib/queries/search.test.ts`
+  - PASS: 1 file, 5 tests.
+- Command: `bunx vitest run --config vitest.search.config.ts src/lib/queries/search.test.ts --pool=forks --poolOptions.forks.singleFork=true`
+  - PASS: 1 file, 5 tests.
+- Command: `bunx tsc --noEmit`
+  - PASS: no output.
+- Command: `bunx eslint src/lib/queries/search.ts src/lib/queries/search.test.ts vitest.search.config.ts`
+  - PASS: no output.
+- Command: `bun run build`
+  - PASS: exited 0; output included `Finished TypeScript in 3.0s ...`.
+- Command: `bun -e "import('./src/lib/queries/search.ts').then((module) => { if (typeof module.searchProducts !== 'function') throw new Error('searchProducts export missing'); console.log('searchProducts import probe ok'); })"`
+  - PASS: `searchProducts import probe ok`.
+- Command after deleting temporary config: `bunx tsc --noEmit`
+  - PASS: no output.
+- Command after deleting temporary config: `bunx eslint src/lib/queries/search.ts src/lib/queries/search.test.ts`
+  - PASS: no output.
+- Command after deleting temporary config: `GIT_MASTER=1 git status --short -- src/lib/queries/search.ts src/lib/queries/search.test.ts vitest.search.config.ts .omo/evidence/task-16-nanohome-ecommerce.txt`
+  - PASS cleanup scope: `?? .omo/evidence/task-16-nanohome-ecommerce.txt`, `?? src/lib/queries/search.test.ts`, `?? src/lib/queries/search.ts`; no `vitest.search.config.ts` entry.
+- Command: `glob src/components/search/search-bar.tsx`, `glob src/app/[locale]/search/page.tsx`, `glob vitest.search.config.ts`
+  - PASS: no files found.
+
+Temporary config cleanup:
+- Created `vitest.search.config.ts` only to bypass the known default Vitest ESM/CJS config blocker.
+- Deleted `vitest.search.config.ts` before completion.
+- `GIT_MASTER=1 git status --short -- src/lib/queries/search.ts src/lib/queries/search.test.ts vitest.search.config.ts .omo/evidence/task-16-nanohome-ecommerce.txt` showed only T16 files after cleanup.
+
+Manual QA:
+- Backend-only import probe confirmed `searchProducts` remains importable as an ESM module.
+- Query-builder tests verify the backend contract instead of a UI route/page because backend-only amendment forbids search presentation work in this worktree.
+- Malformed-input query-builder QA confirmed `lamp,shade.(sale)` remains one quoted PGroonga operand per searchable field and does not split the top-level `.or()` grammar.
+
+UltraQA probes:
+- stale_state: plan reread before edit; package/config/query/types read before implementation.
+- dirty_worktree: repository already had many unrelated modified/untracked files; T16 scope limited to `src/lib/queries/search.ts`, `src/lib/queries/search.test.ts`, and this evidence file. No plan checkbox or ledger edits made by this task.
+- misleading_success_output: `bun run build` prints only a terse `Finished TypeScript ...`; treated as pass only because command exit was 0.
+- malformed input: whitespace query test asserts `[]` and no Supabase client call; reserved-character test asserts comma, parentheses, and dot are contained inside quoted operands in both variant and product `.or()` filters.
+- hung commands: verification commands were run with timeouts.
+- flaky tests: focused test run repeated, including a single-fork run.
+- Supabase remote mutation: N/A, no remote mutation tools used and task did not require schema changes.
+- UI/browser visual QA: N/A, backend-only amendment forbids UI/page/component work for T16.
+- destructive action verification: N/A, no destructive data or filesystem operation beyond deleting the temporary Vitest config that this task created.
+- security secret handling: N/A, no env values read or printed.
+
+Post-write review:
+- Pure LOC for changed source/test files: `src/lib/queries/search.ts` 75, `src/lib/queries/search.test.ts` 183; both healthy.
+- Single responsibility: `search.ts` owns backend product search query construction; `search.test.ts` owns query contract tests.
+- Boundary purity: whitespace search input parsed at function boundary by `trim()` and empty guard; non-empty search term is converted into a PostgREST filter operand before `.or()` interpolation.
+- Variant discrimination: no tagged variant discrimination added.
+- Escape hatches: no `any`, `as any`, non-null assertion, ts-ignore, or ts-expect-error added.
+- Defensive layer: no redundant null checks beyond Supabase nullable response handling and `product_id` filtering needed by generated DB type.
+- Helpers: helper functions/constants support repeated product/variant PGroonga filter construction and locale contracts.
+- Tests: focused tests fail if visibility filters are removed, PGroonga `&@~` is changed, or malformed search grammar is interpolated raw.
+- Parameter bloat: no function over 3 parameters added; existing `searchProducts(query, locale, options)` remains 3 parameters.
+- Redundant verification: none.
+- Negative naming: none.
+
+Risks:
+- Supabase/PostgREST custom PGroonga operator strings are covered by query-builder contract tests, not a live database query in this backend-only task.
+- Full SQL relevance scoring would require an RPC or raw SQL/view change; this task avoided remote mutations and used deterministic locale-prioritized field ordering instead.
+- Search terms are escaped for PostgREST URL grammar, not PGroonga query-language semantics; this preserves user query expressiveness while preventing `.or()` grammar malformation.

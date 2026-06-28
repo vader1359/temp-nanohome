@@ -3,7 +3,7 @@ import { Geist, Geist_Mono, Libre_Franklin } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { routing } from "@/i18n/routing";
+import { isSupportedLocale, routing } from "@/i18n/routing";
 import { Providers } from "../providers";
 import Script from "next/script";
 import "../globals.css";
@@ -23,7 +23,7 @@ const geistMono = Geist_Mono({
 const libreFranklin = Libre_Franklin({
   display: "swap",
   variable: "--font-libre-franklin",
-subsets: ["latin", "vietnamese"],
+  subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600", "700"],
 });
 
@@ -49,7 +49,7 @@ interface RootLayoutProps {
 export default async function RootLayout({ children, params }: RootLayoutProps) {
   const { locale } = await params;
 
-  if (!routing.locales.includes(locale as (typeof routing.locales)[number])) {
+  if (!isSupportedLocale(locale)) {
     notFound();
   }
 
@@ -76,7 +76,7 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
           />
         )}
       </head>
-<body className={`${geistSans.variable} ${geistMono.variable} ${libreFranklin.variable} antialiased font-[family-name:var(--font-libre-franklin)]`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${libreFranklin.variable} antialiased font-[family-name:var(--font-libre-franklin)]`}>
         <NextIntlClientProvider messages={messages} locale={locale}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>

@@ -1,0 +1,71 @@
+T15 nanoHome backend-only Supabase auth evidence
+
+Scope
+- Implemented minimal backend auth only. No login/signup page design, account page, profile insertion, Zalo login, custom session storage, or client service-role usage.
+- Preserved next-intl localePrefix=always and middleware matcher exclusions for _next, auth, api, and static files.
+
+Changed files
+- src/middleware.ts
+- src/lib/auth/redirect.ts
+- src/lib/auth/credentials.ts
+- src/lib/auth/redirect.test.ts
+- src/lib/auth/credentials.test.ts
+- src/app/auth/callback/route.ts
+- src/app/auth/sign-in/route.ts
+- src/app/auth/sign-up/route.ts
+- src/app/auth/sign-out/route.ts
+- .omo/evidence/task-15-nanohome-ecommerce.txt
+
+RED
+- Command: bun test src/lib/auth/redirect.test.ts src/lib/auth/credentials.test.ts
+- Result: failed before implementation because ./redirect and ./credentials modules were missing.
+- Purpose: locked redirect sanitization and credential boundary parsing before backend handlers were added.
+
+GREEN
+- Command: bun test src/lib/auth/redirect.test.ts src/lib/auth/credentials.test.ts
+- Result: pass, 7 tests.
+- Command: bunx tsc --noEmit
+- Result: pass, no output.
+- Command: bunx eslint src/middleware.ts src/lib/auth/redirect.ts src/lib/auth/credentials.ts src/lib/auth/redirect.test.ts src/lib/auth/credentials.test.ts src/app/auth/callback/route.ts src/app/auth/sign-in/route.ts src/app/auth/sign-up/route.ts src/app/auth/sign-out/route.ts
+- Result: pass, no output.
+- Command: bun run build
+- Result: pass; visible output completed TypeScript and build without nonzero exit.
+
+LSP diagnostics
+- Required LSP diagnostics were attempted for every changed source file.
+- Result: tool unavailable; MCP returned Connection closed / Not connected.
+- Fallback: bunx tsc --noEmit passed.
+
+Manual QA
+- Command: bun run start -- -p 3100, then curl -sS -I http://127.0.0.1:3100/auth/callback
+- Result: controlled redirect, not 404.
+- Observed response: HTTP/1.1 307 Temporary Redirect; Location: http://localhost:3100/vi?auth=missing_code.
+- Cleanup: server process killed after curl smoke.
+
+UltraQA probes
+- stale_state: env keys checked with EnvSitter; NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY, and CRON_SECRET exist in .env.local without exposing values.
+- dirty_worktree: GIT_MASTER=1 git status --short showed broad pre-existing dirty worktree. Only T15 auth files and this evidence were intentionally changed.
+- misleading_success_output: full bun run lint failed on generated playwright-report/trace assets outside this task. Targeted eslint for changed files passed. Build/test/typecheck commands used exit status, not output text alone.
+- authz-bypass/session-cookie risk: middleware uses createServerClient<Database, "public", "public"> per request; setAll mutates request cookies and response cookies, preserving the next-intl response returned by createMiddleware. Auth callback and form handlers use server client only.
+- malformed callback input: missing/empty code redirects to /vi?auth=missing_code. Unsafe next values are sanitized to /vi by tests.
+- malformed credentials input: invalid email/password form data redirects as invalid_credentials; parser rejects File/non-string form values via Zod safeParse.
+- hung commands: route smoke server was launched in a bounded subshell and killed after curl; no long-running server left intentionally.
+- remote mutation: N/A; no Supabase MCP write/mutation used.
+- UI regression/design: N/A; no UI or styling added.
+- service role client exposure: N/A; service role remains confined to existing server-only admin module and was not imported by auth routes.
+
+LOC audit
+- src/middleware.ts: 32 pure LOC
+- src/lib/auth/redirect.ts: 7 pure LOC
+- src/lib/auth/credentials.ts: 33 pure LOC
+- src/lib/auth/redirect.test.ts: 20 pure LOC
+- src/lib/auth/credentials.test.ts: 41 pure LOC
+- src/app/auth/callback/route.ts: 16 pure LOC
+- src/app/auth/sign-in/route.ts: 18 pure LOC
+- src/app/auth/sign-up/route.ts: 24 pure LOC
+- src/app/auth/sign-out/route.ts: 13 pure LOC
+- Verdict: all changed source files are healthy under the 200 LOC threshold.
+
+Risks
+- Real Supabase email/password success paths were not exercised against the remote service to avoid remote mutation; covered by typecheck and route-level implementation using Supabase SSR APIs.
+- Repo-level bun run lint remains blocked by pre-existing generated playwright-report artifacts; changed-file lint passed.

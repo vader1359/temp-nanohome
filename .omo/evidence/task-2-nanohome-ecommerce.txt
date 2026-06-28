@@ -1,0 +1,287 @@
+# T2 — C1.1 Env validation + security guards — Evidence
+
+Plan: .omo/plans/nanohome-ecommerce.md (lines 143-154)
+Working dir: /Users/iant1359/Develop/temp-nanohome-como-project
+Date: 2026-06-28
+
+## Deliverables verified present
+
+1. `src/lib/env.ts` — zod schema with all required vars (see spec table below).
+2. `src/lib/env.test.ts` — vitest unit tests covering happy path, missing
+   `SUPABASE_SERVICE_ROLE_KEY`, invalid `NEXT_PUBLIC_SUPABASE_URL`, missing
+   `CRON_SECRET`.
+3. `src/lib/supabase/admin.ts` — `import "server-only";` at line 1.
+4. `eslint.config.mjs` — `no-restricted-imports` blocking `@/lib/supabase/admin`
+   from client components, with allowlist for server-only entry points.
+5. `.env.example` — grouped PUBLIC / SERVER-ONLY / AMIS / ANALYTICS, with
+   comments.
+6. `next.config.ts` — side-effect `import "./src/lib/env";` so missing required
+   env vars fail the build at config-load time (added in this task to satisfy
+   acceptance criterion 2 below).
+
+## T2 spec vars vs env.ts schema
+
+| Spec var                                 | env.ts field                                | OK |
+|------------------------------------------|---------------------------------------------|----|
+| NEXT_PUBLIC_SUPABASE_URL (url)            | z.string().url()                            | Y  |
+| NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (str)| z.string().min(1)                           | Y  |
+| NEXT_PUBLIC_CLARITY_ID (str opt)          | z.string().min(1).optional()                | Y  |
+| NEXT_PUBLIC_AXIOM_DATASET (str opt)       | z.string().min(1).optional()                | Y  |
+| NEXT_PUBLIC_AXIOM_TOKEN (str opt)         | z.string().min(1).optional()                | Y  |
+| SUPABASE_SERVICE_ROLE_KEY (str)           | z.string().min(1)                           | Y  |
+| AMIS_API_BASE_URL (url opt)               | z.string().url().optional()                 | Y  |
+| AMIS_API_KEY (str opt)                    | z.string().min(1).optional()                | Y  |
+| AMIS_CLIENT_ID (str opt)                  | z.string().min(1).optional()                | Y  |
+| AMIS_CLIENT_SECRET (str opt)              | z.string().min(1).optional()                | Y  |
+| AMIS_TENANT (str opt)                     | z.string().min(1).optional()                 | Y  |
+| CRON_SECRET (str)                          | z.string().min(1)                           | Y  |
+| Export parsed `env`                       | `export const env = envSchema.parse(...)`   | Y  |
+
+No `NEXT_PUBLIC_` prefix on `SUPABASE_SERVICE_ROLE_KEY` or `CRON_SECRET`.
+No `process.env` direct access in admin.ts (it imports `env`).
+
+## Acceptance criteria (from plan lines 152-153)
+
+### A1. `bun run build` succeeds  — PASS
+
+Command (placeholder non-secret env values supplied inline; no secrets written):
+
+    NEXT_PUBLIC_SUPABASE_URL='https://example.supabase.co' \
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='sb_publishable_placeholder' \
+    SUPABASE_SERVICE_ROLE_KEY='service_role_placeholder' \
+    CRON_SECRET='cron_placeholder' \
+    bun run build
+
+Observable (full log captured to temp `.omo/evidence/.t2-build-raw.log`, since
+removed):
+
+    $ next build
+    ▲ Next.js 16.2.7 (Turbopack)
+      Creating an optimized production build ...
+    ✓ Compiled successfully in 2.3s
+      Running TypeScript ...
+      Finished TypeScript in 3.3s ...
+      Collecting page data using 5 workers ...
+    ✓ Generating static pages using 5 workers (5/5) in 298ms
+    Route (app)
+    ┌ ○ /_not-found
+    └ ● /[locale]
+      ├ /vi
+      └ /en
+    ƒ Proxy (Middleware)
+    EXIT=0
+
+### A2. Importing admin in 'use client' triggers ESLint error  — PASS
+
+Setup: temporary file `src/app/_t2-adversarial-client.tsx`:
+
+    "use client";
+    import { createAdminClient } from "@/lib/supabase/admin";
+    export default function BadClient() { createAdminClient(); return null; }
+
+Command: `bunx eslint src/app/_t2-adversarial-client.tsx`
+
+Observable:
+
+    /.../src/app/_t2-adversarial-client.tsx
+      3:1  error  '@/lib/supabase/admin' import is restricted from being used by a pattern.
+      src/lib/supabase/admin is server-only (uses the Supabase service role key and
+      bypasses RLS). Importing it into a client component leaks secrets. Use
+      src/lib/supabase/browser.ts or src/lib/supabase/server.ts instead
+      no-restricted-imports
+    ✖ 1 problem (1 error, 0 warnings)
+    EXIT=1
+
+Cleanup: file `src/app/_t2-adversarial-client.tsx` deleted. `git status`
+after cleanup confirms it is gone.
+
+### A2b. Admin file itself lints clean  — PASS
+
+Command: `bunx eslint src/lib/supabase/admin.ts`
+Observable: no output, EXIT=0 (the allowlist `src/lib/supabase/**` exempts
+the lib itself from the no-restricted-imports block).
+
+### A3. Missing SUPABASE_SERVICE_ROLE_KEY → build fails with zod error  — PASS
+
+Command (no env vars supplied, only those inherited from the parent shell,
+which had none of the schema-required vars):
+
+    bun run build
+
+Observable (captured to temp `.omo/evidence/.t2-build-negative.log`,
+since removed):
+
+    $ next build
+    ⨯ Failed to load next.config.ts, see more info here
+    Error [ZodError]: [
+      { path: ["NEXT_PUBLIC_SUPABASE_URL"], message: "Required" },
+      { path: ["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"], message: "Required" },
+      { path: ["SUPABASE_SERVICE_ROLE_KEY"], message: "Required" },
+      { path: ["CRON_SECRET"], message: "Required" }
+    ]
+        at Object.<anonymous> (src/lib/env.ts:37:23) { ... }
+    error: script "build" exited with code 1
+    EXIT=1
+
+The failure arrives via the side-effect `import "./src/lib/env";` line added to
+`next.config.ts`, which makes `next build` evaluate the zod parser at config
+load (config is loaded by Next.js before any compilation). Without that wiring,
+no code path evaluated env.ts at build time and the build succeeded silently,
+violating acceptance A3.
+
+## Unit tests  — PASS (with caveat)
+
+Command (literal from spec): `bunx vitest run src/lib/env.test.ts`
+
+Result: FAILS at the runner level, NOT at the test logic. Pre-existing
+environment issue (scaffolded in T1, unrelated to T2):
+
+    [plugin: externalize-deps] "@vitejs/plugin-react" resolved to an ESM file.
+    ESM file cannot be loaded by `require`.
+    See https://vite.dev/guide/troubleshooting.html#this-package-is-esm-only
+    EXIT=1 (config-bundle-time error; env.test.ts body never reached)
+
+Root cause: `vitest.config.ts` (T1) imports `@vitejs/plugin-react` (^6.0.3,
+ESM-only) and Vite's esbuild-based config bundler externalizes plugin deps
+through `require`. Vitest 2 + Vite 6 in this toolchain cannot require an ESM
+plugin from a CJS-style config bundle. This is a T1/test-runner tooling issue,
+not a T2 deliverable.
+
+Workaround used to exercise env.test.ts logic: a minimal temp vitest config
+(without the React plugin, node environment) placed at
+`vitest.minimal.config.ts` in the project root for the duration of the run:
+
+    bunx vitest run --config vitest.minimal.config.ts src/lib/env.test.ts
+
+Observable:
+
+    RUN  v2.1.9 /Users/iant1359/Develop/temp-nanohome-como-project
+    ✓ src/lib/env.test.ts (4 tests) 20ms
+    Test Files  1 passed (1)
+         Tests  4 passed (4)
+    Exit code: 0
+
+Temp config `vitest.minimal.config.ts` deleted after the run. `git status`
+confirms it is gone.
+
+Four tests pass:
+1. parses a valid full env and exposes typed values
+2. throws when SUPABASE_SERVICE_ROLE_KEY is missing
+3. throws when NEXT_PUBLIC_SUPABASE_URL is not a valid URL
+4. throws when CRON_SECRET is missing
+
+## Adversarial class probes
+
+- dirty_worktree: pre-existing dirty files at task start (recorded before any
+  task action):
+    M .gitignore
+    M .omo/boulder.json
+    M eslint.config.mjs            <- pre-existing T1 staging (also T2-delivered)
+    M src/lib/supabase/admin.ts    <- pre-existing T1 staging (also T2-delivered)
+    ?? .env.example                <- T2 deliverable
+    ?? .omo/run-continuation/ses_*.json   (pre-existing session state, untouched)
+    ?? src/lib/env.test.ts         <- T2 deliverable
+    ?? src/lib/env.ts              <- T2 deliverable
+  T2-touched files this session: `next.config.ts` (edited to add side-effect
+  env import). All other listed files were already in place from earlier work
+  on this branch; verified by re-reading after edits (stale_state probe, below).
+
+- misleading_success_output: all PASS verdicts above cite exact exit codes
+  (EXIT=0 / EXIT=1) captured explicitly via `; echo "EXIT=$?"`, not string
+  matching. The negative build explicitly shows `error: script "build" exited
+  with code 1` rather than a "FAILED" string.
+
+- stale_state: re-read every T2 file after the only edit made this session
+  (next.config.ts):
+    * next.config.ts lines 1-15 confirmed to contain `import "./src/lib/env";`
+    * src/lib/supabase/admin.ts confirmed line 1 `import "server-only";`
+    * eslint.config.mjs confirmed to contain the no-restricted-imports block
+    * .env.example confirmed grouped PUBLIC/SERVER-ONLY/AMIS/ANALYTICS
+    * src/lib/env.ts confirmed schema matches the spec table above
+    * src/lib/env.test.ts confirmed 4 tests
+  `git status --porcelain` re-run after edits shows the expected modified/
+  untracked set with no leftover temp artifacts.
+
+- Other UltraQA classes (visual_engineering, security_research, etc.): NOT
+  APPLICABLE. T2 is a non-UI env/security wiring task; no UI surface, no
+  runtime product behavior beyond build-time config validation, no network
+  surface to fuzz.
+
+## Cleanup
+
+- Temp adversarial client `src/app/_t2-adversarial-client.tsx` — deleted.
+- Temp minimal vitest config `vitest.minimal.config.ts` (project root) —
+  deleted.
+- Temp temp copy at
+  `/var/folders/mp/.../T/opencode/vitest.minimal.config.ts` — deleted.
+- Temp build logs `.omo/evidence/.t2-build-raw.log` and
+  `.omo/evidence/.t2-build-negative.log` — deleted.
+
+## Risks / notes
+
+1. `bunx vitest run src/lib/env.test.ts` (the literal spec command) does not
+   run due to a pre-existing T1 toolchain issue: `@vitejs/plugin-react` is
+   ESM-only and Vite's esbuild config bundler cannot load it via `require`.
+   The test logic itself passes 4/4 with a minimal vitest config (above). Fix
+   would be in `vitest.config.ts` (T1 scope), not T2.
+
+2. `next.config.ts` now has a side-effect `import "./src/lib/env";` for
+   build-time env validation. This means every Next CLI invocation
+   (`build`, `dev`, `start`, `lint` if it touches config) requires the four
+   mandatory env vars (`NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+   `CRON_SECRET`). Developers must populate `.env.local` before `next dev`.
+   `.env.example` documents all four as required.
+
+3. `instrumentation.ts` (scaffolded in T1) still reads `process.env.AXIOM_TOKEN`
+   and `process.env.AXIOM_DATASET` directly, NOT through the validated `env`
+   object. T2's schema only lists `NEXT_PUBLIC_AXIOM_DATASET` /
+   `NEXT_PUBLIC_AXIOM_TOKEN` (public). The mismatch between T1's
+   `instrumentation.ts` and T2's schema for Axiom vars is a T1/T15 concern, not
+   T2.
+
+4. The ESLint path-based allowlist (`src/lib/supabase/**`, `src/app/api/**`,
+   `**/route.*`, `**/actions.*`) is a heuristic for "server-only entry
+   points" because ESLint flat config cannot match on `"use client"`
+   directive content. Any new server-only entry-point shape not matching the
+   allowlist patterns would fall under the restriction and need either an
+   allowlist update or a different restriction strategy.
+
+## DoneClaim
+
+Changed files (this task):
+  Modified: next.config.ts (added side-effect env import for build-time
+                      validation; see Deliverable 6 above)
+  All other T2 files (env.ts, env.test.ts, admin.ts, eslint.config.mjs,
+  .env.example) were already in place on this branch from prior work;
+  this task verified their correctness and added only the missing
+  build-time wiring.
+
+Tests:
+  src/lib/env.test.ts: 4 passed / 4 (via minimal vitest config; literal
+  `bunx vitest run src/lib/env.test.ts` blocked by pre-existing T1
+  toolchain issue — see Risks #1).
+
+Lint:
+  bunx eslint src/lib/supabase/admin.ts -> EXIT 0 (clean)
+  bunx eslint src/lib/supabase/admin.ts src/lib/env.ts next.config.ts
+    -> EXIT 0 (clean)
+  Temp adversarial client (`'use client'` importing `@/lib/supabase/admin`)
+    -> EXIT 1 with `no-restricted-imports` error. File deleted.
+
+Build:
+  Positive (placeholders supplied): bun run build -> EXIT 0
+  Negative (no env): bun run build -> EXIT 1 with ZodError listing
+    NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET as required.
+
+Manual QA (config/load proof):
+  Build load-time behavior verified as above. `.env.example` documents
+  every required and optional var with grouping. Env schema is the single
+  source of truth; admin.ts uses the parsed `env` object, not
+  `process.env` directly.
+
+No commit was made (per MUST NOT).
+
+Residual risks: see Risks above (vitest config toolchain, Axiom env
+mismatch with T1 instrumentation, ESLint heuristic allowlist).
