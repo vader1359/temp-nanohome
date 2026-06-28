@@ -7,16 +7,20 @@ import { FilterSidebar } from "./FilterSidebar";
 import { AppliedFilters } from "./AppliedFilters";
 import { BrandSelector } from "./BrandSelector";
 import { SearchBar } from "./SearchBar";
-import { ProductGrid } from "./ProductGrid";
+import { ProductGrid, type ProductGridItem } from "./ProductGrid";
 import { Pagination } from "./Pagination";
 
-export function ProductsPage() {
+interface ProductsPageProps {
+  products: readonly ProductGridItem[];
+}
+
+export function ProductsPage({ products }: ProductsPageProps) {
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [selectedClassify, setSelectedClassify] = useState<Set<string>>(new Set());
   const [selectedRooms, setSelectedRooms] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [favorites, setFavorites] = useState<Set<number>>(new Set());
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [sortBy] = useState("recommended");
 
   const appliedFilters = useMemo(() => {
@@ -66,7 +70,7 @@ export function ProductsPage() {
     if (value === search.trim()) setSearch("");
   };
 
-  const toggleFavorite = (id: number) => {
+  const toggleFavorite = (id: string) => {
     setFavorites((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
@@ -93,7 +97,7 @@ export function ProductsPage() {
             <AppliedFilters appliedFilters={appliedFilters} onRemove={removeFilter} />
             <BrandSelector />
             <SearchBar search={search} setSearch={setSearch} />
-            <ProductGrid favorites={favorites} onToggleFavorite={toggleFavorite} />
+            <ProductGrid products={products} favorites={favorites} onToggleFavorite={toggleFavorite} />
             <Pagination currentPage={currentPage} setCurrentPage={setCurrentPage} />
           </div>
         </div>

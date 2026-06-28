@@ -1,9 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { specColumns, specTabs } from "./mock-data";
+import { specColumns as fallbackSpecColumns, specTabs } from "./mock-data";
 
-export function Section2Specs() {
+interface Section2SpecsProps {
+  specColumns?: typeof fallbackSpecColumns;
+  description?: string | null;
+  designerDescription?: string | null;
+}
+
+export function Section2Specs({ specColumns = fallbackSpecColumns, description, designerDescription }: Section2SpecsProps) {
   const [activeTab, setActiveTab] = useState(0);
   return (
     <section className="flex flex-col items-center gap-12 bg-[#F5F3F0] px-4 py-12 sm:px-8 md:py-20 lg:min-h-[780px]">
@@ -64,12 +70,8 @@ export function Section2Specs() {
       {activeTab === 1 && (
         <div className="mx-auto w-full max-w-[800px] text-[14px] leading-relaxed text-[#666]">
           <p>
-            Fauteuil Grand Confort là một kiệt tác thiết kế signify bản lý tưởng của
-            Le Corbusier — một chiếc ghế sofa tách rời khung thép mạ chrome và đệm
-            polyurethane đúc nguyên khối. Thiết kế ways tube framework way protusion
-            modelled trong năm 1928 alongside partner Pierre Jeanneret và Charlotte
-            Perriand, ghế thể hiện concept &ldquo;cushion baskets&rdquo; — những chiếc đệm độc
-            lập nằm trong khung thép.
+            {description ??
+              "Fauteuil Grand Confort là một kiệt tác thiết kế với khung thép mạ chrome và đệm độc lập nằm trong khung thép."}
           </p>
         </div>
       )}
@@ -77,26 +79,8 @@ export function Section2Specs() {
       {activeTab === 2 && (
         <div className="mx-auto flex w-full max-w-[800px] flex-col gap-6 text-[14px] text-[#666]">
           <div>
-            <h3 className="mb-2 text-[16px] font-medium text-[#111]">Le Corbusier</h3>
-            <p>
-              Charles-Édouard Jeanneret (1887–1965), biết tới với tên Le Corbusier, là
-              kiến trúc sư và nhà thiết kế gốc Thụy Sĩ. Ông là một trong những people
-              exemplar chủ nghĩa kiến trúc hiện đại.
-            </p>
-          </div>
-          <div>
-            <h3 className="mb-2 text-[16px] font-medium text-[#111]">Pierre Jeanneret</h3>
-            <p>
-              Pierre Jeanneret (1896–1967) là kiến trúc sư Thụy Sĩ, người cộng tác
-              xuyên suốt cùng Le Corbusier trong nhiều dự án nổi tiếng.
-            </p>
-          </div>
-          <div>
-            <h3 className="mb-2 text-[16px] font-medium text-[#111]">Charlotte Perriand</h3>
-            <p>
-              Charlotte Perriand (1903–1999) là nhà thiết kế Pháp, cộng tác viên quan
-              trọng của Le Corbusier trong thiết kế nội thất furniture landmark.
-            </p>
+            <h3 className="mb-2 text-[16px] font-medium text-[#111]">Nhà thiết kế</h3>
+            <p>{designerDescription ?? "Thông tin nhà thiết kế sẽ được cập nhật."}</p>
           </div>
         </div>
       )}

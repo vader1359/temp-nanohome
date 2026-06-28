@@ -34,3 +34,25 @@ export async function getVariantsByProductId(productId: string): Promise<readonl
 
   return data ?? [];
 }
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+export async function getVariantBySlug(slug: string): Promise<Variant | null> {
+  const supabase = await createClient();
+  const slugFilter = isUuid(slug) ? `id.eq.${slug},slug.eq.${slug},slug_vi.eq.${slug}` : `slug.eq.${slug},slug_vi.eq.${slug}`;
+  const { data, error } = await supabase
+    .from("variants")
+    .select("*")
+    .or(slugFilter)
+    .eq("validated", true)
+    .eq("approved", true)
+    .maybeSingle();
+
+  if (error !== null) {
+    throw error;
+  }
+
+  return data;
+}
