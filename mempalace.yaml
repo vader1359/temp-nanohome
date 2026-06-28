@@ -1,5 +1,40 @@
-wing: temp_nanohome
+wing: temp_nanohome_slimd_project_slimd_product_details
 rooms:
+- name: messages
+  description: Files from messages/
+  keywords:
+  - messages
+  - messages
+- name: supabase
+  description: Files from supabase/
+  keywords:
+  - supabase
+  - supabase
+- name: public
+  description: Files from public/
+  keywords:
+  - public
+  - public
+- name: e2e
+  description: Files from e2e/
+  keywords:
+  - e2e
+  - e2e
+- name: src
+  description: Files from src/
+  keywords:
+  - src
+  - src
+- name: testing
+  description: Files from test/
+  keywords:
+  - testing
+  - test
+- name: frontend
+  description: Files from components/
+  keywords:
+  - frontend
+  - components
 - name: general
-  description: All project files
+  description: Files that don't fit other rooms
   keywords: []
