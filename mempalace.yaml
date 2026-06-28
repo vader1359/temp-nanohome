@@ -1,4 +1,4 @@
-wing: temp_nanohome_slimd_refactor
+wing: temp_nanohome
 rooms:
 - name: messages
   description: Files from messages/
