@@ -1,0 +1,105 @@
+T8 — C12.5 test infrastructure evidence — nanohome-ecommerce
+Date: 2026-06-28
+
+Scope read:
+- Required plan lines read: .omo/plans/nanohome-ecommerce.md:243-256.
+- Existing files read before editing: supabase/config.toml, supabase/tests/fixtures.sql, supabase/seed.sql, supabase/tests/rls_test.sql, vitest.config.ts, playwright.config.ts, src/test/setup.ts, src/test/setup.test.ts, e2e/fixtures.ts, e2e/smoke-i18n.spec.ts, package.json, tsconfig.json.
+
+Changed/confirmed files:
+- supabase/config.toml: local Supabase config exists; documents local DB URL and supabase stop teardown.
+- supabase/tests/fixtures.sql: deterministic UUID constants exist; added auth/cart constants for RLS skeleton support.
+- supabase/seed.sql: deterministic local seed only; includes 2 brands, 3 categories, 5 products, 8 variants, 2 news, 1 catalog; fixed brand origin_vi upsert.
+- e2e/fixtures.ts: Playwright auth fixtures plus cartState/cartPage fixtures.
+- src/test/setup.ts: Vitest setup imports jest-dom and runs RTL cleanup after each test.
+- src/test/setup.test.ts: proves jest-dom matchers and cleanup behavior.
+- supabase/tests/rls_test.sql: pgTAP skeleton for anon/authenticated/service cart access; transactional BEGIN/ROLLBACK; no T18 full RLS assertions.
+
+TDD evidence:
+- RED control, no setup loaded:
+  Command: bunx vitest run src/test/setup.test.ts --config vitest.red.config.mts
+  Result: failed for expected reason after bypassing checked-in config blocker.
+  Output excerpt: Error: Invalid Chai property: toBeInTheDocument
+- Default config blocker, still present from T6/T1 context:
+  Command: bunx vitest run src/test/setup.test.ts
+  Result: blocked before test execution.
+  Output excerpt: ERROR: [plugin: externalize-deps] "@vitejs/plugin-react" resolved to an ESM file. ESM file cannot be loaded by `require`.
+- GREEN truthful substitute:
+  Command: bunx vitest run src/test/setup.test.ts --config vitest.green.config.mts
+  Output:
+    RUN  v2.1.9 /Users/iant1359/Develop/temp-nanohome-como-project
+    ✓ src/test/setup.test.ts (2 tests) 28ms
+    Test Files  1 passed (1)
+    Tests  2 passed (2)
+
+Required Playwright list:
+- Command: bunx playwright test --list
+- Output:
+  Listing tests:
+    [chromium] › smoke-i18n.spec.ts:3:5 › root path '/' redirects to default locale /vi with html lang=vi
+    [chromium] › smoke-i18n.spec.ts:11:5 › /vi returns 200 with html lang=vi
+    [chromium] › smoke-i18n.spec.ts:17:5 › /en returns 200 with html lang=en
+    [chromium] › smoke-i18n.spec.ts:23:5 › /de (invalid locale) returns 404 — not served
+    [chromium] › smoke-i18n.spec.ts:28:5 › /_next/static asset path bypasses i18n middleware (no redirect to /vi)
+  Total: 5 tests in 1 file
+
+Supabase CLI non-destructive validation:
+- Command: supabase --version
+- Result: zsh:1: command not found: supabase
+- Command: supabase --help
+- Result: zsh:1: command not found: supabase
+- No supabase start, Docker, or remote DB action was attempted.
+
+Manual QA channel:
+- Command: ls -l supabase/config.toml supabase/seed.sql supabase/tests/fixtures.sql supabase/tests/rls_test.sql e2e/fixtures.ts src/test/setup.ts src/test/setup.test.ts
+- Output excerpt:
+  -rw-r--r--@ ... e2e/fixtures.ts
+  -rw-r--r--@ ... src/test/setup.test.ts
+  -rw-r--r--@ ... src/test/setup.ts
+  -rw-r--r--@ ... supabase/config.toml
+  -rw-r--r--@ ... supabase/seed.sql
+  -rw-r--r--@ ... supabase/tests/fixtures.sql
+  -rw-r--r--@ ... supabase/tests/rls_test.sql
+- Command: python3 -c seed shape count probe
+- Output: {'brands': 2, 'categories': 3, 'products': 5, 'variants': 8, 'news': 2, 'catalogs': 1}
+- Command: python3 -c product visibility shape probe
+- Output: {'approved_validated': 3, 'approved_false': 1, 'validated_false': 1}
+- Command: python3 -c rls skeleton probe
+- Output: rls skeleton ok
+- Command: python3 -c config.toml parse via tomllib
+- Result: blocked because system python is 3.9.6 and lacks tomllib.
+
+Type/lint diagnostics:
+- LSP diagnostics tool is not available in this harness; nearest TypeScript diagnostics used.
+- Command: bunx tsc --noEmit
+- Output: no output; exit 0.
+- Command: bunx eslint src/test e2e
+- Output: no output; exit 0.
+
+UltraQA probes:
+- dirty_worktree: git status --short shows broad pre-existing dirty/untracked work outside T8; T8 touched only scoped files plus this evidence. No commit made.
+- stale_state: read current plan lines and existing files immediately before editing; reran list/type/lint after final e2e fixture edit.
+- misleading_success_output: recorded the default Vitest failure separately from the passing ESM substitute; did not claim default config passed.
+- malformed input for seed shape: first Python seed shape probes failed due command syntax/regex mistakes; corrected probes passed with exact required counts.
+- hung commands: all commands used finite 120000 ms timeouts; none hung.
+- flaky_tests: setup test ran green twice with the ESM substitute during verification; Playwright command was --list only.
+
+Cleanup receipts:
+- Temporary files created for RED/GREEN control: vitest.red.config.ts, vitest.red.config.mts, vitest.green.config.mts.
+- Cleanup command/list: ls vitest.green.config.mts vitest.red.config.mts vitest.red.config.ts
+- Output: each returned "No such file or directory" after apply_patch deletion.
+
+Post-write review:
+- Changed TypeScript pure LOC: e2e/fixtures.ts 62, src/test/setup.ts 6, src/test/setup.test.ts 13.
+- Single responsibility: setup files own test setup proof; e2e/fixtures.ts owns Playwright fixtures.
+- Boundary purity: env input parsed at fixture boundary into typed readonly objects.
+- Variant discrimination: none introduced.
+- Escape hatches: no any, no type assertions, no ts-ignore.
+- Defensive layer: env guard only at test fixture boundary.
+- Helpers for one-off: removed one-caller readCartState helper after review.
+- Tests: setup behavior locked by src/test/setup.test.ts.
+- Parameter bloat/redundant verification/negative naming: none introduced.
+
+Residual risks:
+- Checked-in vitest.config.ts remains blocked by @vitejs/plugin-react/Vite ESM export issue noted by earlier T6/T1 context; T8 used a temporary ESM config substitute and removed it.
+- Supabase CLI unavailable locally, so local Supabase validation/list could not run.
+- RLS SQL is intentionally a pgTAP skeleton only; full T18 RLS assertions not implemented.

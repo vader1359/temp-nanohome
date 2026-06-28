@@ -1,0 +1,30 @@
+=== FAILING-FIRST: vitest minimal config WITHOUT setupFiles ===
+Command: bunx vitest run --config vitest.no-setup.config.ts src/test/setup.test.ts
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /Users/iant1359/Develop/temp-nanohome-como-project
+
+ ❯ src/test/setup.test.ts (2 tests | 1 failed) 32ms
+   × vitest setup > loads jest-dom matchers into expect via RTL render 31ms
+     → Invalid Chai property: toBeInTheDocument
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/test/setup.test.ts > vitest setup > loads jest-dom matchers into expect via RTL render
+Error: Invalid Chai property: toBeInTheDocument
+ ❯ src/test/setup.test.ts:11:38
+      9|     // imported by src/test/setup.ts. Without setup.ts loaded these ma…
+     10|     // unavailable and the test throws "Invalid Chai property: toBeInT…
+     11|     expect(screen.getByTestId("node")).toBeInTheDocument();
+       |                                      ^
+     12|     expect(screen.getByTestId("node")).toHaveTextContent("hello world"…
+     13|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  11:51:36
+   Duration  950ms (transform 41ms, setup 0ms, collect 111ms, tests 32ms, environment 357ms, prepare 92ms)
+
+EXIT=1

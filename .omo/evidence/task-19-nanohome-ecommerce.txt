@@ -1,0 +1,83 @@
+T19 backend-only cart contract evidence
+
+Scope
+- Implemented backend/server cart query contract only.
+- Did not create cart UI, zustand store, provider, cart page, cart icon, add-to-cart component, or localStorage behavior.
+- Did not edit plan checkboxes.
+- Did not edit .omo/start-work/ledger.jsonl.
+- Did not use Supabase remote mutation tools.
+
+Plan/context reread
+- Reread .omo/plans/nanohome-ecommerce.md execution amendments and T19. Applied backend-only amendment over the original UI-heavy T19 text.
+- Reread required files before editing: src/lib/queries/cart.ts, existing cart tests, src/lib/auth/*, src/lib/supabase/server.ts, src/lib/supabase/admin.ts, src/types/db.ts, src/types/database.types.ts, eslint.config.mjs, package.json.
+
+Changed files
+- src/lib/queries/cart.ts
+  - Added import "server-only" as the first statement because this backend query imports the service-role admin client for mergeGuestCart.
+  - Kept existing exported contract: getCart, createCart, getCartItems, addCartItem, updateCartItemQuantity, removeCartItem, mergeGuestCart.
+  - Changed addCartItem to dedupe by cartId + variantId and sum quantity into the existing row instead of inserting a duplicate.
+  - Changed mergeGuestCart to validate every guest quantity before any cart mutation, preserving malformed-input atomicity.
+  - Preserved merge idempotency through merged_from_guest_id and preserved no stock decrement behavior.
+- src/lib/queries/cart.test.ts
+  - Added focused backend tests for invalid quantities, add dedupe/summed quantity, merge duplicate variant summing, merge idempotency, and server-only import boundary.
+- src/lib/queries/cart.test-support.ts
+  - Added in-memory Supabase fake for focused cart contract tests.
+- eslint.config.mjs
+  - Added a narrow allowlist for src/lib/queries/cart.ts in the existing service-role import guard. This does not weaken client import protection broadly; cart.ts is server-only and has import "server-only" as line 1.
+
+RED evidence
+- Command: bunx vitest run src/lib/queries/cart.test.ts --environment node
+  - Result: failed before collection because the default Vitest config imports @vitejs/plugin-react as ESM from CJS. This matches the known default config blocker.
+- Temporary config: vitest.cart.config.mts created for focused node-only cart tests.
+- Command: bunx vitest run --config vitest.cart.config.mts src/lib/queries/cart.test.ts
+  - Initial harness result: failed because vi.hoisted state could not be exported from support module. Fixed harness, not production.
+- Command: bunx vitest run --config vitest.cart.config.mts src/lib/queries/cart.test.ts
+  - Contract RED result: 3 failed, 4 passed.
+  - Failing behaviors: addCartItem returned quantity 3 instead of summed 5; cart.ts first statement was admin import instead of import "server-only"; merge duplicate variant test exposed fake update-without-select mismatch while exercising merge update path.
+
+GREEN evidence
+- Command: bunx vitest run --config vitest.cart.config.mts src/lib/queries/cart.test.ts
+  - Result: passed. 1 file, 7 tests.
+- Command: bunx tsc --noEmit
+  - First result: failed on readonly fake query filter mutation in src/lib/queries/cart.test-support.ts.
+  - Fixed by making only the query filter mutable while keeping row/state fields typed.
+- Command: bunx tsc --noEmit
+  - Result: passed with no output.
+- Command: bunx eslint src/lib/queries/cart.ts src/lib/queries/cart.test.ts src/lib/queries/cart.test-support.ts eslint.config.mjs
+  - Result: passed with no output.
+- Command: bun run build
+  - Result: passed; output included "Finished TypeScript in 2.6s".
+- LOC review command: awk '!/^[[:space:]]*$/ && !/^[[:space:]]*(\/\/|#|--)/' <file> | wc -l
+  - src/lib/queries/cart.ts: 146
+  - src/lib/queries/cart.test.ts: 88
+  - src/lib/queries/cart.test-support.ts: 214
+  - eslint.config.mjs: 40
+
+Manual QA
+- Backend-only surface exercised through focused Vitest Supabase fake.
+- Invalid add quantity rejects before insert/update.
+- Invalid merge quantity rejects before insert/update.
+- addCartItem dedupes existing cart item by variantId and sums quantity.
+- mergeGuestCart dedupes duplicate guest items by variantId and sums quantity.
+- mergeGuestCart is idempotent when merged_from_guest_id already matches the guest id.
+- cart.ts server-only boundary is asserted by test.
+
+Cleanup
+- Temporary vitest.cart.config.mts was deleted after focused tests.
+- Verified cleanup with: test ! -e vitest.cart.config.mts && printf 'vitest.cart.config.mts removed'.
+
+UltraQA probes
+- stale_state: checked git status before and after. Worktree was already dirty with unrelated plan/ledger and many project files before this task; T19 changes were limited to changed files listed above plus new evidence.
+- dirty_worktree: .omo/plans/nanohome-ecommerce.md and .omo/start-work/ledger.jsonl remain dirty from pre-existing work; this task did not intentionally edit them.
+- misleading_success_output: treated no-output tsc/eslint as pass only by command success; recorded initial focused-test default-config failure separately.
+- authz/service-role exposure risk: cart.ts now starts with import "server-only"; eslint allowlist is exact to src/lib/queries/cart.ts, not broad.
+- malformed input: tests cover add quantity 0 and merge quantity -1. Empty guest cart remains valid backend behavior: it gets or creates the authenticated cart and makes no item or merged marker mutation because no guest id exists.
+- hung commands: all shell commands completed within explicit timeouts.
+- flaky tests: focused cart tests use in-memory state reset per test and no sleeps/timeouts.
+- UI hydration/localStorage/zustand classes: N/A, backend-only scope and forbidden files were not created.
+- stock decrement/race inventory classes: N/A, cart contract does not decrement stock by requirement.
+
+Residual risks
+- The focused fake is not a real Supabase integration test; it verifies query contract and call semantics without remote database mutation.
+- mergeGuestCart idempotency tracks one guest id in merged_from_guest_id, matching the existing schema/semantics. Multiple distinct guest ids are not expanded in this backend-only task.
+- lsp_diagnostics tool is not available in this harness; tsc and eslint were used as source diagnostics substitutes.

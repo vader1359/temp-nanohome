@@ -1,0 +1,108 @@
+T17 nanoHome AMIS sync evidence
+
+Scope
+- Backend-only one-way AMIS fetch/sync route: /api/cron/amis-sync.
+- No AMIS write-back, no pg_cron, no client trigger, no UI/page work, no destructive remote DB test.
+- Plan checkbox and ledger intentionally unchanged.
+
+RED
+- bun test src/app/api/cron/amis-sync/route.test.ts
+  - Failed before implementation because Bun runner does not support vi.hoisted: TypeError: vi.hoisted is not a function.
+- bunx vitest run src/app/api/cron/amis-sync/route.test.ts
+  - Failed before implementation because default vitest.config.ts loads ESM-only @vitejs/plugin-react through CJS.
+- Temporary ESM-free config vitest.amis-sync.config.ts was created for focused T17 tests.
+- bunx vitest run --config vitest.amis-sync.config.ts src/app/api/cron/amis-sync/route.test.ts
+  - Failed red for the intended reason before route existed: Failed to load url ./route.
+
+GREEN
+- bunx vitest run --config vitest.amis-sync.config.ts src/app/api/cron/amis-sync/route.test.ts
+  - PASS: 1 file, 6 tests.
+- bunx vitest run --config vitest.amis-sync.config.ts src/lib/env.test.ts src/app/api/cron/amis-sync/route.test.ts
+  - PASS: 2 files, 10 tests.
+- bunx tsc --noEmit
+  - PASS: no output.
+
+Manual QA / route handler invocation
+- bunx vitest run --config vitest.amis-sync.config.ts src/app/api/cron/amis-sync/route.test.ts -t "returns 401 when the cron secret is wrong"
+  - PASS: direct POST handler invocation returned 401 and did not create a sync log.
+- bunx vitest run --config vitest.amis-sync.config.ts src/app/api/cron/amis-sync/route.test.ts -t "returns 200 and logs failed when AMIS credentials are missing"
+  - PASS: direct POST handler invocation returned 200 failed shape and updated amis_sync_log with failed status.
+- Curl was not used because starting the local Next server would require live Supabase env and was not necessary; the route handler was invoked directly through Vitest with controlled env and fake admin client.
+
+Implementation notes
+- src/app/api/cron/amis-sync/route.ts exports POST(request: Request), reads Authorization, accepts only Bearer ${CRON_SECRET}, returns 401 on missing/wrong secret, and returns 200 for authenticated sync outcomes.
+- src/lib/amis/client.ts uses a typed AMIS client boundary with Zod parsing. It fetches GET /api/v1/inventory/items with limit=200, optional updated_since watermark, X-API-Key, and optional X-Tenant.
+- src/lib/amis/sync.ts creates a running amis_sync_log row, reads latest success/partial watermark, fetches one AMIS page, updates variants by SKU only, and finalizes the log as success/partial/failed with counts, error, and watermark.
+- Variant writes are limited to planned fields: price, compare_at_price, discount_percent, in_stock, source_updated_at.
+- Missing AMIS_API_BASE_URL or AMIS_API_KEY returns 200 failed and logs the failure where possible. AMIS_CLIENT_ID, AMIS_CLIENT_SECRET, and AMIS_TENANT are not enough without an auth/token/HMAC pattern.
+- Auth pattern risk: implemented conservative static API key header X-API-Key. If AMIS expects OAuth/client-credentials, HMAC, bearer token exchange, or tenant-scoped endpoint shape, provide the exact AMIS API auth documentation and endpoint contract.
+- vercel.json schedules /api/cron/amis-sync every 15 minutes.
+
+Cleanup
+- Temporary vitest.amis-sync.config.ts was used because the default Vitest config is blocked by the @vitejs/plugin-react ESM/CJS issue. It was deleted after focused verification.
+- No commits made.
+
+UltraQA probes
+- stale_state: checked current git dirty state before editing; expected unrelated dirty worktree present.
+- dirty_worktree: avoided unrelated modified/untracked files and changed only T17 files.
+- misleading_success_output: typecheck had no output; test commands showed explicit PASS counts.
+- malformed external AMIS payload: covered by test returning 200 failed and log update, no 500.
+- authz-bypass for cron secret: covered by wrong-secret test returning 401 and no sync log.
+- hung commands/timeouts: Bash commands had tool timeouts; AMIS fetch uses AbortSignal.timeout(20000).
+- flaky tests: direct handler tests, no sleeps or wall-clock ordering dependencies beyond generated timestamps.
+- destructive remote DB tests: N/A; no remote Supabase mutation performed.
+- AMIS write-back: N/A; code only fetches from AMIS.
+
+LOC audit
+- src/lib/env.ts: 30 pure LOC.
+- src/lib/amis/client.ts: 85 pure LOC.
+- src/lib/amis/sync.ts: 173 pure LOC.
+- src/app/api/cron/amis-sync/route.ts: 10 pure LOC.
+- src/app/api/cron/amis-sync/route.test.ts: 180 pure LOC.
+
+Architectural self-review
+- Single responsibility: yes; route owns auth/HTTP, client owns AMIS fetch/parse, sync owns backend state updates.
+- Boundary purity: yes; AMIS payload parsed with Zod at boundary before sync logic.
+- Variant discrimination: yes; fetch result handled with exhaustive switch and assertNever.
+- Escape hatches: no any, no non-null assertions, no ts-ignore.
+- Defensive layer: no redundant null guards for typed values.
+- One-off helpers: helpers are local to route sync/client responsibilities.
+- Tests: yes; reverting route/client/sync behavior breaks focused tests.
+- Parameter bloat: fixed by SyncVariantsInput value object.
+- Redundant verification: none after destructive actions.
+- Negative naming: no negative-form flags added.
+
+Verifier blocker fix: server-only import guard
+- Blocker: targeted ESLint rejected src/lib/amis/sync.ts importing @/lib/supabase/admin because the server-only import guard only exempted route handlers/actions/supabase lib.
+- Fix: added import "server-only" to src/lib/amis/sync.ts and added a narrow eslint.config.mjs ignore for src/lib/amis/sync.ts only. The broader guard remains active for client/product files.
+- Behavior unchanged: POST route auth, AMIS missing-credential 200 failed log path, malformed AMIS payload no 500, one-way GET-only AMIS, limit=200, variant update by SKU, amis_sync_log start/final updates, and vercel cron preserved.
+
+Verifier blocker commands
+- bunx eslint src/app/api/cron/amis-sync/route.ts src/app/api/cron/amis-sync/route.test.ts src/lib/amis/client.ts src/lib/amis/sync.ts src/lib/env.ts
+  - PASS: no output.
+- bunx tsc --noEmit
+  - PASS: no output.
+- bunx vitest run --config vitest.amis-sync.config.ts src/app/api/cron/amis-sync/route.test.ts
+  - PASS: 1 file, 6 tests.
+- bunx vitest run --config vitest.amis-sync.config.ts src/app/api/cron/amis-sync/route.test.ts -t "returns 401 when the cron secret is wrong"
+  - PASS: direct route-handler wrong-secret path remains 401/no log.
+- bunx vitest run --config vitest.amis-sync.config.ts src/app/api/cron/amis-sync/route.test.ts -t "returns 200 and logs failed when AMIS credentials are missing"
+  - PASS: direct route-handler missing-credentials path remains 200 failed/logged.
+
+Verifier blocker cleanup
+- Temporary vitest.amis-sync.config.ts recreated for focused AMIS tests because the default Vitest config still has the @vitejs/plugin-react ESM/CJS blocker; deleted after verification.
+- No plan checkbox edit, no ledger append, no commit.
+
+Verifier blocker UltraQA update
+- stale_state: read current lint config, route, sync, and evidence before editing.
+- dirty_worktree: unrelated dirty worktree still expected; touched only eslint.config.mjs, src/lib/amis/sync.ts, evidence, and temporary deleted vitest config.
+- misleading_success_output: eslint and tsc no-output successes paired with explicit Vitest PASS counts.
+- authz-bypass cron secret/import guard: wrong-secret route test still passes; import guard narrowed only to server-only AMIS sync module with import "server-only".
+- malformed external AMIS payload: focused full AMIS suite still passes.
+- hung commands/timeouts: all commands run with timeouts; AMIS client timeout unchanged.
+- flaky tests: direct route-handler tests remain sleep-free.
+
+Verifier blocker LOC audit
+- eslint.config.mjs: 39 pure LOC.
+- src/lib/amis/sync.ts: 174 pure LOC.
+- .omo/evidence/task-17-nanohome-ecommerce.txt: 64 pure LOC before this append.

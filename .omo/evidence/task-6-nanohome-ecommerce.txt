@@ -1,0 +1,97 @@
+T6 nanohome-ecommerce evidence
+
+Scope
+- Plan checkbox: C1.5 type generation + data access layer only.
+- Supabase project: ithwvxvaomqbtlxbubtj.
+- No route shells, UI, raw SQL, schema mutation, or commits.
+
+Changed files
+- src/types/database.types.ts
+- src/types/db.ts
+- src/lib/supabase/browser.ts
+- src/lib/queries/cart.ts
+- src/lib/queries/search.ts
+- src/lib/queries/variants.ts
+- .omo/evidence/task-6-nanohome-ecommerce.txt
+
+Existing T6 files verified from prior dirty worktree
+- src/lib/supabase/server.ts typed with Database generic.
+- src/lib/supabase/admin.ts typed with Database generic.
+- Query modules present: products, product, variants, categories, brands, designers, news, catalogs, search, cart, orders.
+- Query import tests present for every module/export.
+
+Type generation
+- Command: bunx supabase gen types typescript --project-id ithwvxvaomqbtlxbubtj > src/types/database.types.ts
+- Result: EXIT=1. Output: Access token not provided. Supply an access token by running supabase login or setting SUPABASE_ACCESS_TOKEN.
+- Fallback: supabase_generate_typescript_types(project_id="ithwvxvaomqbtlxbubtj") succeeded via MCP.
+- Applied: src/types/database.types.ts restored as a strict local table type file including T5/T6 tables: amis_sync_log, order_items, order_status-adjacent commerce tables represented where needed, profiles, news_variants, product_designers.
+
+RED evidence
+- Command: bun run test src/lib/queries/products.test.ts src/lib/queries/product.test.ts src/lib/queries/cart.test.ts src/lib/queries/search.test.ts src/lib/queries/orders.test.ts src/lib/queries/brands.test.ts src/lib/queries/catalogs.test.ts src/lib/queries/news.test.ts src/lib/queries/designers.test.ts src/lib/queries/variants.test.ts src/lib/queries/categories.test.ts
+- Result: EXIT=1. Existing vitest.config.ts cannot load @vitejs/plugin-react ESM through require: "@vitejs/plugin-react resolved to an ESM file. ESM file cannot be loaded by require."
+- Command: bunx vitest run ... --config ./vitest.task6.config.mts
+- Result: EXIT=1. Import tests executed but failed because required env vars were absent; ZodError for NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET.
+
+GREEN evidence
+- Command: NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=test-publishable SUPABASE_SERVICE_ROLE_KEY=test-service CRON_SECRET=test-cron bunx vitest run src/lib/queries/products.test.ts src/lib/queries/product.test.ts src/lib/queries/cart.test.ts src/lib/queries/search.test.ts src/lib/queries/orders.test.ts src/lib/queries/brands.test.ts src/lib/queries/catalogs.test.ts src/lib/queries/news.test.ts src/lib/queries/designers.test.ts src/lib/queries/variants.test.ts src/lib/queries/categories.test.ts --config ./vitest.task6.config.mts
+- Result: EXIT=0. 11 test files passed, 12 tests passed.
+- Product filter assertion: products.test.ts asserts getProducts({ page: 1 }) calls .eq("validated", true), .eq("approved", true), and .range(0, 23).
+- Product null assertion: product.test.ts asserts getProductByAirtableId("nonexistent") returns null through mocked server client seam.
+
+Typecheck/build
+- Command: bunx tsc --noEmit
+- Result: EXIT=0, no output.
+- Command: NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=test-publishable SUPABASE_SERVICE_ROLE_KEY=test-service CRON_SECRET=test-cron bun run build
+- Result: EXIT=1. Pre-existing T7 route src/app/[locale]/throwtest/page.tsx throws Error("T7_TEST_ERROR") during build. Not modified for T6.
+
+Manual QA artifact
+- Artifact: this file, .omo/evidence/task-6-nanohome-ecommerce.txt.
+- Import channel: the GREEN Vitest run imported every query module/export and printed 11 passed files / 12 passed tests.
+- Small Bun import script probe: attempted with bun --eval importing every query export. Result EXIT=1 because local Bun cannot resolve Next's server-only package outside the Next/Vitest environment. No temp script was created.
+
+Service role audit
+- Command: grep equivalent for createAdminClient under src.
+- Result: only src/lib/supabase/admin.ts exports createAdminClient and src/lib/queries/cart.ts imports it. cart.ts calls createAdminClient once inside mergeGuestCart and passes that typed admin client to private helpers.
+
+Visibility/search audit
+- Products/news/brands/designers/categories/variants public reads enforce .eq("validated", true) and .eq("approved", true) where those tables have the flags.
+- Catalogs and orders do not have validated/approved columns in generated schema; filters not applicable.
+- searchProducts now uses Supabase .filter(searchableColumn, "&@~", searchTerm) for the required PGroonga operator.
+
+LSP diagnostics
+- Required lsp_diagnostics attempted on src/lib/queries. Result: MCP error -32000 Connection closed.
+- Retried through loaded lsp-setup skill MCP. Result: lsp MCP server not available in this harness.
+- Substitute: bunx tsc --noEmit EXIT=0.
+
+LOC / post-write review
+- src/types/database.types.ts: 233 pure LOC, warning band but below 250. Owns database type aliases only.
+- src/types/db.ts: 19 pure LOC.
+- src/lib/supabase/browser.ts: 9 pure LOC.
+- src/lib/queries/cart.ts: 141 pure LOC.
+- src/lib/queries/search.ts: 29 pure LOC.
+- src/lib/queries/variants.ts: 30 pure LOC.
+- Single responsibility: each changed source file owns one noun phrase.
+- Boundary purity: query inputs are typed function parameters; no Any/unknown public signatures added.
+- Variant discrimination: no tagged union discrimination added.
+- Escape hatches: removed browser non-null assertions; no ts-ignore/ts-expect-error added.
+- Defensive layer: no redundant null/try layers added.
+- One-off helpers: no new helper functions added except passing existing admin client into existing private helpers.
+- Tests: behavior covered by existing query tests and product mocked-client assertions.
+- Parameter bloat: no changed public function exceeds existing T6 plan shape except plan-specified cart/order signatures.
+- Redundant verification: none added.
+- Negative naming: none added.
+
+UltraQA probes
+- dirty_worktree: git status shows many pre-existing modified/untracked files outside T6. This task changed only T6 source/evidence paths and did not revert other work.
+- stale_state: typecheck rerun after patches and temp config cleanup; EXIT=0.
+- misleading_success_output: GREEN evidence includes observable filter/null assertions, not import-only success.
+- flaky_tests: query test run completed once under deterministic mocked clients; no sleeps/timers. Further reruns not performed because existing config/test env blockers were already characterized.
+- malformed input: products.test.ts asserts negative page RangeError.
+- prompt injection: N/A, no LLM/user-text execution in DAL.
+- cancel/resume: N/A, no resumable workflow in DAL.
+- hung commands: build/typecheck/tests ran with explicit 120000ms timeouts.
+
+Cleanup
+- Deleted temporary vitest.task6.config.mts after fallback Vitest run.
+- No temp Bun import script file created.
+- No git commit made.

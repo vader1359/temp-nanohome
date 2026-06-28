@@ -1,0 +1,106 @@
+=== git status ===
+ M .gitignore
+ M .omo/boulder.json
+ M .omo/plans/nanohome-ecommerce.md
+ M .omo/start-work/ledger.jsonl
+ M entities.json
+ M eslint.config.mjs
+ M mempalace.yaml
+ M next.config.ts
+ M src/lib/supabase/admin.ts
+ M src/lib/supabase/browser.ts
+ M src/lib/supabase/server.ts
+ M supabase/migrations/202606280003_add_slug_unique_indexes.sql
+ M supabase/migrations/202606280004_add_profiles_and_trigger.sql
+?? .env.example
+?? .omo/evidence/task-2-nanohome-ecommerce.txt
+?? .omo/evidence/task-6-nanohome-ecommerce.txt
+?? .omo/evidence/task-8-baseline.txt
+?? .omo/run-continuation/ses_0f38adc94ffeUFOsrYp8htQd1g.json
+?? .omo/run-continuation/ses_0f3aad41dffe8S97Pu6Emd6oHS.json
+?? .omo/run-continuation/ses_0f3b58583ffezpHy6iLSvhxUDu.json
+?? .omo/run-continuation/ses_0f3b654dcffeK3xQkozStAasJN.json
+?? .omo/run-continuation/ses_0f3bc31c3ffeaK3g0bSIzldwfl.json
+?? .omo/run-continuation/ses_0f516e331ffe9CYwdXAgGQNFV1.json
+?? .omo/run-continuation/ses_0f51a9530ffenJ7Q5v17XURipC.json
+?? .omo/run-continuation/ses_0f51aa605ffegOcz3jTwv3uA73.json
+?? .omo/run-continuation/ses_0f51aa954ffeQNk40vFonuaPkG.json
+?? .omo/run-continuation/ses_0f51aac80ffemyodqPqI5o1zOY.json
+?? .omo/run-continuation/ses_0f51b386fffe7BXvg8fatvQQSj.json
+?? .omo/run-continuation/ses_0f541e766ffehm81aJeXfBVj8u.json
+?? .omo/run-continuation/ses_0f5493243ffeZV4NxhojOhDGQB.json
+?? .omo/run-continuation/ses_0f549b246ffe9Ftf87fiDq3wcg.json
+?? .omo/run-continuation/ses_0f54afa08ffeLJaarxTbodabYr.json
+?? .omo/run-continuation/ses_0f554cf7fffeJ5MOl8xlmShshR.json
+?? .omo/run-continuation/ses_0f55557f1ffeb9qkXgAqb22Not.json
+?? .omo/run-continuation/ses_0f5565d0effe4fdr2WMkM3icW3.json
+?? playwright-report/
+?? src/lib/env.test.ts
+?? src/lib/env.ts
+?? src/lib/queries/
+?? src/types/
+?? supabase/migrations/202606280005_revoke_execute_security_definer_functions.sql
+=== ls e2e ===
+total 8
+drwxr-xr-x@  3 iant1359  staff   96 Jun 28 02:47 .
+drwxr-xr-x@ 30 iant1359  staff  960 Jun 28 11:26 ..
+-rw-r--r--@  1 iant1359  staff  822 Jun 28 02:47 smoke-i18n.spec.ts
+=== ls src/test ===
+total 8
+drwxr-xr-x@  3 iant1359  staff   96 Jun 28 02:47 .
+drwxr-xr-x@ 10 iant1359  staff  320 Jun 28 10:50 ..
+-rw-r--r--@  1 iant1359  staff   36 Jun 28 02:47 setup.ts
+=== ls supabase/tests ===
+ls: supabase/tests: No such file or directory
+=== git check-ignore e2e/smoke-i18n ===
+=== git ls-files e2e ===
+e2e/smoke-i18n.spec.ts
+=== bunx vitest run ===
+      1150 │       let promise = setup({
+           ╵                     ^
+
+    at setup (file:///Users/iant1359/Develop/temp-nanohome-como-project/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:66890:18)
+    at handlePlugins (/Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:1150:21)
+    at buildOrContextImpl (/Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:873:5)
+    at Object.buildOrContext (/Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:699:5)
+    at /Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:2023:15
+    at new Promise (<anonymous>)
+    at Object.build (/Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:2022:25)
+    at build (/Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:1873:51)
+    at bundleConfigFile (file:///Users/iant1359/Develop/temp-nanohome-como-project/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:66845:24)
+
+  The plugin "externalize-deps" was triggered by this import
+
+    vitest.config.ts:2:18:
+      2 │ import react from "@vitejs/plugin-react";
+        ╵                   ~~~~~~~~~~~~~~~~~~~~~~
+
+failed to load config from /Users/iant1359/Develop/temp-nanohome-como-project/vitest.config.ts
+
+⎯⎯⎯⎯⎯⎯⎯ Startup Error ⎯⎯⎯⎯⎯⎯⎯⎯
+Error: Build failed with 1 error:
+node_modules/esbuild/lib/main.js:1225:27: ERROR: [plugin: externalize-deps] "@vitejs/plugin-react" resolved to an ESM file. ESM file cannot be loaded by `require`. See https://vite.dev/guide/troubleshooting.html#this-package-is-esm-only for more details.
+    at failureErrorWithLog (/Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:1472:15)
+    at /Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:945:25
+    at runOnEndCallbacks (/Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:1315:45)
+    at buildResponseToResult (/Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:943:7)
+    at /Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:970:16
+    at responseCallbacks.<computed> (/Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:622:9)
+    at handleIncomingPacket (/Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:677:12)
+    at Socket.readFromStdout (/Users/iant1359/Develop/temp-nanohome-como-project/node_modules/esbuild/lib/main.js:600:7)
+    at Socket.emit (node:events:509:20)
+    at addChunk (node:internal/streams/readable:568:12) {
+  errors: [Getter/Setter],
+  warnings: [Getter/Setter]
+}
+
+
+
+VITEST_EXIT=
+=== bunx playwright test --list ===
+Listing tests:
+  [chromium] › smoke-i18n.spec.ts:3:5 › should redirect to default locale /vi
+  [chromium] › smoke-i18n.spec.ts:12:5 › should support /en locale path
+  [chromium] › smoke-i18n.spec.ts:20:5 › should return 404 for invalid locale /de
+Total: 3 tests in 1 file
+PW_EXIT=
