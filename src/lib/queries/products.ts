@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Product } from "@/types/db";
+import type { Product, Variant } from "@/types/db";
 
 export type ProductSort = "priority" | "price_asc" | "price_desc" | "newest";
 
@@ -58,6 +58,42 @@ export async function getProducts(options: ProductListOptions = {}): Promise<rea
       break;
     case "price_desc":
       query = query.order("price", { foreignTable: "variants", ascending: false, nullsFirst: false });
+      break;
+    case "newest":
+      query = query.order("source_created_at", { ascending: false, nullsFirst: false });
+      break;
+    case "priority":
+      query = query.order("priority", { ascending: false, nullsFirst: false });
+      break;
+  }
+
+  const { data, error } = await query.range(from, to);
+  if (error !== null) {
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+export async function getVariantProducts(options: Pick<ProductListOptions, "page" | "pageSize" | "search" | "sort"> = {}): Promise<readonly Variant[]> {
+  const supabase = await createClient();
+  const [from, to] = productRange(options.page, options.pageSize);
+  let query = supabase
+    .from("variants")
+    .select("*")
+    .eq("validated", true)
+    .eq("approved", true);
+
+  if (options.search !== undefined && options.search.trim() !== "") {
+    query = query.ilike("name", `%${options.search.trim()}%`);
+  }
+
+  switch (options.sort ?? "priority") {
+    case "price_asc":
+      query = query.order("price", { ascending: true, nullsFirst: false });
+      break;
+    case "price_desc":
+      query = query.order("price", { ascending: false, nullsFirst: false });
       break;
     case "newest":
       query = query.order("source_created_at", { ascending: false, nullsFirst: false });

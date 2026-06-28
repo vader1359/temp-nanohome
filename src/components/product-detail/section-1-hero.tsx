@@ -11,9 +11,13 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { Breadcrumb, ColorSelector } from "@/components/product-detail";
-import { product, breadcrumbs } from "@/components/product-detail/mock-data";
+import { product as fallbackProduct, breadcrumbs } from "@/components/product-detail/mock-data";
 
-export function Section1Hero() {
+interface Section1HeroProps {
+  product?: typeof fallbackProduct;
+}
+
+export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
   const [activeThumb, setActiveThumb] = useState(0);
 
   return (

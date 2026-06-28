@@ -3,9 +3,13 @@
 import { useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { galleryImages } from "./mock-data";
+import { galleryImages as fallbackGalleryImages } from "./mock-data";
 
-export function Section4Gallery() {
+interface Section4GalleryProps {
+  galleryImages?: string[];
+}
+
+export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Section4GalleryProps) {
   const [start, setStart] = useState(0);
   const visible = 3;
   const maxStart = Math.max(0, galleryImages.length - visible);

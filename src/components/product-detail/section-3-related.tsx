@@ -3,16 +3,21 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductCard } from "./product-card";
-import { relatedSet } from "./mock-data";
+import { relatedSet as fallbackRelatedSet, type RelatedProduct } from "./mock-data";
 
-export function Section3Related() {
+interface Section3RelatedProps {
+  products?: RelatedProduct[];
+  collectionName?: string;
+}
+
+export function Section3Related({ products = fallbackRelatedSet, collectionName = "Bộ sưu tập" }: Section3RelatedProps) {
   const [start, setStart] = useState(0);
   const visible = 4;
-  const maxStart = Math.max(0, relatedSet.length - visible);
+  const maxStart = Math.max(0, products.length - visible);
 
   const canPrev = start > 0;
   const canNext = start < maxStart;
-  const items = relatedSet.slice(start, start + visible);
+  const items = products.slice(start, start + visible);
 
   return (
     <section className="bg-white px-4 py-12 sm:px-8 md:py-16">
@@ -22,7 +27,7 @@ export function Section3Related() {
           <div className="flex flex-col items-start gap-3">
             <h2 className="text-[24px] font-medium text-[#444]">Sản phẩm cùng bộ</h2>
             <span className="rounded-full bg-[#F5F3F0] px-4 py-1 text-[12px] font-medium text-[#666]">
-              LC Collection
+              {collectionName}
             </span>
           </div>
           <a href="#" className="mt-1 text-[14px] font-normal text-[#111] hover:underline">
