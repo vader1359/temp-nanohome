@@ -17,6 +17,11 @@ const nextConfig: NextConfig = {
         hostname: "ik.imagekit.io",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "s3-alpha-sig.figma.com",
+        pathname: "/img/**",
+      },
     ],
   },
   // next-intl 3.x wires `next-intl/config` through `experimental.turbo`,
