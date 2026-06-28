@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type QueryResult = { readonly data: readonly Record<string, never>[] | null; readonly error: Error | null };
 type QueryMock = PromiseLike<QueryResult> & {
@@ -29,7 +29,12 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({ from: state.from })),
 }));
 
-import { getProducts } from "./products";
+import { getProducts, getVariantProducts } from "./products";
+
+beforeEach(() => {
+  state.eqCalls.length = 0;
+  vi.clearAllMocks();
+});
 
 describe("getProducts", () => {
   it("returns visible products when called with the first page", async () => {
@@ -51,5 +56,20 @@ describe("getProducts", () => {
 
     // Then: the invalid range is rejected before Supabase sees it.
     await expect(action).rejects.toThrow(RangeError);
+  });
+});
+
+describe("getVariantProducts", () => {
+  it("selects explicit fields instead of the full variant row", async () => {
+    // Given: the product grid only needs a bounded set of variant columns.
+    // When: variants are fetched for the listing page.
+    await getVariantProducts({ page: 1 });
+
+    // Then: the Supabase payload avoids select('*') while keeping critical fields.
+    const selectArg = state.chain.select.mock.calls[0]?.[0];
+    expect(selectArg).toContain("id");
+    expect(selectArg).toContain("slug_vi");
+    expect(selectArg).toContain("price");
+    expect(selectArg).not.toBe("*");
   });
 });
