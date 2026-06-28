@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Libre_Franklin } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
@@ -9,16 +9,19 @@ import Script from "next/script";
 import "../globals.css";
 
 const geistSans = Geist({
+  display: "swap",
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
+  display: "swap",
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
 const libreFranklin = Libre_Franklin({
+  display: "swap",
   variable: "--font-libre-franklin",
 subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600", "700"],
@@ -27,6 +30,11 @@ subsets: ["latin", "vietnamese"],
 export const metadata: Metadata = {
   title: "NanoHome Ecommerce",
   description: "Modern furniture and design",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export function generateStaticParams() {
@@ -41,7 +49,7 @@ interface RootLayoutProps {
 export default async function RootLayout({ children, params }: RootLayoutProps) {
   const { locale } = await params;
 
-  if (!routing.locales.includes(locale as any)) {
+  if (!routing.locales.includes(locale as (typeof routing.locales)[number])) {
     notFound();
   }
 
