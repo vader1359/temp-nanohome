@@ -10,7 +10,7 @@ const iconMap: Record<string, React.ElementType> = {
 
 export function Section5Benefits() {
   return (
-    <section className="flex flex-col items-center bg-white px-8 py-[60px]">
+    <section className="flex flex-col items-center bg-white px-4 py-12 sm:px-8 md:py-[60px]">
       {/* Header */}
       <div className="flex flex-col items-center gap-3">
         <span className="text-[14px] font-medium uppercase text-[#444]">

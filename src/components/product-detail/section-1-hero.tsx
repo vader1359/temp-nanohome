@@ -19,14 +19,14 @@ export function Section1Hero() {
   return (
     <section className="flex flex-col bg-white">
       {/* Breadcrumb */}
-      <div className="px-8 py-6 md:px-12">
+      <div className="px-4 py-6 sm:px-8 md:px-12">
         <Breadcrumb items={breadcrumbs} current={product.breadcrumbTitle} />
       </div>
 
       {/* Content row — gallery left, purchase panel right */}
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center gap-10 px-8 pb-16 md:flex-row md:items-start md:gap-10 md:px-12">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center gap-10 px-4 pb-16 sm:px-8 md:px-12 lg:flex-row lg:items-start lg:gap-10">
         {/* ─── Gallery ─── */}
-        <div className="flex w-full flex-col gap-2.5 md:w-auto md:flex-1 md:px-[114px]">
+        <div className="flex min-w-0 w-full flex-col gap-2.5 lg:w-auto lg:flex-1 lg:px-[clamp(1rem,6vw,7.125rem)]">
           {/* Main image */}
           <div className="relative aspect-[4/5] w-full overflow-hidden rounded-sm bg-[#F5F3F0]">
             <Image
@@ -40,7 +40,7 @@ export function Section1Hero() {
           </div>
 
           {/* Horizontal thumbnail strip */}
-          <div className="flex items-center gap-1 rounded-sm bg-white p-2">
+          <div className="flex w-full items-center gap-1 overflow-x-auto rounded-sm bg-white p-2 [scrollbar-width:thin]">
             {product.gallery.slice(0, 5).map((src, i) => {
               const active = activeThumb === i;
               return (
@@ -71,7 +71,7 @@ export function Section1Hero() {
         </div>
 
         {/* ─── Purchase Panel ─── */}
-        <div className="flex w-full flex-col gap-9 md:w-[440px] md:shrink-0">
+        <div className="flex min-w-0 w-full flex-col gap-9 lg:w-[440px] lg:shrink-0">
           {/* Product Summary */}
           <div className="flex flex-col gap-4">
             {/* Brand logo */}

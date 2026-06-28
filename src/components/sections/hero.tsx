@@ -100,7 +100,7 @@ export function Hero() {
   };
 
   return (
-    <section className="relative h-[calc(100svh-150px)] min-h-[620px] max-h-[886px] w-full overflow-hidden lg:h-[886px]">
+    <section className="relative min-h-[620px] h-[calc(100svh-150px)] max-h-[886px] w-full overflow-hidden lg:h-[886px]">
       {/* Background layers */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -117,13 +117,13 @@ export function Hero() {
         width={148}
         height={48}
         priority
-        className="absolute bottom-[272px] left-12 z-20 h-auto w-[164px] object-contain"
+        className="absolute bottom-[272px] left-6 z-20 h-auto w-[120px] object-contain lg:left-12 lg:w-[164px]"
       />
 
       {/* Title + CTA */}
-      <div className="absolute inset-x-0 bottom-[58px] z-10 px-12">
+      <div className="absolute inset-x-0 bottom-[58px] z-10 px-6 sm:px-8 lg:px-12">
         <div className="max-w-[720px]">
-          <h1 className="text-[48px] font-normal leading-[56px] text-white">
+          <h1 className="text-3xl font-normal leading-9 sm:text-4xl sm:leading-10 lg:text-[48px] lg:leading-[56px] text-white">
             <span className="block">{t("titleLine1")}</span>
             <span className="block">{t("titleLine2")}</span>
           </h1>
@@ -140,7 +140,7 @@ export function Hero() {
           ref={(el) => {
             hotspotRefs.current[index] = el;
           }}
-          className={cn("absolute z-30", hotspot.position)}
+          className={cn("absolute z-30 hidden sm:block", hotspot.position)}
         >
           {/* Concentric-circle hotspot button */}
           <button
@@ -161,10 +161,10 @@ export function Hero() {
           {/* Product highlight card */}
           {openCard === index && (
             <div
-              className={cn(
-                "absolute w-[280px]",
-                cardPositionClasses[hotspot.cardPlacement],
-              )}
+        className={cn(
+          "absolute w-[280px] max-w-[calc(100vw-2rem)]",
+          cardPositionClasses[hotspot.cardPlacement],
+        )}
             >
               <div className="overflow-hidden rounded-lg bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
                 {/* Close */}
@@ -211,7 +211,7 @@ export function Hero() {
         type="button"
         onClick={goToPrevious}
         aria-label="Previous slide"
-        className="absolute left-12 top-1/2 z-20 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111]"
+        className="absolute left-4 top-1/2 z-20 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111] sm:left-6 lg:left-12"
       >
         <ChevronLeft className="h-6 w-6" />
       </button>
@@ -219,7 +219,7 @@ export function Hero() {
         type="button"
         onClick={goToNext}
         aria-label="Next slide"
-        className="absolute right-12 top-1/2 z-20 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111]"
+        className="absolute right-4 top-1/2 z-20 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111] sm:right-6 lg:right-12"
       >
         <ChevronRight className="h-6 w-6" />
       </button>
@@ -241,7 +241,7 @@ export function Hero() {
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-10 right-12 z-20 text-lg font-medium leading-none text-white">
+      <div className="absolute bottom-10 right-6 z-20 text-lg font-medium leading-none text-white lg:right-12">
         ↓
       </div>
     </section>

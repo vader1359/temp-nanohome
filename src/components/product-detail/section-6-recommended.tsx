@@ -3,7 +3,7 @@ import { recommended } from "./mock-data";
 
 export function Section6Recommended() {
   return (
-    <section className="flex flex-col gap-8 bg-white px-8 py-16">
+    <section className="flex flex-col gap-8 bg-white px-4 py-12 sm:px-8 md:py-16">
       {/* Header */}
       <h2 className="text-[24px] font-medium text-[#444]">Sản phẩm dành cho bạn</h2>
 

@@ -48,14 +48,14 @@ export function Brands() {
   const t = useTranslations("Brands");
 
   return (
-    <section className="flex h-[240px] flex-col items-center gap-[30px] overflow-hidden bg-white pt-[60px] pb-[60px]">
+    <section className="flex h-[240px] flex-col items-center gap-[30px] overflow-x-auto bg-white px-6 pt-[60px] pb-[60px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden lg:px-0">
       <p className="text-center text-sm font-medium uppercase leading-5 text-[#111111]">
         {t("eyebrow")}
       </p>
 
       <div
         className={cn(
-          "flex w-max flex-nowrap items-center justify-center gap-14",
+          "flex w-max flex-nowrap items-center gap-8 sm:gap-14 lg:w-full lg:justify-center",
           "text-[#111111]",
         )}
       >

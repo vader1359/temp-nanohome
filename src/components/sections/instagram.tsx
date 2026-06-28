@@ -59,7 +59,7 @@ export function InstagramGallery() {
       </div>
 
       <div className="relative w-full">
-        <div ref={sliderRef} className="keen-slider !overflow-visible">
+        <div ref={sliderRef} className="keen-slider overflow-hidden">
           {images.map((src, i) => (
             <div
               key={src}
@@ -93,7 +93,7 @@ export function InstagramGallery() {
               onClick={() => slider.current?.prev()}
               disabled={atStart}
               aria-label="Previous"
-              className={`absolute -left-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#333] shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-all duration-200 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)] sm:-left-5 sm:h-12 sm:w-12 lg:-left-6 ${
+              className={`absolute left-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#333] shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-all duration-200 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)] sm:-left-5 sm:h-12 sm:w-12 lg:-left-6 ${
                 atStart
                   ? "cursor-default opacity-0 pointer-events-none"
                   : "opacity-100"
@@ -105,7 +105,7 @@ export function InstagramGallery() {
               onClick={() => slider.current?.next()}
               disabled={atEnd}
               aria-label="Next"
-              className={`absolute -right-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#333] shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-all duration-200 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)] sm:-right-5 sm:h-12 sm:w-12 lg:-right-6 ${
+              className={`absolute right-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#333] shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-all duration-200 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)] sm:-right-5 sm:h-12 sm:w-12 lg:-right-6 ${
                 atEnd
                   ? "cursor-default opacity-0 pointer-events-none"
                   : "opacity-100"
