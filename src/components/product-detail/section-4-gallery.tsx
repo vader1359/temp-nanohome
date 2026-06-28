@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CarouselButtons } from "@/components/shared";
 import { galleryImages } from "./mock-data";
 
 export function Section4Gallery() {
@@ -38,24 +38,14 @@ export function Section4Gallery() {
             ))}
           </div>
 
-          <button
-            type="button"
-            aria-label="Previous"
-            disabled={!canPrev}
-            onClick={() => setStart((s) => Math.max(0, s - 1))}
-            className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
-          >
-            <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
-          </button>
-          <button
-            type="button"
-            aria-label="Next"
-            disabled={!canNext}
-            onClick={() => setStart((s) => Math.min(maxStart, s + 1))}
-            className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"
-          >
-            <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
-          </button>
+          <CarouselButtons
+            variant="warm"
+            onPrev={() => setStart((s) => Math.max(0, s - 1))}
+            onNext={() => setStart((s) => Math.min(maxStart, s + 1))}
+            prevDisabled={!canPrev}
+            nextDisabled={!canNext}
+            className="absolute inset-x-2 top-1/2 -translate-y-1/2 justify-between sm:inset-x-0"
+          />
         </div>
       </div>
     </section>

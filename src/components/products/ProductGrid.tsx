@@ -1,8 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Heart } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { FavoriteButton, StatusBadge } from "@/components/shared";
 
 const SWATCHES = [
   "#111111",
@@ -477,16 +476,16 @@ interface ProductGridProps {
   onToggleFavorite: (id: number) => void;
 }
 
-function getStatusClass(status: string) {
+function getStatusType(status: string): "sale" | "instock" | "outofstock" {
   if (status === "SALE") {
-    return "bg-nh-red text-white";
+    return "sale";
   }
 
   if (status === "ĐANG CÓ HÀNG") {
-    return "bg-nh-green text-white";
+    return "instock";
   }
 
-  return "border border-nh-border bg-white text-nh-muted";
+  return "outofstock";
 }
 
 function cleanSubtitle(subtitle: string, brand: string) {
@@ -499,6 +498,7 @@ export function ProductGrid({ favorites, onToggleFavorite }: ProductGridProps) {
       {PRODUCTS.map((product, index) => {
         const numericId = index + 1;
         const sale = product.status === "SALE";
+        const statusType = getStatusType(product.status);
 
         return (
           <article
@@ -507,27 +507,18 @@ export function ProductGrid({ favorites, onToggleFavorite }: ProductGridProps) {
           >
             <div className="relative flex aspect-[4/3] w-full items-center justify-center bg-white p-4">
               {/* Favorite button — fades in on hover */}
-              <button
+              <FavoriteButton
+                active={favorites.has(numericId)}
                 className="absolute right-4 top-4 z-10 flex size-8 items-center justify-center rounded-full border border-nh-border bg-white opacity-100 transition-opacity duration-200 group-hover:shadow-sm"
-                type="button"
-                onClick={() => onToggleFavorite(numericId)}
-                aria-label={`Yêu thích ${product.name}`}
-              >
-                <Heart
-                  className={cn(
-                    "size-4 text-nh-ink transition-transform duration-200 group-hover:scale-110",
-                    favorites.has(numericId) && "fill-nh-ink"
-                  )}
-                />
-              </button>
-              <span
-                className={cn(
-                  "absolute left-4 top-4 z-10 px-1 py-0.5 text-center text-[12px] font-medium leading-4",
-                  getStatusClass(product.status)
-                )}
-              >
-                {product.status}
-              </span>
+                onToggle={() => onToggleFavorite(numericId)}
+                size="sm"
+                variant="outline"
+              />
+              <StatusBadge
+                className="absolute left-4 top-4 z-10 rounded-none px-1 py-0.5 text-center text-[12px] leading-4"
+                label={product.status}
+                type={statusType}
+              />
               <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[6px] transition-transform duration-300 group-hover:scale-[1.03]">
                 <Image
                   alt={product.figmaLabel}

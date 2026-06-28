@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { COLORS } from "./mock-data";
+import { ColorSwatches } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
 export function ColorSelector({
@@ -17,32 +18,15 @@ export function ColorSelector({
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <span className="text-[14px] font-medium uppercase text-[#111]">{header}</span>
-      <div className="flex flex-wrap gap-2">
-        {colors.map((c, i) => (
-          <button
-            key={c.name}
-            type="button"
-            aria-label={c.name}
-            title={c.name}
-            onClick={() => setSelected(i)}
-            className={cn(
-              "rounded-full p-1 transition",
-              selected === i ? "ring-1 ring-[#111]" : "ring-0",
-            )}
-            style={{ background: "transparent" }}
-          >
-            <span
-              className="block rounded-full"
-              style={{
-                width: 32,
-                height: 32,
-                background: c.hex,
-                border: c.hex.toLowerCase() === "#e8e8e8" ? "1px solid #ddd" : undefined,
-              }}
-            />
-          </button>
-        ))}
-      </div>
+      <ColorSwatches
+        colors={colors.map((c) => ({ color: c.hex, name: c.name }))}
+        variant="selector"
+        selectedColor={colors[selected]?.hex}
+        onSelect={(color) => {
+          const index = colors.findIndex((c) => c.hex === color);
+          if (index >= 0) setSelected(index);
+        }}
+      />
     </div>
   );
 }

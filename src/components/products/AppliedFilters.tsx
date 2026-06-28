@@ -1,7 +1,7 @@
 "use client";
 
-import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Chip } from "@/components/shared";
 
 interface AppliedFiltersProps {
   appliedFilters: string[];
@@ -17,15 +17,9 @@ export function AppliedFilters({ appliedFilters, onRemove }: AppliedFiltersProps
         {t("appliedFilters")}
       </span>
       {appliedFilters.map((filter) => (
-        <button
-          className="flex items-center gap-1 border border-nh-border px-1 py-1.5 text-[14px] font-normal leading-5 text-nh-ink"
-          key={filter}
-          type="button"
-          onClick={() => onRemove(filter)}
-        >
+        <Chip key={filter} variant="outline" onRemove={() => onRemove(filter)}>
           {filter}
-          <X className="size-3.5 text-nh-ink" />
-        </button>
+        </Chip>
       ))}
     </section>
   );

@@ -4,6 +4,7 @@ import { ChevronRight, Globe, Mail, Phone } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { IconTextRow } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
 const linkColumns = [
@@ -99,9 +100,8 @@ export function Footer() {
           </h4>
           <ul className="flex flex-col gap-4">
             {contacts.map(({ icon: Icon, key }) => (
-              <li key={key} className="flex items-center gap-2 text-sm font-normal leading-[21px] text-[#F1F1F1]">
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>{t(key)}</span>
+              <li key={key} className="text-sm font-normal leading-[21px] text-[#F1F1F1]">
+                <IconTextRow iconVariant="inline" icon={<Icon className="h-4 w-4 shrink-0" aria-hidden="true" />} value={t(key)} className="text-[#F1F1F1] [&_span]:text-[#F1F1F1]" />
               </li>
             ))}
           </ul>
