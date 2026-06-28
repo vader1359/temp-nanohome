@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CatalogHeader } from "./catalog-header";
 import { SectionHeader } from "./SectionHeader";
 import { FilterSidebar } from "./FilterSidebar";
 import { AppliedFilters } from "./AppliedFilters";
@@ -81,7 +80,6 @@ export function ProductsPage({ products }: ProductsPageProps) {
 
   return (
     <main className="min-h-screen bg-white text-nh-ink">
-      <CatalogHeader />
       <div className="mx-auto flex max-w-[1400px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
         <SectionHeader sortBy={sortBy} />
         <div className="flex flex-col gap-9 lg:flex-row lg:items-start">

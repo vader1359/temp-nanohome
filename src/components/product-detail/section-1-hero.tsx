@@ -4,13 +4,13 @@ import { useState } from "react";
 import Image from "next/image";
 import {
   Calendar,
-  Heart,
   MapPin,
   MessageCircle,
   Phone,
   ShoppingCart,
 } from "lucide-react";
 import { Breadcrumb, ColorSelector } from "@/components/product-detail";
+import { DarkCTAButton, FavoriteButton, IconTextRow, StatusBadge } from "@/components/shared";
 import { product as fallbackProduct, breadcrumbs } from "@/components/product-detail/mock-data";
 
 interface Section1HeroProps {
@@ -94,11 +94,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
             </p>
 
             {/* SALE badge */}
-            {product.onSale && (
-              <span className="inline-block w-fit bg-[#930000] px-1 py-0.5 text-[12px] font-medium leading-[16px] text-white">
-                SALE
-              </span>
-            )}
+            {product.onSale && <StatusBadge type="sale" label="SALE" />}
 
             {/* Price */}
             <div className="flex flex-col gap-2">
@@ -121,16 +117,11 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
 
           {/* CTA row */}
           <div className="flex gap-4">
-            <button className="flex grow items-center justify-center gap-2 bg-[#111] px-8 py-4 text-[14px] font-medium uppercase leading-[20px] text-white transition hover:bg-[#333]">
+            <DarkCTAButton variant="solid" className="grow gap-2 leading-[20px]">
               <ShoppingCart className="h-4 w-4" />
               Thêm vào giỏ
-            </button>
-            <button
-              aria-label="Yêu thích"
-              className="flex items-center justify-center border border-[#CFC9C0] px-5 text-[#111] transition hover:border-[#111]"
-            >
-              <Heart className="h-5 w-5" strokeWidth={1.6} />
-            </button>
+            </DarkCTAButton>
+            <FavoriteButton variant="bordered" className="h-auto rounded-none px-5" />
           </div>
 
           {/* Size info box */}
@@ -145,65 +136,36 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
 
           {/* Contact Service List */}
           <div className="flex flex-col gap-3">
-            <ContactItem icon="calendar" label="Đặt lịch hẹn" labelColor="link" />
-            <ContactItem
-              icon="chat"
+            <IconTextRow
+              iconVariant="round"
+              icon={<Calendar className="h-4 w-4" strokeWidth={1.5} />}
+              value="Đặt lịch hẹn"
+              href="#"
+            />
+            <IconTextRow
+              iconVariant="round"
+              icon={<MessageCircle className="h-4 w-4" strokeWidth={1.5} />}
               label="Liên hệ"
               value="Chuyên viên tư vấn sản khẩn"
             />
-            <ContactItem
-              icon="phone"
+            <IconTextRow
+              iconVariant="round"
+              icon={<Phone className="h-4 w-4" strokeWidth={1.5} />}
               label="Đặt hàng qua điện thoại"
               value="1800-1003"
-              valueColor="link"
+              href="#"
             />
-            <ContactItem
-              icon="store"
+            <IconTextRow
+              iconVariant="round"
+              icon={<MapPin className="h-4 w-4" strokeWidth={1.5} />}
               label="Đang có tại:"
               value="Cassina Store"
-              extra="nanoHome Gallery Saigon"
-              valueColor="link"
+              href="#"
             />
+            <span className="pl-[62px] text-sm text-nh-accent">nanoHome Gallery Saigon</span>
           </div>
         </div>
       </div>
     </section>
-  );
-}
-
-/* ─── Contact service row ─── */
-function ContactItem({
-  icon,
-  label,
-  value,
-  extra,
-  labelColor,
-  valueColor,
-}: {
-  icon: string;
-  label: string;
-  value?: string;
-  extra?: string;
-  labelColor?: "link";
-  valueColor?: "link";
-}) {
-  const link = "text-[#B0946F]";
-  const base = "text-[#111]";
-  return (
-    <div className="flex items-center gap-3.5">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center text-[#111]">
-        {icon === "calendar" && <Calendar className="h-4 w-4" strokeWidth={1.5} />}
-        {icon === "chat" && <MessageCircle className="h-4 w-4" strokeWidth={1.5} />}
-        {icon === "phone" && <Phone className="h-4 w-4" strokeWidth={1.5} />}
-        {icon === "store" && <MapPin className="h-4 w-4" strokeWidth={1.5} />}
-      </span>
-      <div className="flex flex-row flex-wrap gap-x-2.5 text-[12px] leading-[18px]">
-        <span className={labelColor === "link" ? link : base}>{label}</span>
-        {value && (
-          <span className={valueColor === "link" ? link : base}>{value}</span>
-        )}
-        {extra && <span className={link}>{extra}</span>}
-      </div>
-    </div>
   );
 }

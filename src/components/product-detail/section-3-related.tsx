@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CarouselButtons, Chip } from "@/components/shared";
 import { ProductCard } from "./product-card";
 import { relatedSet as fallbackRelatedSet, type RelatedProduct } from "./mock-data";
 
@@ -26,9 +26,9 @@ export function Section3Related({ products = fallbackRelatedSet, collectionName 
         <div className="flex items-start justify-between gap-6">
           <div className="flex flex-col items-start gap-3">
             <h2 className="text-[24px] font-medium text-[#444]">Sản phẩm cùng bộ</h2>
-            <span className="rounded-full bg-[#F5F3F0] px-4 py-1 text-[12px] font-medium text-[#666]">
+            <Chip variant="soft" className="px-4 text-[#666]">
               {collectionName}
-            </span>
+            </Chip>
           </div>
           <a href="#" className="mt-1 text-[14px] font-normal text-[#111] hover:underline">
             Xem tất cả
@@ -43,24 +43,14 @@ export function Section3Related({ products = fallbackRelatedSet, collectionName 
             ))}
           </div>
 
-          <button
-            type="button"
-            aria-label="Sản phẩm trước"
-            disabled={!canPrev}
-            onClick={() => setStart((s) => Math.max(0, s - 1))}
-            className="absolute left-2 top-[38%] flex h-9 w-9 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
-          >
-            <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
-          </button>
-          <button
-            type="button"
-            aria-label="Sản phẩm tiếp theo"
-            disabled={!canNext}
-            onClick={() => setStart((s) => Math.min(maxStart, s + 1))}
-            className="absolute right-2 top-[38%] flex h-9 w-9 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"
-          >
-            <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
-          </button>
+          <CarouselButtons
+            variant="warm"
+            onPrev={() => setStart((s) => Math.max(0, s - 1))}
+            onNext={() => setStart((s) => Math.min(maxStart, s + 1))}
+            prevDisabled={!canPrev}
+            nextDisabled={!canNext}
+            className="absolute inset-x-2 top-1/2 -translate-y-1/2 justify-between sm:inset-x-0"
+          />
         </div>
       </div>
     </section>

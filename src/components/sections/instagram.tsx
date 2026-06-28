@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ShoppingBag, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingBag, Image as ImageIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.css";
+
+import { CarouselButtons, SectionHeading } from "@/components/shared";
 
 const images = [
   "/images/insta_1.jpg",
@@ -49,14 +51,7 @@ export function InstagramGallery() {
 
   return (
     <section className="flex h-auto flex-col items-center gap-12 bg-white py-16 lg:py-20">
-      <div className="flex max-w-[760px] flex-col items-center gap-3 px-6 text-center">
-        <p className="text-[13px] font-medium uppercase tracking-wider text-[#666666] leading-5">
-          {t("eyebrow")}
-        </p>
-        <h2 className="text-[32px] font-medium leading-10 text-[#111111]">
-          {t("heading")}
-        </h2>
-      </div>
+      <SectionHeading eyebrow={t("eyebrow")} title={t("heading")} className="max-w-[760px] gap-3 px-6" />
 
       <div className="relative w-full">
         <div ref={sliderRef} className="keen-slider overflow-hidden">
@@ -88,32 +83,14 @@ export function InstagramGallery() {
         </div>
 
         {loaded && slider.current && (
-          <>
-            <button
-              onClick={() => slider.current?.prev()}
-              disabled={atStart}
-              aria-label="Previous"
-              className={`absolute left-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#333] shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-all duration-200 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)] sm:-left-5 sm:h-12 sm:w-12 lg:-left-6 ${
-                atStart
-                  ? "cursor-default opacity-0 pointer-events-none"
-                  : "opacity-100"
-              }`}
-            >
-              <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
-            </button>
-            <button
-              onClick={() => slider.current?.next()}
-              disabled={atEnd}
-              aria-label="Next"
-              className={`absolute right-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#333] shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-all duration-200 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)] sm:-right-5 sm:h-12 sm:w-12 lg:-right-6 ${
-                atEnd
-                  ? "cursor-default opacity-0 pointer-events-none"
-                  : "opacity-100"
-              }`}
-            >
-              <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
-            </button>
-          </>
+          <CarouselButtons
+            onPrev={() => slider.current?.prev()}
+            onNext={() => slider.current?.next()}
+            prevDisabled={atStart}
+            nextDisabled={atEnd}
+            variant="light"
+            className="absolute inset-x-1 top-1/2 z-20 -translate-y-1/2 justify-between sm:-inset-x-5 lg:-inset-x-6 [&_button]:h-11 [&_button]:w-11 [&_button]:text-[#333] [&_button]:shadow-[0_2px_12px_rgba(0,0,0,0.08)] [&_button]:backdrop-blur-sm [&_button]:duration-200 [&_button]:hover:bg-white [&_button]:hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)] sm:[&_button]:h-12 sm:[&_button]:w-12"
+          />
         )}
       </div>
     </section>

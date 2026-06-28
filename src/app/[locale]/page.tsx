@@ -1,10 +1,8 @@
 import dynamic from "next/dynamic";
 import { setRequestLocale } from "next-intl/server";
-import { Header } from "@/components/header";
 import { About } from "@/components/sections/about";
 import { Brands } from "@/components/sections/brands";
 import { FeaturedProducts } from "@/components/sections/featured-products";
-import { Footer } from "@/components/sections/footer";
 import { Hero } from "@/components/sections/hero";
 import { Newsletter } from "@/components/sections/newsletter";
 import { ProductsGrid } from "@/components/sections/products-grid";
@@ -26,7 +24,6 @@ export default async function Page({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-white">
-      <Header />
       <Hero />
       <InstagramGallery />
       <ProductsGrid />
@@ -35,7 +32,6 @@ export default async function Page({ params }: PageProps) {
       <Rooms />
       <Brands />
       <Newsletter />
-      <Footer />
     </main>
   );
 }

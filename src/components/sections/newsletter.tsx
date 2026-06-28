@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
+
+import { DarkCTAButton } from "@/components/shared";
 
 export function Newsletter() {
   const t = useTranslations("Newsletter");
@@ -42,15 +43,9 @@ export function Newsletter() {
             />
           </label>
 
-          <button
-            type="submit"
-            className={cn(
-              "rounded-none border border-white bg-[#111111] px-8 py-4 text-sm font-medium uppercase leading-5 tracking-wider text-white",
-              "min-h-[52px] min-w-[127px] transition-colors hover:bg-white hover:text-[#111111]",
-            )}
-          >
+          <DarkCTAButton type="submit" variant="dark" className="min-h-[52px] min-w-[127px] leading-5">
             {t("cta")}
-          </button>
+          </DarkCTAButton>
         </form>
       </div>
     </section>

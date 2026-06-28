@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 
+import { CarouselButtons, DarkCTAButton, PaginationDots } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
@@ -127,9 +128,9 @@ export function Hero() {
             <span className="block">{t("titleLine1")}</span>
             <span className="block">{t("titleLine2")}</span>
           </h1>
-          <button className="mt-6 rounded-none border border-white bg-[#111111] px-8 py-4 text-sm font-medium uppercase leading-5 tracking-wider text-white transition-colors hover:bg-white hover:text-[#111111]">
+          <DarkCTAButton variant="dark" className="mt-6 leading-5">
             {t("cta")}
-          </button>
+          </DarkCTAButton>
         </div>
       </div>
 
@@ -207,38 +208,20 @@ export function Hero() {
       ))}
 
       {/* Slide navigation arrows */}
-      <button
-        type="button"
-        onClick={goToPrevious}
-        aria-label="Previous slide"
-        className="absolute left-4 top-1/2 z-20 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111] sm:left-6 lg:left-12"
-      >
-        <ChevronLeft className="h-6 w-6" />
-      </button>
-      <button
-        type="button"
-        onClick={goToNext}
-        aria-label="Next slide"
-        className="absolute right-4 top-1/2 z-20 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111] sm:right-6 lg:right-12"
-      >
-        <ChevronRight className="h-6 w-6" />
-      </button>
+      <CarouselButtons
+        onPrev={goToPrevious}
+        onNext={goToNext}
+        variant="light"
+        className="absolute inset-x-4 top-1/2 z-20 -translate-y-1/2 justify-between sm:inset-x-6 lg:inset-x-12 [&_button]:size-6 [&_button]:bg-white"
+      />
 
       {/* Pagination dots */}
-      <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2.5">
-        {[0, 1, 2].map((index) => (
-          <button
-            key={index}
-            type="button"
-            onClick={() => setActiveIndex(index)}
-            aria-label={`Go to slide ${index + 1}`}
-            className={cn(
-              "h-0.5 transition-all",
-              activeIndex === index ? "w-10 bg-white" : "w-6 bg-white/20",
-            )}
-          />
-        ))}
-      </div>
+      <PaginationDots
+        count={3}
+        activeIndex={activeIndex}
+        onSelect={setActiveIndex}
+        className="absolute bottom-5 left-1/2 z-20 -translate-x-1/2 gap-2.5 [&_button]:h-0.5 [&_button]:w-6 [&_button]:rounded-none [&_button]:bg-white/20 [&_button]:transition-all [&_.bg-nh-ink]:w-10 [&_.bg-nh-ink]:bg-white"
+      />
 
       {/* Scroll indicator */}
       <div className="absolute bottom-10 right-6 z-20 text-lg font-medium leading-none text-white lg:right-12">
