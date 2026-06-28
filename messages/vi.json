@@ -9,7 +9,24 @@
   "Home": {
     "title": "Trang chủ"
   },
-  "Products": {},
+  "Products": {
+    "title": "SẢN PHẨM NỘI THẤT",
+    "sortBy": "Sắp xếp theo:",
+    "sortRecommended": "Đề xuất",
+    "classify": "Phân loại",
+    "inStock": "Đang có hàng",
+    "onSale": "Sale",
+    "comingSoon": "Sắp mở bán",
+    "productCategories": "Sản phẩm",
+    "all": "Tất cả",
+    "byRoom": "Theo phòng (0)",
+    "appliedFilters": "Đang áp dụng : ",
+    "chooseBrand": "Chọn hãng bạn quan tâm:",
+    "searchPlaceholder": "Tìm kiếm sản phẩm",
+    "availableLabel": "ĐANG CÓ HÀNG",
+    "saleLabel": "SALE",
+    "currency": "vnđ"
+  },
   "ProductDetail": {},
   "News": {},
   "Cart": {},

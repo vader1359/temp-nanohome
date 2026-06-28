@@ -9,7 +9,24 @@
   "Home": {
     "title": "Home"
   },
-  "Products": {},
+  "Products": {
+    "title": "FURNITURE PRODUCTS",
+    "sortBy": "Sort by:",
+    "sortRecommended": "Recommended",
+    "classify": "Classify",
+    "inStock": "In stock",
+    "onSale": "Sale",
+    "comingSoon": "Coming soon",
+    "productCategories": "Products",
+    "all": "All",
+    "byRoom": "By room (0)",
+    "appliedFilters": "Applied filters: ",
+    "chooseBrand": "Choose brands you care about:",
+    "searchPlaceholder": "Search products",
+    "availableLabel": "IN STOCK",
+    "saleLabel": "SALE",
+    "currency": "vnd"
+  },
   "ProductDetail": {},
   "News": {},
   "Cart": {},
