@@ -75,7 +75,7 @@ export function FilterSidebar({
   const classifyItems = [t("inStock"), t("onSale"), t("comingSoon")];
 
   return (
-    <aside className="flex h-[880px] w-[212px] shrink-0 flex-col gap-6 self-start overflow-y-auto pr-5 [scrollbar-color:#8c8a86_transparent] [scrollbar-width:thin]">
+    <aside className="flex w-full flex-col gap-6 self-start overflow-y-auto pr-5 [scrollbar-color:#8c8a86_transparent] [scrollbar-width:thin] lg:h-[880px] lg:w-[212px] lg:shrink-0">
       <CardSection title={t("classify")}>
         <div className="flex flex-col gap-4">
           {classifyItems.map((item) => {

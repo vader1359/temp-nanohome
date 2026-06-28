@@ -6,7 +6,7 @@ import { specColumns, specTabs } from "./mock-data";
 export function Section2Specs() {
   const [activeTab, setActiveTab] = useState(0);
   return (
-    <section className="flex min-h-[780px] flex-col items-center gap-12 bg-[#F5F3F0] px-8 py-20">
+    <section className="flex flex-col items-center gap-12 bg-[#F5F3F0] px-4 py-12 sm:px-8 md:py-20 lg:min-h-[780px]">
       {/* Title */}
       <h2 className="text-center text-[32px] font-medium text-[#666]">
         Thông tin chi tiết

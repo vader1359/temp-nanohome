@@ -56,7 +56,7 @@ function FeaturedProductCard({
   const t = useTranslations("Featured");
 
   return (
-    <article className="relative flex aspect-[340/492] w-full flex-col gap-6 bg-white p-4">
+    <article className="relative flex w-full flex-col gap-4 bg-white p-3 sm:aspect-[340/492] sm:gap-6 sm:p-4">
       <button
         type="button"
         aria-label={`Add ${name} to favorites`}
@@ -79,7 +79,7 @@ function FeaturedProductCard({
         />
       </div>
 
-      <div className="flex h-[138px] shrink-0 flex-col gap-2">
+      <div className="flex flex-col shrink-0 gap-2 sm:h-[138px]">
         <div className="flex h-6 items-start">
           <span className="text-base font-semibold uppercase leading-5 tracking-[0.02em] text-[#111]">
             {brand}
@@ -116,7 +116,7 @@ export function FeaturedProducts() {
   return (
     <section
       data-section="featured-products"
-      className="flex flex-col items-center gap-[60px] bg-white py-[60px]"
+      className="flex flex-col items-center gap-10 bg-white py-[60px] sm:gap-[60px]"
     >
       <div className="flex h-[90.4px] w-full max-w-[802.43px] flex-col items-center gap-4 px-6 text-center">
         <p className="w-full text-sm font-medium uppercase leading-5 text-[#444]">
@@ -127,10 +127,10 @@ export function FeaturedProducts() {
         </h2>
       </div>
 
-      <div className="flex w-full flex-col gap-[60px]">
+      <div className="flex w-full flex-col gap-10 sm:gap-[60px]">
         {featuredProducts.map((product) => {
           const lifestyle = (
-            <div className="relative h-[480px] w-full overflow-hidden md:h-[810px] md:w-[660px]">
+            <div className="relative h-[360px] w-full overflow-hidden sm:h-[480px] md:h-[810px] md:w-[660px]">
               <Image
                 src={product.lifestyleImage}
                 alt=""

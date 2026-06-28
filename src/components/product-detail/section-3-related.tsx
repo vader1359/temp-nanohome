@@ -15,7 +15,7 @@ export function Section3Related() {
   const items = relatedSet.slice(start, start + visible);
 
   return (
-    <section className="bg-white px-8 py-16">
+    <section className="bg-white px-4 py-12 sm:px-8 md:py-16">
       <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-8">
         {/* Header */}
         <div className="flex items-start justify-between gap-6">
@@ -43,7 +43,7 @@ export function Section3Related() {
             aria-label="Sản phẩm trước"
             disabled={!canPrev}
             onClick={() => setStart((s) => Math.max(0, s - 1))}
-            className="absolute left-0 top-[38%] flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30"
+            className="absolute left-2 top-[38%] flex h-9 w-9 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
           >
             <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
           </button>
@@ -52,7 +52,7 @@ export function Section3Related() {
             aria-label="Sản phẩm tiếp theo"
             disabled={!canNext}
             onClick={() => setStart((s) => Math.min(maxStart, s + 1))}
-            className="absolute right-0 top-[38%] flex h-9 w-9 translate-x-1/2 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30"
+            className="absolute right-2 top-[38%] flex h-9 w-9 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"
           >
             <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
           </button>

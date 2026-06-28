@@ -39,7 +39,7 @@ export function Footer() {
 
   return (
     <footer className="min-h-[480px] bg-[#1F1F1F] px-6 pt-20 pb-12 md:px-12 md:pt-24 md:pb-7">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-10 md:flex-row md:justify-between md:gap-8">
+      <div className="mx-auto max-w-[1400px] flex flex-col gap-10 md:grid md:grid-cols-2 md:gap-8 lg:flex lg:flex-row lg:justify-between lg:gap-8">
         {linkColumns.map((column) => (
           <div key={column.heading} className="flex flex-col gap-5">
             <h4 className="text-xl font-normal leading-[27.5px] text-[#F1F1F1]">

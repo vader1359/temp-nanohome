@@ -164,10 +164,15 @@
 */
 
 @layer base {
+  html {
+    overflow-x: clip;
+  }
   * {
     border-color: var(--border);
   }
   body {
+    min-width: 0;
+    overflow-x: clip;
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-libre-franklin), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
