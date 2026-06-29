@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { ProductsPage } from "@/components/products/products-page";
 import type { ProductGridItem } from "@/components/products/ProductGrid";
 import { firstCloudinaryImage } from "@/lib/image";
+import { getBrands } from "@/lib/queries/brands";
 import { getVariantProducts } from "@/lib/queries/products";
 import type { Variant } from "@/types/db";
 
@@ -46,7 +47,7 @@ function getVariantImageUrl(variant: Variant): string {
   ]);
 }
 
-function variantToGridItem(variant: Variant): ProductGridItem {
+function variantToGridItem(variant: Variant, brand?: { logo_url: string | null; name: string }): ProductGridItem {
   const imageUrl = getVariantImageUrl(variant);
   const discount = variant.discount_percent !== null ? `-${variant.discount_percent}%` : null;
   const name = variantText(variant.name_vi, variantText(variant.name, "Sản phẩm"));
@@ -54,12 +55,13 @@ function variantToGridItem(variant: Variant): ProductGridItem {
 
   return {
     id: variant.id,
-    brand: "nanoHome",
+    brand: brand?.name ?? "nanoHome",
+    brandLogoUrl: brand?.logo_url ?? null,
     name,
     subtitle: [variantText(variant.finish_vi, variantText(variant.finish)), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
-    status: variant.on_sale ? "SALE" : variant.in_stock ? "ĐANG CÓ HÀNG" : "HẾT HÀNG",
+    status: variant.on_sale ? "SALE" : variant.in_stock ? "CÓ SẴN" : "HẾT HÀNG",
     imageUrl,
-    href: `/san-pham/${encodeURIComponent(detailSlug)}`,
+    href: `/products/${encodeURIComponent(detailSlug)}`,
     oldPrice: variant.compare_at_price !== null ? formatPrice(variant.compare_at_price) : null,
     discount,
     price: formatPrice(variant.price),
@@ -71,8 +73,9 @@ export default async function ProductsRoute({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const variants = await getVariantProducts({ pageSize: 24 });
-  const products = variants.map(variantToGridItem);
+  const [variants, brands] = await Promise.all([getVariantProducts({ pageSize: 24 }), getBrands()]);
+  const products = variants.map((variant) => variantToGridItem(variant, variant.brand_id ? brands.find((brand) => brand.id === variant.brand_id) : undefined));
+  const brandFilters = brands.map((brand) => ({ id: brand.id, logoUrl: brand.logo_url, name: brand.name }));
 
-  return <ProductsPage products={products} />;
+  return <ProductsPage brands={brandFilters} products={products} />;
 }

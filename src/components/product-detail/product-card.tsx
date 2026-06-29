@@ -1,6 +1,6 @@
 import Image from "next/image";
+import { Heart } from "lucide-react";
 import type { RelatedProduct } from "./mock-data";
-import { Chip, FavoriteButton } from "@/components/shared";
 import { ColorDots } from "./color-dots";
 
 export function ProductCard({ p }: { p: RelatedProduct }) {
@@ -20,19 +20,23 @@ export function ProductCard({ p }: { p: RelatedProduct }) {
         {p.tags && p.tags.length > 0 && (
           <div className="absolute left-3 top-3 flex flex-col gap-1">
             {p.tags.map((tag) => (
-              <Chip key={tag} variant="solid" className="w-fit rounded-sm text-[10px] uppercase tracking-[0.04em] shadow-sm">
+              <span
+                key={tag}
+                className="w-fit rounded-sm bg-white/90 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.04em] text-[#111] shadow-sm"
+              >
                 {tag}
-              </Chip>
+              </span>
             ))}
           </div>
         )}
 
         {/* favorite - top right */}
-        <FavoriteButton
-          variant="solid"
-          size="sm"
-          className="absolute right-3 top-3 shadow-sm"
-        />
+        <button
+          aria-label="Yêu thích"
+          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-[#111] shadow-sm transition hover:bg-white"
+        >
+          <Heart className="h-4 w-4" strokeWidth={1.6} />
+        </button>
       </div>
 
       {/* Text content: tighter line spacing */}
@@ -48,7 +52,7 @@ export function ProductCard({ p }: { p: RelatedProduct }) {
         <p className="text-[15px] font-semibold leading-[20px] text-[#111]">{p.price}</p>
         {p.available && (
           <span className="text-[12px] font-medium leading-[16px] text-[#00A63E]">
-            ĐANG CÓ HÀNG
+            CÓ SẴN
           </span>
         )}
       </div>

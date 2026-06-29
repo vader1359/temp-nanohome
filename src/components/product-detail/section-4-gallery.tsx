@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
-import { CarouselButtons } from "@/components/shared";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useKeenSlider } from "keen-slider/react";
+import "keen-slider/keen-slider.css";
 import { galleryImages as fallbackGalleryImages } from "./mock-data";
 
 interface Section4GalleryProps {
@@ -10,46 +12,84 @@ interface Section4GalleryProps {
 }
 
 export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Section4GalleryProps) {
-  const [start, setStart] = useState(0);
-  const visible = 3;
-  const maxStart = Math.max(0, galleryImages.length - visible);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const slides = useMemo(() => (galleryImages.length > 0 ? galleryImages : fallbackGalleryImages), [galleryImages]);
+  const [sliderRef, slider] = useKeenSlider<HTMLDivElement>({
+    initial: 0,
+    mode: "free-snap",
+    slideChanged(s) {
+      setCurrentSlide(s.track.details.rel);
+    },
+    created() {
+      setLoaded(true);
+    },
+    slides: {
+      perView: 1.35,
+      spacing: 16,
+    },
+    breakpoints: {
+      "(min-width: 640px)": {
+        slides: { perView: 2.25, spacing: 20 },
+      },
+      "(min-width: 1024px)": {
+        slides: { perView: 3.15, spacing: 24 },
+      },
+    },
+  });
 
-  const canPrev = start > 0;
-  const canNext = start < maxStart;
+  const maxIdx = slider.current?.track.details.maxIdx ?? 0;
+  const canPrev = loaded && currentSlide > 0;
+  const canNext = loaded && currentSlide < maxIdx;
 
   return (
-    <section className="bg-white px-4 py-12 sm:px-8 md:py-16">
-      <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-8">
-        {/* Title */}
+    <section className="bg-white py-12 md:py-16">
+      <div className="site-shell flex flex-col gap-8">
         <h2 className="text-[24px] font-medium text-[#444]">Ảnh sản phẩm</h2>
 
-        {/* Carousel strip + nav */}
-        <div className="relative">
-          <div className="grid grid-cols-1 gap-6 overflow-hidden md:grid-cols-3 md:pr-10">
-            {galleryImages.slice(start, start + visible).map((src, i) => (
-              <div
-                key={start + i}
-                className="relative aspect-[4/3] overflow-hidden rounded-md bg-[#F5F3F0]"
-              >
-                <Image
-                  src={src}
-                  alt={`Ảnh ${start + i + 1}`}
-                  fill
-                  sizes="(max-width:768px) 100vw, 33vw"
-                  className="object-cover"
-                />
-              </div>
-            ))}
+        <div className="relative overflow-hidden">
+          <div ref={sliderRef} className="keen-slider overflow-visible">
+            {slides.map((src, i) => {
+              const isWide = i % 3 === 1;
+
+              return (
+                <div
+                  key={`${src}-${i}`}
+                  className="keen-slider__slide"
+                  style={{ minWidth: isWide ? "38%" : "24%", maxWidth: isWide ? "38%" : "24%" }}
+                >
+                  <div className="relative h-[300px] overflow-hidden rounded-md bg-transparent sm:h-[360px] lg:h-[420px]">
+                    <Image
+                      src={src}
+                      alt={`Ảnh ${i + 1}`}
+                      fill
+                      sizes="(max-width:640px) 78vw, (max-width:1024px) 48vw, 31vw"
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          <CarouselButtons
-            variant="warm"
-            onPrev={() => setStart((s) => Math.max(0, s - 1))}
-            onNext={() => setStart((s) => Math.min(maxStart, s + 1))}
-            prevDisabled={!canPrev}
-            nextDisabled={!canNext}
-            className="absolute inset-x-2 top-1/2 -translate-y-1/2 justify-between sm:inset-x-0"
-          />
+          <button
+            type="button"
+            aria-label="Previous"
+            disabled={!canPrev}
+            onClick={() => slider.current?.prev()}
+            className="absolute left-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
+          >
+            <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            aria-label="Next"
+            disabled={!canNext}
+            onClick={() => slider.current?.next()}
+            className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"
+          >
+            <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
+          </button>
         </div>
       </div>
     </section>

@@ -53,6 +53,7 @@ export type RelatedProduct = {
   image: string;
   available: boolean;
   tags?: string[];
+  href?: string;
 };
 
 // Section 3 — Sản phẩm cùng bộ (same LC collection, all Cassina).

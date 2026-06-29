@@ -4,7 +4,7 @@ export default function Loading() {
   return (
     <div className="min-h-screen bg-white" aria-busy="true" aria-label="Loading products">
       <div className="h-16 border-b" />
-      <div className="px-4 py-8">
+      <div className="site-shell py-8">
         <Skeleton className="mb-6 h-8 w-40" />
         <div className="flex gap-6">
           <Skeleton className="hidden h-96 w-64 md:block" />

@@ -12,7 +12,7 @@ interface Section2SpecsProps {
 export function Section2Specs({ specColumns = fallbackSpecColumns, description, designerDescription }: Section2SpecsProps) {
   const [activeTab, setActiveTab] = useState(0);
   return (
-    <section className="flex flex-col items-center gap-12 bg-[#F5F3F0] px-4 py-12 sm:px-8 md:py-20 lg:min-h-[780px]">
+    <section className="flex flex-col items-center gap-12 bg-[#F5F3F0] py-12 md:py-16">
       {/* Title */}
       <h2 className="text-center text-[32px] font-medium text-[#666]">
         Thông tin chi tiết
@@ -26,7 +26,7 @@ export function Section2Specs({ specColumns = fallbackSpecColumns, description, 
             type="button"
             onClick={() => setActiveTab(i)}
             className={`text-[12px] font-normal transition ${
-              activeTab === i ? "text-[#111]" : "text-[#CFC9C0]"
+              activeTab === i ? "text-[#111]" : "text-[#8A8178]"
             }`}
           >
             {tab}
@@ -36,7 +36,7 @@ export function Section2Specs({ specColumns = fallbackSpecColumns, description, 
 
       {/* Spec cards — 2 columns */}
       {activeTab === 0 && (
-        <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-6 md:flex-row md:gap-12">
+        <div className="mx-auto flex w-full max-w-[1024px] flex-col gap-6 px-4 md:flex-row md:gap-12">
           {specColumns.map((col, ci) => (
             <div key={ci} className="flex flex-1 flex-col gap-4">
               {col.map((spec) => (
@@ -68,7 +68,7 @@ export function Section2Specs({ specColumns = fallbackSpecColumns, description, 
       )}
 
       {activeTab === 1 && (
-        <div className="mx-auto w-full max-w-[800px] text-[14px] leading-relaxed text-[#666]">
+        <div className="site-shell max-w-[800px] text-[14px] leading-relaxed text-[#666]">
           <p>
             {description ??
               "Fauteuil Grand Confort là một kiệt tác thiết kế với khung thép mạ chrome và đệm độc lập nằm trong khung thép."}
@@ -77,7 +77,7 @@ export function Section2Specs({ specColumns = fallbackSpecColumns, description, 
       )}
 
       {activeTab === 2 && (
-        <div className="mx-auto flex w-full max-w-[800px] flex-col gap-6 text-[14px] text-[#666]">
+        <div className="site-shell flex max-w-[800px] flex-col gap-6 text-[14px] text-[#666]">
           <div>
             <h3 className="mb-2 text-[16px] font-medium text-[#111]">Nhà thiết kế</h3>
             <p>{designerDescription ?? "Thông tin nhà thiết kế sẽ được cập nhật."}</p>
