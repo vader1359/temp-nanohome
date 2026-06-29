@@ -3,18 +3,29 @@
 import { ArrowUpDown, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { UnderlineTabs, type TabItem } from "@/components/shared";
+import type { ProductSort } from "@/lib/queries/products";
 
 interface SectionHeaderProps {
-  appliedFilters: string[];
+  appliedFilters: readonly string[];
   onOpenFilters: () => void;
   onRemoveFilter: (value: string) => void;
-  sortBy: string;
+  onResetFilters: () => void;
+  onSortChange: (sort: ProductSort) => void;
+  sortBy: ProductSort;
 }
 
-export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, sortBy }: SectionHeaderProps) {
+export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, onResetFilters, onSortChange, sortBy }: SectionHeaderProps) {
   const t = useTranslations("Products");
-  const sortLabel = sortBy === "recommended" ? t("sortRecommended") : sortBy;
   const [hidden, setHidden] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortTabs: TabItem[] = [
+    { key: "priority", label: t("sortPriority") },
+    { key: "price_asc", label: t("sortPriceAsc") },
+    { key: "price_desc", label: t("sortPriceDesc") },
+    { key: "newest", label: t("sortNewest") },
+  ];
+  const sortLabel = sortTabs.find((tab) => tab.key === sortBy)?.label ?? t("sortPriority");
 
   useEffect(() => {
     const updateHidden = () => setHidden(window.scrollY > 120);
@@ -30,14 +41,31 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, s
           <h1 className="text-left text-[16px] font-medium leading-6 text-nh-ink">
             {t("title")}
           </h1>
-          <div className="flex items-center gap-1">
+          <div className="relative flex items-center gap-1">
             <button
               aria-label={`${t("sortBy")} ${sortLabel}`}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center bg-white text-nh-ink"
+              className="flex min-h-[44px] items-center gap-2 bg-white px-2 text-nh-ink"
               type="button"
+              onClick={() => setSortOpen((value) => !value)}
             >
               <ArrowUpDown className="size-4" />
+              <span className="hidden text-xs uppercase sm:inline">
+                <span className="font-normal normal-case text-nh-muted">{t("sortBy")} </span>
+                <span className="font-medium text-nh-ink">{sortLabel}</span>
+              </span>
             </button>
+            {sortOpen ? (
+              <div className="absolute right-12 top-full z-50 w-[360px] max-w-[80vw] border border-nh-border bg-white p-3 shadow-lg">
+                <UnderlineTabs
+                  activeKey={sortBy}
+                  tabs={sortTabs}
+                  onChange={(key) => {
+                    onSortChange(key as ProductSort);
+                    setSortOpen(false);
+                  }}
+                />
+              </div>
+            ) : null}
             <button
               aria-label="Mở bộ lọc"
               className="flex min-h-[44px] min-w-[44px] items-center justify-center bg-white text-nh-ink lg:hidden"
@@ -64,6 +92,13 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, s
                 <X className="size-3 text-nh-ink" />
               </button>
             ))}
+            <button
+              className="px-1.5 py-1 text-[12px] font-medium leading-4 text-nh-red underline-offset-2 hover:underline"
+              type="button"
+              onClick={onResetFilters}
+            >
+              Xóa tất cả
+            </button>
           </div>
         ) : null}
       </div>
