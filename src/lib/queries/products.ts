@@ -207,11 +207,15 @@ function fuzzyCountArgs(options: Omit<VariantProductQueryOptions, "page" | "page
   };
 }
 
+function shouldUseFuzzyProductSearch(): boolean {
+  return false;
+}
+
 export async function getVariantProducts(options: VariantProductQueryOptions = {}): Promise<readonly VariantProductListItem[]> {
   const supabase = createAdminClient();
   const searchTerm = options.search?.trim();
 
-  if (searchTerm) {
+  if (searchTerm && shouldUseFuzzyProductSearch()) {
     const { data, error } = await (supabase as unknown as FuzzySearchRpcClient).rpc(
       "search_variant_products_fuzzy",
       fuzzySearchArgs(options, searchTerm),
@@ -301,7 +305,7 @@ export async function getVariantProductCount(options: Omit<VariantProductQueryOp
   const supabase = createAdminClient();
   const searchTerm = options.search?.trim();
 
-  if (searchTerm) {
+  if (searchTerm && shouldUseFuzzyProductSearch()) {
     const { data, error } = await (supabase as unknown as FuzzyCountRpcClient).rpc(
       "search_variant_products_fuzzy_count",
       fuzzyCountArgs(options, searchTerm),

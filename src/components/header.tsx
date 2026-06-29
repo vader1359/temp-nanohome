@@ -546,7 +546,7 @@ function WishlistSidebarItem({ item, onRemove }: { item: WishlistItem; onRemove:
   const hasDiscount = item.badgeTone === "sale" && item.originalPrice && item.discount;
 
   return (
-    <article className="grid min-h-[148px] grid-cols-[104px_minmax(0,1fr)] items-center gap-6 border-b border-[#eee] pb-6">
+    <article className="grid min-h-[168px] grid-cols-[104px_minmax(0,1fr)] items-center gap-6 border-b border-[#eee] pb-10">
       <Link href={item.href} className="relative h-[124px] w-[104px] overflow-hidden" onClick={() => undefined}>
         <Image src={item.image} alt="" fill sizes="104px" className="object-contain" />
       </Link>
@@ -577,7 +577,7 @@ function CartSidebarItem({ item, onRemove, onUpdateQuantity }: { item: CartItem;
   const linePrice = unitPrice > 0 ? unitPrice * item.quantity : 0;
 
   return (
-    <article className="grid min-h-[148px] grid-cols-[104px_minmax(0,1fr)] items-center gap-6 border-b border-[#eee] pb-6">
+    <article className="grid min-h-[168px] grid-cols-[104px_minmax(0,1fr)] items-center gap-6 border-b border-[#eee] pb-10">
       <div className="relative h-[124px] w-[104px] overflow-hidden">
         <Image src={item.image} alt="" fill sizes="104px" className="object-contain" />
       </div>

@@ -29,15 +29,25 @@ const WishlistContext = createContext<WishlistContextValue | null>(null);
 const WISHLIST_STORAGE_KEY = "nanohome.wishlist.items";
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<WishlistItem[]>(readStoredWishlistItems);
+  const [items, setItems] = useState<WishlistItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    queueMicrotask(() => {
+      setItems(readStoredWishlistItems());
+      setHydrated(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
     try {
       window.localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(items));
     } catch {
       // Ignore storage failures so wishlist interactions still work in memory.
     }
-  }, [items]);
+  }, [hydrated, items]);
 
   const addItem = useCallback((newItem: WishlistItem) => {
     setItems((prev) => {

@@ -30,15 +30,25 @@ const CartContext = createContext<CartContextValue | null>(null);
 const CART_STORAGE_KEY = "nanohome.cart.items";
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(readStoredCartItems);
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    queueMicrotask(() => {
+      setItems(readStoredCartItems());
+      setHydrated(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
     try {
       window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
     } catch {
       // Ignore storage failures so cart interactions still work in memory.
     }
-  }, [items]);
+  }, [hydrated, items]);
 
   const addItem = useCallback((newItem: AddCartItem) => {
     const qty = Math.max(1, Math.floor(newItem.quantity ?? 1));
