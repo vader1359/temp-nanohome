@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import {
   Calendar,
@@ -10,9 +10,10 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { Breadcrumb, ColorSelector } from "@/components/product-detail";
-import { DarkCTAButton, FavoriteButton, IconTextRow, StatusBadge } from "@/components/shared";
+import { DarkCTAButton, FavoriteButton, IconTextRow } from "@/components/shared";
 import { product as fallbackProduct, breadcrumbs } from "@/components/product-detail/mock-data";
 import { useCart } from "@/components/cart/cart-context";
+import { cn } from "@/lib/utils";
 
 interface Section1HeroProps {
   product?: typeof fallbackProduct & {
@@ -24,9 +25,45 @@ interface Section1HeroProps {
 
 export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
   const [activeThumb, setActiveThumb] = useState(0);
+  const productImageRef = useRef<HTMLDivElement>(null);
   const { addItem } = useCart();
 
+  const playAddToCartAnimation = () => {
+    const imageBox = productImageRef.current;
+    const cartTarget = document.querySelector<HTMLElement>("[data-cart-target]");
+    if (!imageBox || !cartTarget) return;
+
+    const imageRect = imageBox.getBoundingClientRect();
+    const targetRect = cartTarget.getBoundingClientRect();
+    const image = document.createElement("img");
+    image.src = product.gallery[activeThumb] ?? product.gallery[0] ?? "/images/p_lc2.png";
+    image.alt = "";
+    image.className = "pointer-events-none fixed z-[9999] rounded-sm object-contain shadow-2xl";
+    image.style.left = `${imageRect.left}px`;
+    image.style.top = `${imageRect.top}px`;
+    image.style.width = `${imageRect.width}px`;
+    image.style.height = `${imageRect.height}px`;
+    image.style.transformOrigin = "center center";
+    image.style.willChange = "transform, opacity, border-radius";
+    document.body.appendChild(image);
+
+    const deltaX = targetRect.left + targetRect.width / 2 - (imageRect.left + imageRect.width / 2);
+    const deltaY = targetRect.top + targetRect.height / 2 - (imageRect.top + imageRect.height / 2);
+
+    const animation = image.animate(
+      [
+        { borderRadius: "2px", opacity: 0.95, transform: "translate3d(0, 0, 0) scale(1) skew(0deg, 0deg)" },
+        { borderRadius: "18px", opacity: 0.75, transform: `translate3d(${deltaX * 0.42}px, ${deltaY * 0.35}px, 0) scale(0.58, 0.82) skew(-10deg, 4deg)` },
+        { borderRadius: "999px", opacity: 0, transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.08, 0.18) skew(-18deg, 8deg)` },
+      ],
+      { duration: 760, easing: "cubic-bezier(0.2, 0.9, 0.18, 1)", fill: "forwards" },
+    );
+    animation.addEventListener("finish", () => image.remove(), { once: true });
+    animation.addEventListener("cancel", () => image.remove(), { once: true });
+  };
+
   const handleAddToCart = () => {
+    playAddToCartAnimation();
     addItem({
       id: product.id ?? product.sku ?? product.title,
       name: product.title,
@@ -52,7 +89,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
         {/* ─── Gallery ─── */}
         <div className="flex min-w-0 w-full flex-col gap-0 lg:basis-1/2 lg:px-0">
           {/* Main image */}
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-sm bg-white">
+          <div ref={productImageRef} className="relative aspect-[4/3] w-full overflow-hidden bg-white">
             <Image
               src={product.gallery[activeThumb]}
               alt={product.title}
@@ -64,7 +101,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
           </div>
 
           {/* Horizontal thumbnail strip */}
-          <div className="flex w-full min-w-0 -translate-y-1 items-center justify-center gap-1 overflow-x-auto rounded-sm bg-white px-2 pb-1 pt-0 text-center [scrollbar-width:none]">
+          <div className="mt-10 flex w-full min-w-0 items-center justify-center gap-1 overflow-x-auto bg-white px-2 pb-1 text-center [scrollbar-width:none]">
             {product.gallery.slice(0, 5).map((src, i) => {
               const active = activeThumb === i;
               return (
@@ -72,7 +109,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
                   key={i}
                   type="button"
                   onClick={() => setActiveThumb(i)}
-                  className={`relative aspect-square w-16 min-w-0 shrink-0 overflow-hidden rounded-sm transition-opacity md:w-20 ${
+                  className={`relative aspect-square w-16 min-w-0 shrink-0 overflow-hidden transition-opacity md:w-20 ${
                     active ? "opacity-100" : "opacity-50 hover:opacity-75"
                   }`}
                 >
@@ -118,10 +155,20 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
             </p>
 
             {/* SALE badge */}
-            {product.onSale && <StatusBadge type="sale" label="SALE" />}
+            {product.onSale ? (
+              <span className={cn("w-fit px-2 py-1 text-[12px] font-semibold uppercase leading-4", "bg-[#FBECEC] text-nh-red")}>
+                SALE
+              </span>
+            ) : null}
 
             {/* Price */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col items-start gap-1">
+              {product.oldPrice ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-normal leading-4 text-nh-muted line-through">{product.oldPrice}</span>
+                  {product.discount ? <span className="bg-nh-red px-1.5 py-0.5 text-[12px] font-medium leading-4 text-white">{product.discount}</span> : null}
+                </div>
+              ) : null}
               <span className="text-[15px] font-semibold leading-[20px] text-[#111]">
                 {product.newPrice}
               </span>

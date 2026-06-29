@@ -50,6 +50,8 @@ export type RelatedProduct = {
   brand: string;
   category: string;
   price: string;
+  oldPrice?: string | null;
+  discount?: string | null;
   image: string;
   available: boolean;
   href?: string;

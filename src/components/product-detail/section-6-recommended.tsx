@@ -17,11 +17,11 @@ function toProductGridItem(product: RelatedProduct, index: number): ProductGridI
     brand: product.brand,
     name: product.name,
     subtitle: product.category,
-    status: product.available ? "in_stock" : "out_of_stock",
+    status: product.oldPrice ? "sale" : product.available ? "in_stock" : "out_of_stock",
     imageUrl: product.image,
     href: product.href ?? "#",
-    oldPrice: null,
-    discount: null,
+    oldPrice: product.oldPrice ?? null,
+    discount: product.discount ?? null,
     price: product.price,
     swatches: [],
   };
@@ -69,7 +69,7 @@ export function Section6Recommended({ products = fallbackRecommended }: Section6
       <div className="site-shell flex flex-col gap-8">
         <h2 className="text-[24px] font-medium text-[#444]">Sản phẩm dành cho bạn</h2>
 
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-visible">
           <div ref={sliderRef} className="keen-slider overflow-visible">
             {items.map((product) => (
               <div className="keen-slider__slide" key={product.id}>
@@ -87,18 +87,18 @@ export function Section6Recommended({ products = fallbackRecommended }: Section6
             aria-label="Sản phẩm trước"
             disabled={!canPrev}
             onClick={() => slider.current?.prev()}
-            className="absolute left-2 top-[38%] flex h-11 w-11 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
+            className="absolute left-2 top-[38%] z-20 flex h-8 w-8 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
           >
-            <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
+            <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
           </button>
           <button
             type="button"
             aria-label="Sản phẩm tiếp theo"
             disabled={!canNext}
             onClick={() => slider.current?.next()}
-            className="absolute right-2 top-[38%] flex h-11 w-11 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"
+            className="absolute right-2 top-[38%] z-20 flex h-8 w-8 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"
           >
-            <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
+            <ChevronRight className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </div>
 

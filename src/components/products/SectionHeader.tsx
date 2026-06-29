@@ -35,7 +35,7 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
   }, []);
 
   return (
-    <section className={`sticky top-0 z-40 w-full overflow-hidden bg-white transition-all ${hidden ? "h-0 border-y-0" : "border-y border-nh-ink"}`}>
+    <section className={`sticky top-0 z-20 w-full overflow-hidden bg-white transition-all ${hidden ? "h-0 border-y-0" : "border-y border-nh-ink"}`}>
       <div className="site-shell flex flex-col items-start gap-2 py-1.5 sm:py-1">
         <div className={hidden ? "hidden" : "flex w-full items-center justify-between gap-3"}>
           <h1 className="text-left text-[16px] font-medium leading-6 text-nh-ink">
@@ -55,7 +55,7 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
               </span>
             </button>
             {sortOpen ? (
-              <div className="absolute right-12 top-full z-50 w-[360px] max-w-[80vw] border border-nh-border bg-white p-3 shadow-lg">
+              <div className="absolute right-12 top-full z-30 w-[360px] max-w-[80vw] border border-nh-border bg-white p-3 shadow-lg">
                 <UnderlineTabs
                   activeKey={sortBy}
                   tabs={sortTabs}

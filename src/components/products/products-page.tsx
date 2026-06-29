@@ -60,7 +60,6 @@ export function ProductsPage({
 }: ProductsPageProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [, startTransition] = useTransition();
   const [optimisticFilters, setOptimisticFilters] = useOptimistic(currentFilters);
@@ -167,15 +166,6 @@ export function ProductsPage({
     if (optimisticFilters.q === label) return updateUrl({ q: null });
   };
 
-  const toggleFavorite = (id: string) => {
-    setFavorites((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   useEffect(() => {
     if (!filtersOpen) return;
     const previousOverflow = document.body.style.overflow;
@@ -257,7 +247,7 @@ export function ProductsPage({
               search={optimisticFilters.q}
               setSearch={(q) => updateUrl({ q, page: 1 })}
             />
-            <ProductGrid products={products} favorites={favorites} onToggleFavorite={toggleFavorite} />
+            <ProductGrid products={products} />
             <Pagination
               currentPage={optimisticFilters.page}
               pageSize={pageSize}

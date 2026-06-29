@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 export type CartItem = {
   id: string;
@@ -27,9 +27,18 @@ type CartContextValue = {
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
+const CART_STORAGE_KEY = "nanohome.cart.items";
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(readStoredCartItems);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+    } catch {
+      // Ignore storage failures so cart interactions still work in memory.
+    }
+  }, [items]);
 
   const addItem = useCallback((newItem: AddCartItem) => {
     const qty = Math.max(1, Math.floor(newItem.quantity ?? 1));
@@ -92,4 +101,40 @@ export function useCart() {
   }
 
   return context;
+}
+
+function readStoredCartItems(): CartItem[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const stored = window.localStorage.getItem(CART_STORAGE_KEY);
+    if (stored === null) return [];
+
+    const parsed: unknown = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter(isCartItem);
+  } catch {
+    return [];
+  }
+}
+
+function isCartItem(item: unknown): item is CartItem {
+  if (typeof item !== "object" || item === null) return false;
+
+  const candidate = item as Partial<CartItem>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.name === "string" &&
+    typeof candidate.category === "string" &&
+    typeof candidate.quantity === "number" &&
+    Number.isInteger(candidate.quantity) &&
+    candidate.quantity > 0 &&
+    typeof candidate.price === "string" &&
+    (candidate.originalPrice === undefined || typeof candidate.originalPrice === "string") &&
+    (candidate.discount === undefined || typeof candidate.discount === "string") &&
+    typeof candidate.badge === "string" &&
+    (candidate.badgeTone === "sale" || candidate.badgeTone === "stock") &&
+    typeof candidate.image === "string"
+  );
 }

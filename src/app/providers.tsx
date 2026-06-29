@@ -4,6 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CartProvider } from "@/components/cart/cart-context";
+import { WishlistProvider } from "@/components/wishlist/wishlist-context";
 
 const ReactQueryDevtools = dynamic(
   () =>
@@ -28,7 +29,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <CartProvider>{children}</CartProvider>
+      <WishlistProvider>
+        <CartProvider>{children}</CartProvider>
+      </WishlistProvider>
       {process.env.NODE_ENV !== "production" && (
         <ReactQueryDevtools initialIsOpen={false} />
       )}

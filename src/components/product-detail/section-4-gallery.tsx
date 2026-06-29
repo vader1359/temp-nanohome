@@ -47,7 +47,7 @@ export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Secti
       <div className="site-shell flex flex-col gap-8">
         <h2 className="text-[24px] font-medium text-[#444]">Ảnh sản phẩm</h2>
 
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-visible">
           <div ref={sliderRef} className="keen-slider overflow-visible">
             {slides.map((src, i) => {
               const isWide = i % 3 === 1;
@@ -77,18 +77,18 @@ export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Secti
             aria-label="Previous"
             disabled={!canPrev}
             onClick={() => slider.current?.prev()}
-            className="absolute left-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
+            className="absolute left-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
           >
-            <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
+            <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
           </button>
           <button
             type="button"
             aria-label="Next"
             disabled={!canNext}
             onClick={() => slider.current?.next()}
-            className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"
+            className="absolute right-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"
           >
-            <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
+            <ChevronRight className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </div>
       </div>

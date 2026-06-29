@@ -24,7 +24,7 @@ const priceFormatter = new Intl.NumberFormat("vi-VN", {
 });
 
 function formatPrice(price: Variant["price"]): string {
-  if (price === null) {
+  if (price === null || Number(price) === 0) {
     return "Liên hệ";
   }
 
@@ -33,6 +33,12 @@ function formatPrice(price: Variant["price"]): string {
 
 function variantText(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+function hasValidDiscount(variant: Pick<Variant, "price" | "compare_at_price" | "discount_percent">): boolean {
+  const price = Number(variant.price);
+  const compareAtPrice = Number(variant.compare_at_price);
+  return price > 0 && compareAtPrice > price && variant.discount_percent !== null;
 }
 
 type VariantRawSource = { readonly raw?: unknown };
@@ -80,9 +86,13 @@ type RelatedVariant = Pick<
   Variant,
   | "id"
   | "name"
+  | "short_name"
+  | "short_name_vi"
   | "slug"
   | "slug_vi"
   | "price"
+  | "compare_at_price"
+  | "discount_percent"
   | "on_sale"
   | "in_stock"
   | "packshot_url"
@@ -100,21 +110,27 @@ type RelatedVariant = Pick<
 >;
 
 function toRelatedProduct(variant: RelatedVariant | VariantProductListItem): RelatedProduct {
+  const discounted = hasValidDiscount(variant);
+
   return {
     name: variantText(variant.name, "Sản phẩm"),
     brand: variantText(variant.brand_name_denorm, "nanoHome"),
     category: [variantText(variant.finish_vi, variantText(variant.finish)), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
     price: formatPrice(variant.price),
+    oldPrice: discounted ? formatPrice(variant.compare_at_price) : null,
+    discount: discounted ? `-${variant.discount_percent}%` : null,
     image: getVariantPackshotUrl(variant) || variant.gallery_urls[0] || "/images/p_lc2.png",
     available: variant.in_stock,
     href: variantDetailHref(variant),
-    tags: variant.on_sale ? ["Sale"] : undefined,
+    tags: variant.on_sale && discounted ? ["Sale"] : undefined,
   };
 }
 
 function buildHeroProduct(variant: Variant) {
   const gallery = getVariantImages(variant);
   const title = variantText(variant.name_vi, variantText(variant.name, "Sản phẩm"));
+  const breadcrumbTitle = variantText(variant.short_name_vi, variantText(variant.short_name, title));
+  const discounted = hasValidDiscount(variant);
 
   return {
     id: variant.id,
@@ -122,12 +138,12 @@ function buildHeroProduct(variant: Variant) {
     brand: variantText(variant.brand_name_denorm, "nanoHome"),
     brandLogoUrl: getVariantBrandLogoUrl(variant),
     title,
-    breadcrumbTitle: title,
+    breadcrumbTitle,
     category: [variantText(variant.finish_vi, variantText(variant.finish)), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
-    onSale: variant.on_sale,
-    oldPrice: variant.compare_at_price !== null ? formatPrice(variant.compare_at_price) : "",
+    onSale: variant.on_sale && discounted,
+    oldPrice: discounted ? formatPrice(variant.compare_at_price) : "",
     newPrice: formatPrice(variant.price),
-    discount: variant.discount_percent !== null ? `-${variant.discount_percent}%` : "",
+    discount: discounted ? `-${variant.discount_percent}%` : "",
     colors: COLORS,
     gallery: gallery.length > 0 ? gallery : ["/images/p_lc2.png"],
   };
@@ -144,7 +160,7 @@ function buildSpecColumns(variant: Variant) {
     [
       { label: "Kích thước", value: variantText(variant.size, "Đang cập nhật") },
       { label: "Giá", value: formatPrice(variant.price) },
-      { label: "Giảm giá", value: variant.discount_percent !== null ? `${variant.discount_percent}%` : "Không" },
+      { label: "Giảm giá", value: hasValidDiscount(variant) ? `${variant.discount_percent}%` : "Không" },
       { label: "Mã sản phẩm", value: variant.id },
     ],
   ];

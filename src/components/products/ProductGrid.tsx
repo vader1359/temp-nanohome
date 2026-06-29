@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Heart } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { useWishlist, type WishlistItem } from "@/components/wishlist/wishlist-context";
 import { cn } from "@/lib/utils";
 
 /**
@@ -40,8 +41,6 @@ export type ProductGridItem = {
 
 interface ProductGridProps {
   products: readonly ProductGridItem[];
-  favorites: Set<string>;
-  onToggleFavorite: (id: string) => void;
 }
 
 function getStatusClass(status: ProductStatusKind) {
@@ -56,8 +55,66 @@ function getStatusClass(status: ProductStatusKind) {
   return "bg-[#E6E6E6] text-nh-ink";
 }
 
-export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGridProps) {
+function toWishlistItem(product: ProductGridItem): WishlistItem {
+  return {
+    id: product.id,
+    name: product.name,
+    category: product.subtitle,
+    price: product.price,
+    originalPrice: product.oldPrice,
+    discount: product.discount,
+    badge: product.status === "sale" ? "Sale" : product.status === "in_stock" ? "Còn hàng" : "Hết hàng",
+    badgeTone: product.status === "sale" ? "sale" : product.status === "in_stock" ? "stock" : "out",
+    image: product.imageUrl,
+    href: product.href,
+  };
+}
+
+function getVisibleWishlistTarget(): HTMLElement | null {
+  const targets = Array.from(document.querySelectorAll<HTMLElement>("[data-wishlist-target]"));
+  return targets.find((target) => {
+    const rect = target.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }) ?? null;
+}
+
+function playAddToWishlistAnimation(imageSrc: string, origin: HTMLElement) {
+  const target = getVisibleWishlistTarget();
+  if (!target) return;
+
+  const originRect = origin.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const image = document.createElement("img");
+  image.src = imageSrc;
+  image.alt = "";
+  image.style.position = "fixed";
+  image.style.left = `${originRect.left}px`;
+  image.style.top = `${originRect.top}px`;
+  image.style.width = `${originRect.width}px`;
+  image.style.height = `${originRect.height}px`;
+  image.style.objectFit = "contain";
+  image.style.pointerEvents = "none";
+  image.style.zIndex = "10000";
+  document.body.appendChild(image);
+
+  const deltaX = targetRect.left + targetRect.width / 2 - (originRect.left + originRect.width / 2);
+  const deltaY = targetRect.top + targetRect.height / 2 - (originRect.top + originRect.height / 2);
+  const animation = image.animate(
+    [
+      { opacity: 0.92, transform: "translate3d(0, 0, 0) scale(1) skew(0deg)" },
+      { opacity: 0.72, transform: `translate3d(${deltaX * 0.45}px, ${deltaY * 0.35}px, 0) scale(0.72, 1.08) skew(-8deg)` },
+      { opacity: 0.2, transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.08, 0.22) skew(-14deg)` },
+    ],
+    { duration: 720, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" },
+  );
+
+  animation.onfinish = () => image.remove();
+  animation.oncancel = () => image.remove();
+}
+
+export function ProductGrid({ products }: ProductGridProps) {
   const t = useTranslations("Products");
+  const { hasItem, toggleItem } = useWishlist();
 
   if (products.length === 0) {
     return (
@@ -72,6 +129,7 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
       {products.map((product, index) => {
         const sale = product.status === "sale";
         const priorityImage = index < 6;
+        const favorited = hasItem(product.id);
 
         return (
             <article
@@ -89,14 +147,19 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
                 <button
                   className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 sm:right-1.5 sm:top-1.5"
                   type="button"
-                  onClick={() => onToggleFavorite(product.id)}
+                  onClick={(event) => {
+                    const card = event.currentTarget.closest<HTMLElement>("[data-product-card]");
+                    const imageFrame = card?.querySelector<HTMLElement>("[data-product-image-frame]");
+                    if (!favorited) playAddToWishlistAnimation(product.imageUrl, imageFrame ?? event.currentTarget);
+                    toggleItem(toWishlistItem(product));
+                  }}
                   aria-label={t("favoriteAria", { name: product.name })}
                 >
                   <Heart
                     strokeWidth={1.5}
                     className={cn(
                       "size-5 text-nh-ink transition-transform duration-200 group-hover:scale-110",
-                      favorites.has(product.id) && "fill-nh-ink",
+                      favorited && "fill-nh-red text-nh-red",
                     )}
                   />
                 </button>
@@ -113,6 +176,7 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
                   className="relative flex h-full w-full items-end justify-center overflow-hidden rounded-[6px] transition-transform duration-300 group-hover:scale-[1.03]"
                   href={product.href}
                   prefetch={priorityImage}
+                  data-product-image-frame
                 >
                   <Image
                     alt={product.name}

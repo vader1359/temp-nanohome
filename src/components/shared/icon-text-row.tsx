@@ -34,20 +34,20 @@ function IconTextRow({
   }
 
   const valueContent = value && href ? (
-    <a href={href} className="text-sm text-nh-ink hover:text-nh-accent">
+    <a href={href} className="whitespace-nowrap text-sm text-nh-ink hover:text-nh-accent">
       {value}
     </a>
   ) : (
-    value && <p className="text-sm font-medium text-nh-ink">{value}</p>
+    value && <p className="whitespace-nowrap text-sm font-medium text-nh-ink">{value}</p>
   )
 
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F5F3F0]">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full">
         {icon}
       </div>
-      <div>
-        {label && <p className="text-sm text-nh-muted">{label}</p>}
+      <div className="flex min-w-0 items-center gap-2">
+        {label && <p className="whitespace-nowrap text-sm text-nh-muted">{label}</p>}
         {valueContent}
       </div>
     </div>
