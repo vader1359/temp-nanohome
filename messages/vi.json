@@ -91,7 +91,9 @@
     "desc3": "Chất liệu tự nhiên và dáng vẻ êm ái mang đến giấc ngủ ngon và tinh thần thư thái.",
     "sub4": "Hòa hợp với thiên nhiên",
     "title4": "Ngoài trời",
-    "desc4": "Nội thất bền bỉ, thiết kế mở, kết nối mượt mà giữa trong và ngoài."
+    "desc4": "Nội thất bền bỉ, thiết kế mở, kết nối mượt mà giữa trong và ngoài.",
+    "familyRoom": "Phòng gia đình",
+    "kitchen": "Kitchen"
   },
   "Products": {
     "title": "SẢN PHẨM NỘI THẤT",
@@ -115,7 +117,17 @@
     "defaultProductName": "Sản phẩm",
     "empty": "Chưa có dữ liệu sản phẩm để hiển thị.",
     "favoriteAria": "Yêu thích {name}",
-    "viewDetailAria": "Xem chi tiết {name}"
+    "viewDetailAria": "Xem chi tiết {name}",
+    "subCategory": "Danh mục con",
+    "classifyInStock": "Đang có hàng",
+    "classifyOnSale": "Đang giảm giá",
+    "roomsHeading": "Theo phòng",
+    "sortPriority": "Đề xuất",
+    "sortPriceAsc": "Giá: Thấp → Cao",
+    "sortPriceDesc": "Giá: Cao → Thấp",
+    "sortNewest": "Mới nhất",
+    "filterWarningEmpty": "Đang cập nhật",
+    "clearAll": "Xóa tất cả"
   },
   "ProductDetail": {},
   "News": {},
