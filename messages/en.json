@@ -29,7 +29,14 @@
     "outdoor": "Outdoor",
     "accessories": "Accessories & Decor",
     "bySet": "By Set",
-    "cartCount": "1"
+    "cartCount": "1",
+    "search": "Search",
+    "wishlist": "Wishlist",
+    "cart": "Cart",
+    "account": "Account",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "cartItemsCount": "Items in cart"
   },
   "Home": {
     "title": "Home"
@@ -102,7 +109,13 @@
     "searchPlaceholder": "Search products",
     "availableLabel": "IN STOCK",
     "saleLabel": "SALE",
-    "currency": "vnd"
+    "currency": "vnd",
+    "outOfStock": "Out of stock",
+    "contactForPrice": "Contact for price",
+    "defaultProductName": "Product",
+    "empty": "No products to display.",
+    "favoriteAria": "Add {name} to favorites",
+    "viewDetailAria": "View {name} details"
   },
   "ProductDetail": {},
   "News": {},
@@ -117,9 +130,9 @@
     "title": "Join the Priority List",
     "subtitle": "Early notice of rare pieces, Pre-Loved drops, and private event invitations.",
     "emailLabel": "Your Email",
-    "emailPlaceholder": "nhập email",
+    "emailPlaceholder": "Enter your email",
     "phoneLabel": "Your Phone",
-    "phonePlaceholder": "nhập số điện thoại",
+    "phonePlaceholder": "Enter your phone number",
     "cta": "Book an Appointment"
   },
   "Designers": {},

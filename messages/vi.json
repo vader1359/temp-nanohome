@@ -29,7 +29,14 @@
     "outdoor": "Ngoài Trời",
     "accessories": "Phụ kiện & trang trí",
     "bySet": "Theo bộ",
-    "cartCount": "1"
+    "cartCount": "1",
+    "search": "Tìm kiếm",
+    "wishlist": "Yêu thích",
+    "cart": "Giỏ hàng",
+    "account": "Tài khoản",
+    "openMenu": "Mở menu",
+    "closeMenu": "Đóng menu",
+    "cartItemsCount": "Số lượng trong giỏ hàng"
   },
   "Home": {
     "title": "Trang chủ"
@@ -102,7 +109,13 @@
     "searchPlaceholder": "Tìm kiếm sản phẩm",
     "availableLabel": "ĐANG CÓ HÀNG",
     "saleLabel": "SALE",
-    "currency": "vnđ"
+    "currency": "vnđ",
+    "outOfStock": "Hết hàng",
+    "contactForPrice": "Liên hệ",
+    "defaultProductName": "Sản phẩm",
+    "empty": "Chưa có dữ liệu sản phẩm để hiển thị.",
+    "favoriteAria": "Yêu thích {name}",
+    "viewDetailAria": "Xem chi tiết {name}"
   },
   "ProductDetail": {},
   "News": {},

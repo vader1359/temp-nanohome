@@ -3,9 +3,10 @@ import { describe, expect, it } from "vitest";
 import { isSupportedLocale, routing } from "./routing";
 
 describe("i18n routing", () => {
-  it("accepts only configured Vietnamese and English locales", () => {
+  it("accepts only configured Vietnamese, English, and Korean locales", () => {
     expect(isSupportedLocale("vi")).toBe(true);
     expect(isSupportedLocale("en")).toBe(true);
+    expect(isSupportedLocale("ko")).toBe(true);
     expect(isSupportedLocale("de")).toBe(false);
     expect(isSupportedLocale(undefined)).toBe(false);
   });
