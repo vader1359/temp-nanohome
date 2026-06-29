@@ -4,16 +4,22 @@ import Image from "next/image";
 import { Heart } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { type ProductGridItem } from "@/components/products/ProductGrid";
+import { type ProductGridItem, type ProductStatusKind } from "@/components/products/ProductGrid";
 
 export type { ProductGridItem } from "@/components/products/ProductGrid";
 
-function getStatusClass(status: string) {
-  if (status === "SALE") {
+const STATUS_LABEL: Record<ProductStatusKind, string> = {
+  in_stock: "CÓ SẴN",
+  out_of_stock: "HẾT HÀNG",
+  sale: "SALE",
+};
+
+function getStatusClass(status: ProductStatusKind) {
+  if (status === "sale") {
     return "bg-nh-red text-white";
   }
 
-  if (status === "CÓ SẴN") {
+  if (status === "in_stock") {
     return "bg-nh-green text-white";
   }
 
@@ -29,7 +35,7 @@ export function ProductCard({
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
 }>) {
-  const sale = product.status === "SALE";
+  const sale = product.status === "sale";
 
   return (
     <article className="group flex min-w-0 flex-col gap-4 bg-white p-2 sm:gap-6 sm:p-4">
@@ -53,7 +59,7 @@ export function ProductCard({
             getStatusClass(product.status),
           )}
         >
-          {product.status}
+          {STATUS_LABEL[product.status]}
         </span>
         <Link
           aria-label={`Xem chi tiết ${product.name}`}

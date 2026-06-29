@@ -39,6 +39,7 @@ const STATUS_LABEL_KEY: Record<ProductStatusKind, "inStock" | "outOfStock" | "sa
 export type ProductGridItem = {
   id: string;
   brand: string;
+  brandLogoUrl?: string | null;
   name: string;
   subtitle: string;
   status: ProductStatusKind;

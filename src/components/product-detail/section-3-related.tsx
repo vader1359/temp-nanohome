@@ -18,7 +18,7 @@ function toProductGridItem(product: RelatedProduct, index: number): ProductGridI
     brand: product.brand,
     name: product.name,
     subtitle: product.category,
-    status: product.available ? "CÓ SẴN" : "HẾT HÀNG",
+    status: product.available ? "in_stock" : "out_of_stock",
     imageUrl: product.image,
     href: product.href ?? "#",
     oldPrice: null,

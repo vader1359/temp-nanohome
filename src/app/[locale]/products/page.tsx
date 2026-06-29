@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ProductsPage } from "@/components/products/products-page";
 import type { ProductGridItem, ProductStatusKind } from "@/components/products/ProductGrid";
+import { getBrands } from "@/lib/queries/brands";
 import { getVariantProducts, type VariantProductListItem } from "@/lib/queries/products";
 import { variantDetailHref } from "@/lib/queries/variant-url";
 import type { Variant } from "@/types/db";
@@ -112,8 +113,21 @@ export default async function ProductsRoute({ params }: PageProps) {
     };
   }
 
-  const variants = await getVariantProducts({ pageSize: 24 });
+  const [variants, brands] = await Promise.all([
+    getVariantProducts({ pageSize: 24 }),
+    getBrands(),
+  ]);
+  const brandById = new Map(brands.map((brand) => [brand.id, brand]));
   const products = variants.map(variantToGridItem);
 
-  return <ProductsPage products={products} />;
+  return (
+    <ProductsPage
+      brands={brands.map(({ id, logo_url, name }) => ({ id, logoUrl: logo_url, name }))}
+      products={products.map((product, index) => ({
+        ...product,
+        brand: brandById.get(variants[index]?.brand_id ?? "")?.name ?? product.brand,
+        brandLogoUrl: brandById.get(variants[index]?.brand_id ?? "")?.logo_url ?? null,
+      }))}
+    />
+  );
 }

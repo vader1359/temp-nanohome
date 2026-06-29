@@ -18,6 +18,7 @@ export type VariantProductListItem = Pick<
   Variant,
   | "id"
   | "name"
+  | "name_vi"
   | "slug"
   | "slug_vi"
   | "price"
@@ -32,10 +33,11 @@ export type VariantProductListItem = Pick<
   | "size"
   | "raw"
   | "product_id"
+  | "brand_id"
 >;
 
 const VARIANT_PRODUCT_LIST_COLUMNS =
-  "id,name,slug,slug_vi,price,compare_at_price,discount_percent,on_sale,in_stock,packshot_url,gallery_urls,finish,finish_vi,size,raw,product_id";
+  "id,name,name_vi,slug,slug_vi,price,compare_at_price,discount_percent,on_sale,in_stock,packshot_url,gallery_urls,finish,finish_vi,size,raw,product_id,brand_id";
 
 export function productRange(page = 1, pageSize = 24): readonly [number, number] {
   if (!Number.isInteger(page) || !Number.isInteger(pageSize) || page < 1 || pageSize < 1) {
