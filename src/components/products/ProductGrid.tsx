@@ -23,7 +23,10 @@ export type ProductGridItem = {
   id: string;
   brand: string;
   brandLogoUrl?: string | null;
+  category?: string;
   name: string;
+  rooms?: readonly string[];
+  subCategory?: string;
   subtitle: string;
   status: ProductStatusKind;
   imageUrl: string;
@@ -72,8 +75,15 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
             <article
               className="group flex min-w-0 flex-col gap-8 bg-white p-4"
               key={product.id}
+              data-product-brand={product.brand}
+              data-product-card=""
+              data-product-category={product.category ?? ""}
+              data-product-name={product.name}
+              data-product-rooms={(product.rooms ?? []).join("|")}
+              data-product-status={product.status}
+              data-product-subcategory={product.subCategory ?? ""}
             >
-              <div className="relative flex aspect-[4/3] w-full items-end justify-center bg-white px-6 pb-8 pt-14">
+              <div className="relative flex aspect-[3/4] w-full items-end justify-center bg-white px-4 pb-6 pt-12 sm:px-5 sm:pb-8 sm:pt-14">
                 <button
                   className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 sm:right-1.5 sm:top-1.5"
                   type="button"
@@ -105,7 +115,7 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
                     alt={product.name}
                     className="object-contain object-bottom"
                     fill
-                    sizes="(min-width: 1280px) 300px, (min-width: 640px) 45vw, 90vw"
+                    sizes="(min-width: 1280px) 360px, (min-width: 640px) 45vw, 90vw"
                     src={product.imageUrl}
                   />
                 </Link>
@@ -127,7 +137,7 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
                     {product.brand}
                   </div>
                 )}
-              <h3 className="line-clamp-2 text-[13px] font-normal leading-5 text-nh-ink sm:text-[16px] sm:leading-6">
+              <h3 className="line-clamp-2 text-balance text-[13px] font-normal leading-5 text-nh-ink sm:text-[16px] sm:leading-6">
                 <Link className="transition-colors hover:text-nh-red" href={product.href}>
                   {product.name}
                 </Link>
