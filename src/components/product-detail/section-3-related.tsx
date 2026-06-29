@@ -49,7 +49,7 @@ export function Section3Related({ products = fallbackRelatedSet }: Section3Relat
     },
   });
 
-  const maxIdx = slider.current?.track.details.maxIdx ?? 0;
+  const maxIdx = slider.current?.track.details?.maxIdx ?? 0;
   const canPrev = loaded && currentSlide > 0;
   const canNext = loaded && currentSlide < maxIdx;
 

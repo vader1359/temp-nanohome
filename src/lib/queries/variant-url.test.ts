@@ -4,14 +4,14 @@ import { variantDetailHref } from "./variant-url";
 
 describe("variantDetailHref", () => {
   it("uses the Vietnamese slug when it exists", () => {
-    expect(variantDetailHref({ id: "variant-1", slug: "english-slug", slug_vi: "ghe-viet" })).toBe("/san-pham/ghe-viet");
+    expect(variantDetailHref({ id: "variant-1", slug: "english-slug", slug_vi: "ghe-viet" })).toBe("/products/ghe-viet");
   });
 
   it("falls back to the default slug", () => {
-    expect(variantDetailHref({ id: "variant-1", slug: "english-slug", slug_vi: null })).toBe("/san-pham/english-slug");
+    expect(variantDetailHref({ id: "variant-1", slug: "english-slug", slug_vi: null })).toBe("/products/english-slug");
   });
 
   it("falls back to the variant id", () => {
-    expect(variantDetailHref({ id: "variant-1", slug: null, slug_vi: null })).toBe("/san-pham/variant-1");
+    expect(variantDetailHref({ id: "variant-1", slug: null, slug_vi: null })).toBe("/products/variant-1");
   });
 });

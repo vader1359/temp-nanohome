@@ -48,7 +48,7 @@ export function Section6Recommended({ products = fallbackRecommended }: Section6
     },
   });
 
-  const maxIdx = slider.current?.track.details.maxIdx ?? 0;
+  const maxIdx = slider.current?.track.details?.maxIdx ?? 0;
   const canPrev = loaded && currentSlide > 0;
   const canNext = loaded && currentSlide < maxIdx;
 

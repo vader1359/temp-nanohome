@@ -6,5 +6,5 @@ function variantText(value: unknown, fallback = ""): string {
 
 export function variantDetailHref(variant: Pick<Variant, "id" | "slug" | "slug_vi">): string {
   const detailSlug = variantText(variant.slug_vi, variantText(variant.slug, variant.id));
-  return `/san-pham/${encodeURIComponent(detailSlug)}`;
+  return `/products/${encodeURIComponent(detailSlug)}`;
 }

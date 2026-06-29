@@ -6,7 +6,7 @@ Pages tested:
 
 - `/vi`
 - `/vi/products`
-- `/vi/san-pham/ghe-palissade-ottoman-b%E1%BA%B1ng-thep-xam-tr%E1%BA%AFng-sky-grey`
+- `/vi/products/ghe-palissade-ottoman-b%E1%BA%B1ng-thep-xam-tr%E1%BA%AFng-sky-grey`
 
 Viewports tested: `375x812`, `768x1024`, and `1440x900`.
 
