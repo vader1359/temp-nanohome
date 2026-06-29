@@ -2,29 +2,54 @@
 
 import { useState } from "react";
 import { ChevronDown, Heart, Menu, Search, ShoppingCart, User, X } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
-const SUBNAV_LEFT = [
-  "nanoHome Nội Thất",
-  "nanoHome Chiếu Sáng",
-  "nanoHome Pre - Love",
+type HeaderKey =
+  | "brandFurniture"
+  | "brandLighting"
+  | "brandPreLove"
+  | "showrooms"
+  | "about"
+  | "news"
+  | "contact"
+  | "signIn"
+  | "products"
+  | "livingRoom"
+  | "diningRoom"
+  | "bedroom"
+  | "workspace"
+  | "outdoor"
+  | "accessories"
+  | "bySet";
+
+const SUBNAV_LEFT_KEYS: readonly HeaderKey[] = [
+  "brandFurniture",
+  "brandLighting",
+  "brandPreLove",
 ];
 
-const SUBNAV_RIGHT = ["Về chúng tôi", "Tin tức", "Liên hệ", "Đăng nhập"];
+const SUBNAV_RIGHT_KEYS: readonly HeaderKey[] = [
+  "about",
+  "news",
+  "contact",
+  "signIn",
+];
 
-const CATEGORIES = [
-  "Sản phẩm",
-  "Phòng khách",
-  "Phòng Ăn",
-  "Phòng Ngủ",
-  "Không Gian Làm Việc",
-  "Ngoài Trời",
-  "Phụ kiện & trang trí",
-  "Theo bộ",
+const CATEGORY_KEYS: readonly HeaderKey[] = [
+  "products",
+  "livingRoom",
+  "diningRoom",
+  "bedroom",
+  "workspace",
+  "outdoor",
+  "accessories",
+  "bySet",
 ];
 
 export function CatalogHeader() {
-  const [locale, setLocale] = useState<"VN" | "EN">("VN");
+  const t = useTranslations("Header");
+  const locale = useLocale();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
@@ -32,28 +57,28 @@ export function CatalogHeader() {
       {/* Top subnav row — desktop only */}
       <div className="hidden w-full items-center justify-between gap-8 lg:flex">
         <nav className="flex items-center gap-5" aria-label="Sub navigation">
-          {SUBNAV_LEFT.map((label) => (
+          {SUBNAV_LEFT_KEYS.map((key) => (
             <span
               className="text-[12px] font-normal leading-[18px] text-nh-muted"
-              key={label}
+              key={key}
             >
-              {label}
+              {t(key)}
             </span>
           ))}
         </nav>
         <nav className="flex items-center gap-5" aria-label="Utility navigation">
           <span className="flex items-center gap-1">
             <span className="text-[12px] font-normal leading-[18px] text-nh-muted">
-              Showrooms
+              {t("showrooms")}
             </span>
             <ChevronDown className="size-3 text-nh-icon-gray" />
           </span>
-          {SUBNAV_RIGHT.map((label) => (
+          {SUBNAV_RIGHT_KEYS.map((key) => (
             <span
               className="text-[12px] font-normal leading-[18px] text-nh-muted"
-              key={label}
+              key={key}
             >
-              {label}
+              {t(key)}
             </span>
           ))}
         </nav>
@@ -67,7 +92,7 @@ export function CatalogHeader() {
         {/* Mobile hamburger — left side */}
         <button
           type="button"
-          aria-label={drawerOpen ? "Đóng menu" : "Mở menu"}
+          aria-label={drawerOpen ? t("closeMenu") : t("openMenu")}
           className="flex size-8 shrink-0 items-center justify-center text-nh-ink lg:hidden"
           onClick={() => setDrawerOpen((prev) => !prev)}
         >
@@ -88,14 +113,14 @@ export function CatalogHeader() {
           <button
             className="hidden text-nh-ink transition-opacity hover:opacity-70 sm:block"
             type="button"
-            aria-label="Tìm kiếm"
+            aria-label={t("search")}
           >
             <Search className="size-5" />
           </button>
           <button
             className="hidden text-nh-ink transition-opacity hover:opacity-70 sm:block"
             type="button"
-            aria-label="Yêu thích"
+            aria-label={t("wishlist")}
           >
             <Heart className="size-5" />
           </button>
@@ -103,14 +128,14 @@ export function CatalogHeader() {
             <button
               className="text-nh-ink transition-opacity hover:opacity-70"
               type="button"
-              aria-label="Giỏ hàng"
+              aria-label={t("cart")}
             >
               <ShoppingCart className="size-5" />
             </button>
             {/* Cart badge */}
             <span
               className="absolute -right-2 -top-2 flex size-[18px] items-center justify-center rounded-full border-[0.5px] border-white bg-nh-red text-[10px] font-normal leading-[16px] text-white"
-              aria-label="Số lượng trong giỏ hàng"
+              aria-label={t("cartItemsCount")}
             >
               1
             </span>
@@ -118,51 +143,60 @@ export function CatalogHeader() {
           <button
             className="hidden text-nh-ink transition-opacity hover:opacity-70 sm:block"
             type="button"
-            aria-label="Tài khoản"
+            aria-label={t("account")}
           >
             <User className="size-5" />
           </button>
-          {/* VN | EN toggle */}
+          {/* VN | EN | KO toggle */}
           <div className="hidden items-center gap-1.5 sm:flex">
-            <button
+            <span
               className={cn(
                 "text-[12px] font-normal leading-[18px] transition-opacity",
-                locale === "VN"
+                locale === "vi"
                   ? "text-nh-ink"
-                  : "text-nh-muted hover:text-nh-ink"
+                  : "text-nh-muted hover:text-nh-ink",
               )}
-              onClick={() => setLocale("VN")}
-              type="button"
             >
               VN
-            </button>
+            </span>
             <span className="text-[12px] font-normal leading-[18px] text-nh-ink">
               |
             </span>
-            <button
+            <span
               className={cn(
                 "text-[12px] font-normal leading-[18px] transition-opacity",
-                locale === "EN"
+                locale === "en"
                   ? "text-nh-ink"
-                  : "text-nh-muted hover:text-nh-ink"
+                  : "text-nh-muted hover:text-nh-ink",
               )}
-              onClick={() => setLocale("EN")}
-              type="button"
             >
               EN
-            </button>
+            </span>
+            <span className="text-[12px] font-normal leading-[18px] text-nh-ink">
+              |
+            </span>
+            <span
+              className={cn(
+                "text-[12px] font-normal leading-[18px] transition-opacity",
+                locale === "ko"
+                  ? "text-nh-ink"
+                  : "text-nh-muted hover:text-nh-ink",
+              )}
+            >
+              KO
+            </span>
           </div>
         </div>
       </div>
 
       {/* Desktop category nav row */}
       <nav className="hidden w-full items-center gap-6 lg:flex" aria-label="Categories">
-        {CATEGORIES.map((label) => (
+        {CATEGORY_KEYS.map((key) => (
           <span
             className="text-[14px] font-medium uppercase leading-5 text-nh-ink"
-            key={label}
+            key={key}
           >
-            {label}
+            {t(key)}
           </span>
         ))}
       </nav>
@@ -175,36 +209,38 @@ export function CatalogHeader() {
           {/* Subnav — left */}
           <div className="flex items-center justify-between border-b border-nh-border pb-4 sm:hidden">
             <div className="flex items-center gap-5 text-nh-ink">
-              <button type="button" aria-label="Tìm kiếm"><Search className="size-5" /></button>
-              <button type="button" aria-label="Yêu thích"><Heart className="size-5" /></button>
-              <button type="button" aria-label="Tài khoản"><User className="size-5" /></button>
+              <button type="button" aria-label={t("search")}><Search className="size-5" /></button>
+              <button type="button" aria-label={t("wishlist")}><Heart className="size-5" /></button>
+              <button type="button" aria-label={t("account")}><User className="size-5" /></button>
             </div>
             <div className="flex items-center gap-1.5 text-[12px] leading-[18px]">
-              <button type="button" onClick={() => setLocale("VN")} className={locale === "VN" ? "text-nh-ink" : "text-nh-muted"}>VN</button>
+              <span className={locale === "vi" ? "text-nh-ink" : "text-nh-muted"}>VN</span>
               <span>|</span>
-              <button type="button" onClick={() => setLocale("EN")} className={locale === "EN" ? "text-nh-ink" : "text-nh-muted"}>EN</button>
+              <span className={locale === "en" ? "text-nh-ink" : "text-nh-muted"}>EN</span>
+              <span>|</span>
+              <span className={locale === "ko" ? "text-nh-ink" : "text-nh-muted"}>KO</span>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 border-b border-nh-border py-4 sm:pt-0">
-            {SUBNAV_LEFT.map((label) => (
+            {SUBNAV_LEFT_KEYS.map((key) => (
               <span
-                key={label}
+                key={key}
                 className="text-[13px] font-normal leading-[18px] text-nh-muted"
               >
-                {label}
+                {t(key)}
               </span>
             ))}
           </div>
 
           {/* Category nav */}
           <nav className="flex flex-col gap-3 border-b border-nh-border py-4" aria-label="Categories">
-            {CATEGORIES.map((label) => (
+            {CATEGORY_KEYS.map((key) => (
               <span
-                key={label}
+                key={key}
                 className="text-sm font-medium uppercase leading-5 text-nh-ink"
               >
-                {label}
+                {t(key)}
               </span>
             ))}
           </nav>
@@ -212,15 +248,15 @@ export function CatalogHeader() {
           {/* Subnav — right */}
           <div className="flex flex-col gap-3 pt-4">
             <span className="flex items-center gap-1 text-[13px] leading-[18px] text-nh-muted">
-              Showrooms
+              {t("showrooms")}
               <ChevronDown className="size-3 text-nh-icon-gray" />
             </span>
-            {SUBNAV_RIGHT.map((label) => (
+            {SUBNAV_RIGHT_KEYS.map((key) => (
               <span
-                key={label}
+                key={key}
                 className="text-[13px] leading-[18px] text-nh-muted"
               >
-                {label}
+                {t(key)}
               </span>
             ))}
           </div>

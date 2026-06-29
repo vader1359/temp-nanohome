@@ -54,7 +54,7 @@ export function Header() {
           <button aria-label="Wishlist"><Heart className="size-5 stroke-[1.4]" /></button>
           <button aria-label="Cart" className="relative"><ShoppingCart className="size-5 stroke-[1.4]" /><span className="absolute -bottom-1 -left-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">1</span></button>
           <button aria-label="Account"><UserRound className="size-5 stroke-[1.4]" /></button>
-          <div className="flex gap-1.5 text-xs"><span className={locale === "vi" ? "text-[#111]" : "text-[#999]"}>VN</span><span>|</span><span className={locale === "en" ? "text-[#111]" : "text-[#999]"}>EN</span></div>
+          <div className="flex gap-1.5 text-xs"><span className={locale === "vi" ? "text-[#111]" : "text-[#999]"}>VN</span><span>|</span><span className={locale === "en" ? "text-[#111]" : "text-[#999]"}>EN</span><span>|</span><span className={locale === "ko" ? "text-[#111]" : "text-[#999]"}>KO</span></div>
         </div>
       </div>
 
@@ -70,7 +70,7 @@ export function Header() {
               <button aria-label="Wishlist"><Heart className="size-5 stroke-[1.4]" /></button>
               <button aria-label="Account"><UserRound className="size-5 stroke-[1.4]" /></button>
             </div>
-            <div className="flex gap-1.5 text-xs"><span className={locale === "vi" ? "text-[#111]" : "text-[#999]"}>VN</span><span>|</span><span className={locale === "en" ? "text-[#111]" : "text-[#999]"}>EN</span></div>
+            <div className="flex gap-1.5 text-xs"><span className={locale === "vi" ? "text-[#111]" : "text-[#999]"}>VN</span><span>|</span><span className={locale === "en" ? "text-[#111]" : "text-[#999]"}>EN</span><span>|</span><span className={locale === "ko" ? "text-[#111]" : "text-[#999]"}>KO</span></div>
           </div>
           {/* Category nav */}
           <nav className="flex flex-col gap-3 border-b border-[#cfc9c0] py-4">

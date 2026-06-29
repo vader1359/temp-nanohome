@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { Heart } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
@@ -22,12 +23,25 @@ const SWATCHES = [
   "#C23B4F",
 ];
 
+/**
+ * Stable, locale-agnostic status kinds. The user-facing label is rendered
+ * via the `Products` i18n namespace, so the badge color comparison must use
+ * these enum values — never Vietnamese literal strings.
+ */
+export type ProductStatusKind = "in_stock" | "out_of_stock" | "sale";
+
+const STATUS_LABEL_KEY: Record<ProductStatusKind, "inStock" | "outOfStock" | "saleLabel"> = {
+  in_stock: "inStock",
+  out_of_stock: "outOfStock",
+  sale: "saleLabel",
+};
+
 export type ProductGridItem = {
   id: string;
   brand: string;
   name: string;
   subtitle: string;
-  status: "ĐANG CÓ HÀNG" | "HẾT HÀNG" | "SALE";
+  status: ProductStatusKind;
   imageUrl: string;
   href: string;
   oldPrice: string | null;
@@ -42,12 +56,12 @@ interface ProductGridProps {
   onToggleFavorite: (id: string) => void;
 }
 
-function getStatusClass(status: string) {
-  if (status === "SALE") {
+function getStatusClass(status: ProductStatusKind) {
+  if (status === "sale") {
     return "bg-nh-red text-white";
   }
 
-  if (status === "ĐANG CÓ HÀNG") {
+  if (status === "in_stock") {
     return "bg-nh-green text-white";
   }
 
@@ -55,10 +69,12 @@ function getStatusClass(status: string) {
 }
 
 export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGridProps) {
+  const t = useTranslations("Products");
+
   if (products.length === 0) {
     return (
       <section className="rounded border border-nh-border bg-white p-8 text-center text-sm text-nh-muted">
-        Chưa có dữ liệu sản phẩm để hiển thị.
+        {t("empty")}
       </section>
     );
   }
@@ -66,7 +82,7 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
   return (
     <section className="grid grid-cols-1 gap-9 sm:grid-cols-2 xl:grid-cols-3">
       {products.map((product) => {
-        const sale = product.status === "SALE";
+        const sale = product.status === "sale";
 
         return (
           <article
@@ -78,7 +94,7 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
                 className="absolute right-4 top-4 z-10 flex size-8 items-center justify-center rounded-full border border-nh-border bg-white opacity-100 transition-opacity duration-200 group-hover:shadow-sm"
                 type="button"
                 onClick={() => onToggleFavorite(product.id)}
-                aria-label={`Yêu thích ${product.name}`}
+                aria-label={t("favoriteAria", { name: product.name })}
               >
                 <Heart
                   className={cn(
@@ -93,10 +109,10 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
                   getStatusClass(product.status),
                 )}
               >
-                {product.status}
+                {t(STATUS_LABEL_KEY[product.status])}
               </span>
               <Link
-                aria-label={`Xem chi tiết ${product.name}`}
+                aria-label={t("viewDetailAria", { name: product.name })}
                 className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[6px] transition-transform duration-300 group-hover:scale-[1.03]"
                 href={product.href}
               >
