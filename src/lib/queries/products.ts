@@ -34,10 +34,19 @@ export type VariantProductListItem = Pick<
   | "raw"
   | "product_id"
   | "brand_id"
+  | "brand_cldr_logo"
+  | "brand_name_denorm"
+  | "category_id"
+  | "media_lifestyle_1"
+  | "media_lifestyle_2"
+  | "cldr_media_lifestyle_1"
+  | "cldr_media_lifestyle_2"
+  | "media_long"
+  | "media_closeup"
 >;
 
 const VARIANT_PRODUCT_LIST_COLUMNS =
-  "id,name,name_vi,slug,slug_vi,price,compare_at_price,discount_percent,on_sale,in_stock,packshot_url,gallery_urls,finish,finish_vi,size,raw,product_id,brand_id";
+  "id,name,name_vi,slug,slug_vi,price,compare_at_price,discount_percent,on_sale,in_stock,packshot_url,gallery_urls,finish,finish_vi,size,raw,product_id,brand_id,brand_cldr_logo,brand_name_denorm,category_id,media_lifestyle_1,media_lifestyle_2,cldr_media_lifestyle_1,cldr_media_lifestyle_2,media_long,media_closeup";
 
 export function productRange(page = 1, pageSize = 24): readonly [number, number] {
   if (!Number.isInteger(page) || !Number.isInteger(pageSize) || page < 1 || pageSize < 1) {
@@ -100,7 +109,12 @@ export async function getProducts(options: ProductListOptions = {}): Promise<rea
   return data ?? [];
 }
 
-export async function getVariantProducts(options: Pick<ProductListOptions, "page" | "pageSize" | "search" | "sort"> = {}): Promise<readonly VariantProductListItem[]> {
+export type VariantProductQueryOptions = Pick<ProductListOptions, "page" | "pageSize" | "search" | "sort"> & {
+  readonly category?: string | null;
+  readonly excludeId?: string;
+};
+
+export async function getVariantProducts(options: VariantProductQueryOptions = {}): Promise<readonly VariantProductListItem[]> {
   const supabase = await createClient();
   const [from, to] = productRange(options.page, options.pageSize);
   let query = supabase
@@ -108,6 +122,14 @@ export async function getVariantProducts(options: Pick<ProductListOptions, "page
     .select(VARIANT_PRODUCT_LIST_COLUMNS)
     .eq("validated", true)
     .eq("approved", true);
+
+  if (options.category !== undefined && options.category !== null) {
+    query = query.eq("category_id", options.category);
+  }
+
+  if (options.excludeId !== undefined) {
+    query = query.neq("id", options.excludeId);
+  }
 
   if (options.search !== undefined && options.search.trim() !== "") {
     query = query.ilike("name", `%${options.search.trim()}%`);

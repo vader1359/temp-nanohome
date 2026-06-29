@@ -60,51 +60,53 @@ export function Footer() {
           </div>
         ))}
 
-        <div className="flex flex-col gap-5">
-          <h4 className="text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
-            {t("col6Heading")}
-          </h4>
-          <ul className="flex flex-col gap-4">
-            {contacts.map(({ icon: Icon, key }) => (
-              <li key={key} className="flex items-center gap-2 text-sm font-normal leading-[21px] text-[#F1F1F1]">
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>{t(key)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <div className="col-span-2 grid grid-cols-1 gap-8 lg:contents">
+          <div className="flex min-w-0 flex-col gap-5 md:max-w-[280px]">
+            <h4 className="text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
+              {t("col5Heading")}
+            </h4>
+            <ul className="flex flex-col gap-5">
+              {showrooms.map((showroom, index) => {
+                const isOpen = openShowroom === index;
 
-        <div className="flex flex-col gap-5 md:max-w-[280px]">
-          <h4 className="text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
-            {t("col5Heading")}
-          </h4>
-          <ul className="flex flex-col gap-5">
-            {showrooms.map((showroom, index) => {
-              const isOpen = openShowroom === index;
+                return (
+                  <li key={showroom} className="flex flex-col gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setOpenShowroom(isOpen ? null : index)}
+                      className="flex w-full items-center justify-between gap-2 text-left text-sm italic leading-[22px] text-white"
+                    >
+                      <span className="min-w-0 flex-1">{t(showroom)}</span>
+                      <ChevronRight
+                        className={cn("h-4 w-4 shrink-0", isOpen ? "-rotate-90" : "rotate-90")}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    {isOpen && index === 0 ? (
+                      <div className="pl-0 text-sm font-normal leading-[22px] text-[#C1C1C1] sm:pl-6">
+                        <p>{t("showroom1Address")}</p>
+                        <p className="mt-3 italic">{t("showroom1Hours")}</p>
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
 
-              return (
-                <li key={showroom} className="flex flex-col gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setOpenShowroom(isOpen ? null : index)}
-                    className="flex w-full items-center justify-between gap-2 text-left text-sm italic leading-[22px] text-white"
-                  >
-                    <span className="min-w-0 flex-1">{t(showroom)}</span>
-                    <ChevronRight
-                      className={cn("h-4 w-4 shrink-0", isOpen ? "-rotate-90" : "rotate-90")}
-                      aria-hidden="true"
-                    />
-                  </button>
-                  {isOpen && index === 0 ? (
-                    <div className="pl-6 text-sm font-normal leading-[22px] text-[#C1C1C1]">
-                      <p>{t("showroom1Address")}</p>
-                      <p className="mt-3 italic">{t("showroom1Hours")}</p>
-                    </div>
-                  ) : null}
+          <div className="flex min-w-0 flex-col gap-5">
+            <h4 className="text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
+              {t("col6Heading")}
+            </h4>
+            <ul className="flex flex-col gap-4">
+              {contacts.map(({ icon: Icon, key }) => (
+                <li key={key} className="flex items-center gap-2 text-sm font-normal leading-[21px] text-[#F1F1F1]">
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 break-words">{t(key)}</span>
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
     </footer>

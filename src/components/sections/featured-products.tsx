@@ -3,7 +3,9 @@
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useState } from "react";
+import { useKeenSlider } from "keen-slider/react";
 import { ProductCard, type ProductGridItem } from "@/components/products/product-card";
+import "keen-slider/keen-slider.css";
 
 const lifestylePairs = [
   {
@@ -25,6 +27,23 @@ interface FeaturedProductsProps {
 export function FeaturedProducts({ products }: FeaturedProductsProps) {
   const t = useTranslations("Featured");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [slideIdx, setSlideIdx] = useState(0);
+  const [sliderLoaded, setSliderLoaded] = useState(false);
+
+  const [sliderRef, slider] = useKeenSlider<HTMLDivElement>({
+    initial: 0,
+    loop: false,
+    slideChanged(s) {
+      setSlideIdx(s.track.details.rel);
+    },
+    created() {
+      setSliderLoaded(true);
+    },
+    slides: {
+      perView: 1,
+      spacing: 12,
+    },
+  });
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -53,7 +72,70 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
           </h2>
         </div>
 
-        <div className="flex w-full flex-col gap-10 sm:gap-[60px]">
+        <div className="block md:hidden">
+          <div ref={sliderRef} className="keen-slider">
+            {products.map((product, index) => {
+              const pair = lifestylePairs[index] ?? lifestylePairs[index % lifestylePairs.length];
+
+              const lifestyle = (
+                <div className="relative aspect-[4/5] w-full overflow-hidden">
+                  <Image
+                    src={pair.lifestyleImage}
+                    alt=""
+                    fill
+                    sizes="calc(100vw - 32px)"
+                    className="object-cover"
+                  />
+                  <Image
+                    src={pair.lifestyleImage2}
+                    alt=""
+                    fill
+                    sizes="calc(100vw - 32px)"
+                    className="absolute inset-0 object-cover"
+                  />
+                </div>
+              );
+
+              const card = (
+                <div className="flex w-full items-center justify-center p-4">
+                  <div className="w-full max-w-[500px]">
+                    <ProductCard
+                      product={product}
+                      isFavorite={favorites.has(product.id)}
+                      onToggleFavorite={toggleFavorite}
+                    />
+                  </div>
+                </div>
+              );
+
+              return (
+                <div key={product.id} className="keen-slider__slide">
+                  <div className="grid w-full grid-cols-1 gap-6 overflow-hidden">
+                    {pair.reverse ? card : lifestyle}
+                    {pair.reverse ? lifestyle : card}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {sliderLoaded && products.length > 1 && (
+            <div className="mt-6 flex items-center justify-center gap-2">
+              {products.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => slider.current?.moveToIdx(idx)}
+                  aria-label={`Go to featured slide ${idx + 1}`}
+                  className={`size-1.5 rounded-full transition-colors ${
+                    slideIdx === idx ? "bg-[#111]" : "border border-[#111]/30"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="hidden w-full flex-col gap-10 sm:gap-[60px] md:flex">
           {products.map((product, index) => {
             const pair = lifestylePairs[index] ?? lifestylePairs[index % lifestylePairs.length];
 

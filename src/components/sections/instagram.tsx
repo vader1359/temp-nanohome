@@ -31,7 +31,7 @@ export function InstagramGallery() {
       setLoaded(true);
     },
     slides: {
-      perView: 2,
+      perView: 1,
       spacing: 8,
     },
     breakpoints: {
@@ -75,12 +75,12 @@ export function InstagramGallery() {
         </h2>
       </div>
 
-      <div className="relative w-full">
+      <div className="site-shell relative w-full !px-24 lg:!px-0">
         <div ref={sliderRef} className="keen-slider overflow-hidden">
           {images.map((src, i) => (
             <div
               key={src}
-              className="keen-slider__slide flex justify-center px-1.5 lg:px-2"
+              className="keen-slider__slide flex justify-center sm:px-1.5 lg:px-2"
             >
               <a
                 href="#"
@@ -110,7 +110,7 @@ export function InstagramGallery() {
               onClick={() => slider.current?.prev()}
               disabled={atStart}
               aria-label="Previous"
-              className={`absolute left-2 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#333] shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-all duration-200 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)] sm:h-12 sm:w-12 ${
+              className={`absolute left-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#333] shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-all duration-200 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)] sm:flex sm:h-12 sm:w-12 ${
                 atStart
                   ? "cursor-default opacity-0 pointer-events-none"
                   : "opacity-100"
@@ -122,7 +122,7 @@ export function InstagramGallery() {
               onClick={() => slider.current?.next()}
               disabled={atEnd}
               aria-label="Next"
-              className={`absolute right-2 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#333] shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-all duration-200 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)] sm:h-12 sm:w-12 ${
+              className={`absolute right-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#333] shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-all duration-200 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)] sm:flex sm:h-12 sm:w-12 ${
                 atEnd
                   ? "cursor-default opacity-0 pointer-events-none"
                   : "opacity-100"
@@ -131,6 +131,22 @@ export function InstagramGallery() {
               <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
             </button>
           </>
+        )}
+
+        {loaded && images.length > 1 && (
+          <div className="mt-6 flex items-center justify-center gap-2 sm:hidden">
+            {images.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => slider.current?.moveToIdx(idx)}
+                aria-label={`Go to Instagram slide ${idx + 1}`}
+                className={`size-1.5 rounded-full transition-colors ${
+                  currentSlide === idx ? "bg-[#111]" : "border border-[#111]/30"
+                }`}
+              />
+            ))}
+          </div>
         )}
       </div>
       </div>

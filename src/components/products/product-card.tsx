@@ -39,7 +39,7 @@ export function ProductCard({
 
   return (
     <article className="group flex min-w-0 flex-col gap-4 bg-white p-2 sm:gap-6 sm:p-4">
-      <div className="relative flex aspect-[4/5] w-full items-end justify-center bg-white px-2 pb-4 pt-8 sm:px-8 sm:pb-10 sm:pt-14">
+      <div className="relative flex aspect-[4/5] w-full items-end justify-center bg-white px-12 pb-16 pt-24 sm:px-8 sm:pb-10 sm:pt-14">
         <button
           className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 sm:right-1.5 sm:top-1.5"
           type="button"

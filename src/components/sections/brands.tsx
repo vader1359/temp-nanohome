@@ -42,28 +42,28 @@ export function Brands({ brands }: { brands: readonly BrandLogoItem[] }) {
   const logoBrands = brands.length > 0 ? brands : FALLBACK_BRANDS;
 
   return (
-    <section className="relative flex flex-col items-center gap-[30px] overflow-x-auto bg-white py-12 [scrollbar-width:none] sm:py-16 lg:py-20 [&::-webkit-scrollbar]:hidden">
+    <section className="flex flex-col items-center gap-[30px] bg-white py-12 sm:py-16 lg:py-20">
       <style>{`@keyframes brand-marquee { 0% { transform: translateX(0); } 100% { transform: translateX(calc(-50% - 1.75rem)); } }`}</style>
-      <div className="flex w-full flex-col items-center gap-[30px]">
       <div className="site-shell">
         <p className="text-center text-sm font-medium uppercase leading-5 text-[#111111]">
           {t("eyebrow")}
         </p>
       </div>
 
-      <div
-        className={cn(
-          "flex w-max flex-nowrap items-center gap-8 motion-safe:animate-[brand-marquee_50s_linear_infinite] lg:gap-14",
-          "text-[#111111]",
-        )}
-      >
-        {[...logoBrands, ...logoBrands].map((brand, index) => (
-          <BrandLogo key={`${brand.id}-${index}`} brand={brand} />
-        ))}
+      <div className="relative w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          className={cn(
+            "flex w-max flex-nowrap items-center gap-8 motion-safe:animate-[brand-marquee_50s_linear_infinite] lg:gap-14",
+            "text-[#111111]",
+          )}
+        >
+          {[...logoBrands, ...logoBrands].map((brand, index) => (
+            <BrandLogo key={`${brand.id}-${index}`} brand={brand} />
+          ))}
+        </div>
+        <div className="pointer-events-none absolute left-0 top-0 h-full w-8 bg-gradient-to-r from-white to-transparent lg:hidden" />
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white to-transparent lg:hidden" />
       </div>
-      </div>
-      <div className="pointer-events-none absolute left-0 top-0 h-full w-8 bg-gradient-to-r from-white to-transparent lg:hidden" />
-      <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white to-transparent lg:hidden" />
     </section>
   );
 }

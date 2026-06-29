@@ -58,7 +58,7 @@ export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Secti
                   className="keen-slider__slide"
                   style={{ minWidth: isWide ? "38%" : "24%", maxWidth: isWide ? "38%" : "24%" }}
                 >
-                  <div className="relative h-[300px] overflow-hidden rounded-md bg-transparent sm:h-[360px] lg:h-[420px]">
+                  <div className="relative h-[300px] overflow-hidden bg-transparent sm:h-[360px] lg:h-[420px]">
                     <Image
                       src={src}
                       alt={`Ảnh ${i + 1}`}

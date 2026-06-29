@@ -100,7 +100,7 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
   };
 
   return (
-    <section className="relative min-h-[465px] h-[calc((100svh-150px)*0.75)] max-h-[665px] w-full overflow-hidden lg:h-[665px]">
+    <section className="relative min-h-[280px] aspect-[3/2] w-full overflow-hidden lg:aspect-auto lg:h-[665px]">
       {/* Background layers */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -204,7 +204,7 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
         type="button"
         onClick={goToPrevious}
         aria-label="Previous slide"
-        className="absolute left-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111] sm:left-4 lg:left-8"
+        className="absolute left-2 top-1/2 z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111] sm:left-4 sm:flex lg:left-8"
       >
         <ChevronLeft className="size-4" />
       </button>
@@ -212,7 +212,7 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
         type="button"
         onClick={goToNext}
         aria-label="Next slide"
-        className="absolute right-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111] sm:right-4 lg:right-8"
+        className="absolute right-2 top-1/2 z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111] sm:right-4 sm:flex lg:right-8"
       >
         <ChevronRight className="size-4" />
       </button>
