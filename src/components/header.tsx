@@ -60,7 +60,7 @@ export function Header() {
   const submitHeaderSearch = () => {
     const value = headerSearch.trim();
     if (value.length === 0) return;
-    router.push(`${productsPath}?search=${encodeURIComponent(value)}`);
+    router.push(`${productsPath}?q=${encodeURIComponent(value)}`);
     setDrawerOpen(false);
   };
 

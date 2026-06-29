@@ -32,6 +32,8 @@ export function BrandSelector({ brandOptions, selectedBrands, toggleBrand }: Bra
                   "group flex h-7 min-w-[68px] items-center justify-center border border-nh-ink bg-transparent px-1.5 transition-colors hover:bg-nh-ink",
                   active && "bg-nh-ink",
                 )}
+                data-filter-brand=""
+                data-filter-value={brand.slug}
                 data-testid={`brand-filter-${brand.slug}`}
                 key={brand.slug}
                 type="button"

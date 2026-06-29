@@ -125,6 +125,7 @@ export function FilterSidebar({
                   <button
                     className="flex w-full items-center gap-4 text-left"
                     aria-pressed={checked}
+                    data-filter-status={item.value}
                     key={item.value}
                     type="button"
                     onClick={() => toggleStatus(item.value)}
@@ -150,6 +151,8 @@ export function FilterSidebar({
                       checked ? "text-nh-accent" : "text-nh-muted"
                     )}
                     aria-pressed={checked}
+                    data-filter-category=""
+                    data-filter-value={category.slug}
                     key={category.slug}
                     type="button"
                     onClick={() => toggleCategory(category.slug)}
@@ -173,6 +176,8 @@ export function FilterSidebar({
                         checked ? "text-nh-accent" : "text-nh-muted"
                       )}
                       aria-pressed={checked}
+                      data-filter-subcategory=""
+                      data-filter-value={subCategory.slug}
                       key={subCategory.slug}
                       type="button"
                       onClick={() => toggleSubCategory(subCategory.slug)}
@@ -197,8 +202,11 @@ export function FilterSidebar({
                         checked && "bg-nh-ink"
                       )}
                       aria-label={brand.name}
-                      aria-pressed={checked}
-                      data-testid={`brand-filter-${brand.slug}`}
+                        aria-pressed={checked}
+                        data-filter-brand=""
+                        data-filter-value={brand.slug}
+                        data-testid={`brand-filter-${brand.slug}`}
+
                       key={brand.id}
                       type="button"
                       onClick={() => toggleBrand(brand.slug)}
@@ -232,6 +240,8 @@ export function FilterSidebar({
                 return (
                   <button
                     className="inline-flex min-h-[24px] items-center gap-3 text-left"
+                    data-filter-room=""
+                    data-filter-value={room.slug}
                     key={room.slug}
                     type="button"
                     onClick={() => toggleRoom(room.slug)}

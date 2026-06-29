@@ -23,6 +23,7 @@ export type ProductGridItem = {
   id: string;
   brand: string;
   brandLogoUrl?: string | null;
+  brandSlug?: string;
   category?: string;
   name: string;
   rooms?: readonly string[];
@@ -75,7 +76,7 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
             <article
               className="group flex min-w-0 flex-col gap-8 bg-white p-4"
               key={product.id}
-              data-product-brand={product.brand}
+              data-product-brand={product.brandSlug ?? product.brand}
               data-product-card=""
               data-product-category={product.category ?? ""}
               data-product-name={product.name}

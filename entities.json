@@ -4,7 +4,8 @@
     "Expected"
   ],
   "projects": [
-    "nanohome-ecommerce"
+    "nanohome-ecommerce",
+    "Products"
   ],
   "topics": []
 }

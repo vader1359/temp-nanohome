@@ -1,4 +1,4 @@
-wing: temp_nanohome
+wing: temp_nanohome_products_filter
 rooms:
 - name: messages
   description: Files from messages/
@@ -15,6 +15,16 @@ rooms:
   keywords:
   - public
   - public
+- name: scripts
+  description: Files from scripts/
+  keywords:
+  - scripts
+  - scripts
+- name: test_results
+  description: Files from test-results/
+  keywords:
+  - test_results
+  - test-results
 - name: e2e
   description: Files from e2e/
   keywords:
