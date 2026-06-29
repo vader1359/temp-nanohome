@@ -13,11 +13,15 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export function Header() {
   const t = useTranslations("Header");
   const locale = useLocale();
+  const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [headerSearch, setHeaderSearch] = useState("");
   const topLeft = ["brandFurniture", "brandLighting", "brandPreLove"] as const;
   const topRight = ["showrooms", "about", "news", "contact", "signIn"] as const;
   const nav = [
@@ -30,6 +34,35 @@ export function Header() {
     "accessories",
     "bySet",
   ] as const;
+  const productsPath = `/${locale}/products`;
+
+  const navHref = (key: (typeof nav)[number]): string => {
+    switch (key) {
+      case "products":
+        return productsPath;
+      case "livingRoom":
+        return `${productsPath}?room=${encodeURIComponent("Phòng khách")}`;
+      case "diningRoom":
+        return `${productsPath}?room=${encodeURIComponent("Phòng ăn")}`;
+      case "bedroom":
+        return `${productsPath}?room=${encodeURIComponent("Phòng ngủ")}`;
+      case "workspace":
+        return `${productsPath}?room=${encodeURIComponent("Không gian làm việc")}`;
+      case "outdoor":
+        return `${productsPath}?category=${encodeURIComponent("Nội thất ngoài trời")}`;
+      case "accessories":
+        return `${productsPath}?category=${encodeURIComponent("Trang trí")}`;
+      case "bySet":
+        return productsPath;
+    }
+  };
+
+  const submitHeaderSearch = () => {
+    const value = headerSearch.trim();
+    if (value.length === 0) return;
+    router.push(`${productsPath}?search=${encodeURIComponent(value)}`);
+    setDrawerOpen(false);
+  };
 
   return (
     <header className="relative z-30 min-h-[80px] bg-white lg:h-[150px]">
@@ -108,7 +141,7 @@ export function Header() {
             {nav.map((key) => (
               <Link
                 key={key}
-                href="#"
+                href={navHref(key)}
                 className="whitespace-nowrap text-sm font-normal uppercase leading-5"
               >
                 {t(key)}
@@ -118,9 +151,29 @@ export function Header() {
 
           {/* Desktop full icons row */}
           <div className="hidden lg:flex lg:items-center lg:gap-5 lg:ml-auto">
-            <button aria-label="Search">
-              <Search className="size-5 stroke-[1.4]" />
-            </button>
+            {searchOpen ? (
+              <form
+                className="flex items-center gap-2 border-b border-[#cfc9c0]"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitHeaderSearch();
+                }}
+              >
+                <input
+                  aria-label="Header product search"
+                  className="w-[180px] bg-transparent text-xs outline-none"
+                  value={headerSearch}
+                  onChange={(event) => setHeaderSearch(event.target.value)}
+                />
+                <button aria-label="Submit search" type="submit">
+                  <Search className="size-5 stroke-[1.4]" />
+                </button>
+              </form>
+            ) : (
+              <button aria-label="Search" type="button" onClick={() => setSearchOpen(true)}>
+                <Search className="size-5 stroke-[1.4]" />
+              </button>
+            )}
             <button aria-label="Wishlist">
               <Heart className="size-5 stroke-[1.4]" />
             </button>
@@ -157,7 +210,7 @@ export function Header() {
             {/* Icon bar + locale */}
             <div className="flex items-center justify-between border-b border-[#cfc9c0] pb-4">
               <div className="flex items-center gap-5 text-[#111]">
-                <button aria-label="Search">
+                <button aria-label="Search" type="button" onClick={() => setSearchOpen((open) => !open)}>
                   <Search className="size-5 stroke-[1.4]" />
                 </button>
                 <button aria-label="Wishlist">
@@ -188,11 +241,27 @@ export function Header() {
               </div>
             </div>
             {/* Category nav */}
-            <nav className="flex flex-col gap-3 border-b border-[#cfc9c0] py-4">
+              {searchOpen ? (
+                <form
+                  className="border-b border-[#cfc9c0] py-3"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    submitHeaderSearch();
+                  }}
+                >
+                  <input
+                    aria-label="Mobile product search"
+                    className="w-full bg-transparent text-sm outline-none"
+                    value={headerSearch}
+                    onChange={(event) => setHeaderSearch(event.target.value)}
+                  />
+                </form>
+              ) : null}
+              <nav className="flex flex-col gap-3 border-b border-[#cfc9c0] py-4">
               {nav.map((key) => (
                 <Link
                   key={key}
-                  href="#"
+                  href={navHref(key)}
                   onClick={() => setDrawerOpen(false)}
                   className="text-sm font-normal uppercase leading-5 text-[#111]"
                 >

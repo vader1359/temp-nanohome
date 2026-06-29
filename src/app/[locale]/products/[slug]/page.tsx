@@ -159,7 +159,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
   const [siblingVariants, similarCategoryVariants, recommendedVariants] = await Promise.all([
     variant.product_id !== null ? getVariantsByProductId(variant.product_id) : Promise.resolve([]),
-    getVariantProducts({ category: variant.category_id, excludeId: variant.id, pageSize: 8 }),
+    getVariantProducts({ categoryId: variant.category_id, excludeId: variant.id, pageSize: 8 }),
     getVariantProducts({ excludeId: variant.id, pageSize: 4 }),
   ]);
   const relatedSource = similarCategoryVariants.length > 0 ? similarCategoryVariants : siblingVariants.filter((item) => item.id !== variant.id);
