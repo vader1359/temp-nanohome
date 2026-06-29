@@ -74,7 +74,7 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
 
         return (
             <article
-              className="group flex min-w-0 flex-col gap-8 bg-white p-4"
+              className="group flex aspect-[4/6] min-w-0 flex-col gap-4 overflow-hidden bg-white p-4"
               key={product.id}
               data-product-brand={product.brandSlug ?? product.brand}
               data-product-card=""
@@ -84,7 +84,7 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
               data-product-status={product.status}
               data-product-subcategory={product.subCategory ?? ""}
             >
-              <div className="relative flex aspect-[3/4] w-full items-end justify-center bg-white px-4 pb-6 pt-12 sm:px-5 sm:pb-8 sm:pt-14">
+              <div className="relative flex min-h-0 w-full flex-1 items-end justify-center bg-white px-8 pb-8 pt-14 sm:px-10 sm:pb-10 sm:pt-16">
                 <button
                   className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 sm:right-1.5 sm:top-1.5"
                   type="button"

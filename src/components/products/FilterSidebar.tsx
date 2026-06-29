@@ -84,10 +84,10 @@ export function FilterSidebar({
   return (
     <aside className={cn(
       "w-full flex-col gap-4 self-start",
-      variant === "desktop" ? "hidden lg:flex lg:w-[212px] lg:shrink-0" : "flex",
+      variant === "desktop" ? "hidden lg:sticky lg:top-6 lg:flex lg:w-[212px] lg:shrink-0" : "flex",
     )}>
       <div>
-        <div className="flex w-full flex-col gap-4 overflow-y-auto pr-5 [scrollbar-color:#8c8a86_transparent] [scrollbar-width:thin] lg:h-[880px]">
+        <div className="flex w-full flex-col gap-4 pr-5">
           {variant === "modal" && appliedFilters.length > 0 && onRemoveFilter ? (
             <section className="flex flex-col gap-3 border-b border-nh-border pb-4">
               <span className="text-[12px] font-normal leading-4 text-nh-muted">{t("appliedFilters")}</span>
