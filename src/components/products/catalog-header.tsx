@@ -212,7 +212,7 @@ export function CatalogHeader() {
         >
           {CATEGORY_KEYS.map((key) => (
             <span
-              className="text-[14px] font-medium uppercase leading-5 text-nh-ink"
+              className="text-[14px] font-normal uppercase leading-5 text-nh-ink"
               key={key}
             >
               {t(key)}
@@ -278,7 +278,7 @@ export function CatalogHeader() {
               {CATEGORY_KEYS.map((key) => (
                 <span
                   key={key}
-                  className="text-sm font-medium uppercase leading-5 text-nh-ink"
+                  className="text-sm font-normal uppercase leading-5 text-nh-ink"
                 >
                   {t(key)}
                 </span>

@@ -43,10 +43,11 @@ export type VariantProductListItem = Pick<
   | "cldr_media_lifestyle_2"
   | "media_long"
   | "media_closeup"
+  | "filter_sub_category"
 >;
 
 const VARIANT_PRODUCT_LIST_COLUMNS =
-  "id,name,name_vi,slug,slug_vi,price,compare_at_price,discount_percent,on_sale,in_stock,packshot_url,gallery_urls,finish,finish_vi,size,raw,product_id,brand_id,brand_cldr_logo,brand_name_denorm,category_id,media_lifestyle_1,media_lifestyle_2,cldr_media_lifestyle_1,cldr_media_lifestyle_2,media_long,media_closeup";
+  "id,name,name_vi,slug,slug_vi,price,compare_at_price,discount_percent,on_sale,in_stock,packshot_url,gallery_urls,finish,finish_vi,size,raw,product_id,brand_id,brand_cldr_logo,brand_name_denorm,category_id,media_lifestyle_1,media_lifestyle_2,cldr_media_lifestyle_1,cldr_media_lifestyle_2,media_long,media_closeup,filter_sub_category";
 
 export function productRange(page = 1, pageSize = 24): readonly [number, number] {
   if (!Number.isInteger(page) || !Number.isInteger(pageSize) || page < 1 || pageSize < 1) {

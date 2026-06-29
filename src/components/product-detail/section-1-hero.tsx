@@ -117,7 +117,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
               <ShoppingCart className="h-4 w-4" />
               Thêm vào giỏ
             </DarkCTAButton>
-            <FavoriteButton variant="bordered" className="h-auto rounded-none px-5" />
+            <FavoriteButton variant="bordered" className="aspect-square h-auto min-h-full rounded-none px-0" />
           </div>
 
           {/* Size info box */}

@@ -48,19 +48,12 @@ function getVariantImageUrl(variant: VariantProductListItem): string {
   );
 }
 
-/**
- * Pick the locale-specific finish label for the product subtitle.
- * Only `finish` (English/primary) and `finish_vi` exist in the data model.
- * For Vietnamese prefer `finish_vi` then fall back to `finish`; for any other
- * locale prefer `finish` then fall back to `finish_vi` so we never show an
- * empty subtitle when one of the two columns has data.
- */
-function resolveFinishLabel(variant: VariantProductListItem, locale: Locale): string {
-  if (locale === "vi") {
-    return variantText(variant.finish_vi, variantText(variant.finish));
-  }
-
-  return variantText(variant.finish, variantText(variant.finish_vi));
+function titleizeSlug(value: string): string {
+  return value
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
 }
 
 export default async function ProductsRoute({ params }: PageProps) {
@@ -88,10 +81,12 @@ export default async function ProductsRoute({ params }: PageProps) {
     const imageUrl = getVariantImageUrl(variant);
     const discount = variant.discount_percent !== null ? `-${variant.discount_percent}%` : null;
     const name = variantText(variant.name, defaultName);
-    const subtitle =
-      [resolveFinishLabel(variant, supportedLocale), variantText(variant.size)]
-        .filter(Boolean)
-        .join(" / ") || defaultName;
+    const subtitle = titleizeSlug(
+      variantText(variant.filter_sub_category) ||
+        variantRawText(variant, "filter_sub_category") ||
+        variantRawText(variant, "sub_category") ||
+        defaultName,
+    );
     const status: ProductStatusKind = variant.on_sale
       ? "sale"
       : variant.in_stock

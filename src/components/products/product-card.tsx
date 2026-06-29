@@ -16,14 +16,14 @@ const STATUS_LABEL: Record<ProductStatusKind, string> = {
 
 function getStatusClass(status: ProductStatusKind) {
   if (status === "sale") {
-    return "bg-nh-red text-white";
+    return "bg-[#FBECEC] text-nh-red";
   }
 
   if (status === "in_stock") {
-    return "bg-nh-green text-white";
+    return "bg-[#EAF7EF] text-nh-green";
   }
 
-  return "border border-nh-border bg-white text-nh-muted";
+  return "bg-[#E6E6E6] text-nh-ink";
 }
 
 export function ProductCard({
@@ -55,7 +55,7 @@ export function ProductCard({
         </button>
         <span
           className={cn(
-            "absolute left-1 top-1 z-10 px-1.5 py-0.5 text-center text-[9px] font-medium leading-3 sm:left-1.5 sm:top-1.5 sm:px-3 sm:py-1 sm:text-[12px] sm:leading-4",
+            "absolute left-1 top-1 z-10 px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-3 sm:left-1.5 sm:top-1.5 sm:px-2 sm:py-1 sm:text-[12px] sm:leading-4",
             getStatusClass(product.status),
           )}
         >

@@ -109,7 +109,7 @@ export function Header() {
               <Link
                 key={key}
                 href="#"
-                className="whitespace-nowrap text-sm font-medium uppercase leading-5"
+                className="whitespace-nowrap text-sm font-normal uppercase leading-5"
               >
                 {t(key)}
               </Link>
@@ -194,7 +194,7 @@ export function Header() {
                   key={key}
                   href="#"
                   onClick={() => setDrawerOpen(false)}
-                  className="text-sm font-medium uppercase leading-5 text-[#111]"
+                  className="text-sm font-normal uppercase leading-5 text-[#111]"
                 >
                   {t(key)}
                 </Link>

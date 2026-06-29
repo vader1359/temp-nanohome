@@ -239,7 +239,7 @@ export function SharedHeader({
               <HeaderLinkItem
                 key={item.key}
                 item={item}
-                className="text-[14px] font-medium uppercase leading-5 text-nh-ink"
+                className="text-[14px] font-normal uppercase leading-5 text-nh-ink"
               />
             ))}
           </nav>
@@ -302,7 +302,7 @@ export function SharedHeader({
               <HeaderLinkItem
                 key={item.key}
                 item={item}
-                className="whitespace-nowrap text-sm font-medium uppercase leading-5"
+                className="whitespace-nowrap text-sm font-normal uppercase leading-5"
               />
             ))}
           </nav>
@@ -517,8 +517,8 @@ function HeaderDrawer({
               onClick={onCloseDrawer}
               className={
                 isCatalog
-                  ? "text-sm font-medium uppercase leading-5 text-nh-ink"
-                  : "text-sm font-medium uppercase leading-5 text-[#111]"
+                  ? "text-sm font-normal uppercase leading-5 text-nh-ink"
+                  : "text-sm font-normal uppercase leading-5 text-[#111]"
               }
             />
           ))}
