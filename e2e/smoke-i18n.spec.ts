@@ -20,6 +20,12 @@ test("/en returns 200 with html lang=en", async ({ page }) => {
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
 });
 
+test("/ko returns 200 with html lang=ko", async ({ page }) => {
+  const response = await page.goto("/ko");
+  expect(response?.status()).toBe(200);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ko");
+});
+
 test("/de (invalid locale) redirects or returns 404", async ({ page }) => {
   const response = await page.goto("/de");
   // The middleware redirects /de to /vi/de or returns 404. Since next-intl
@@ -43,9 +49,29 @@ test("/vi/products returns 200", async ({ page }) => {
   expect(response?.status()).toBe(200);
 });
 
-test("/en/products returns 200", async ({ page }) => {
+test("/en/products returns 200 and renders English header (not hardcoded VN)", async ({ page }) => {
   const response = await page.goto("/en/products");
   expect(response?.status()).toBe(200);
+  await expect(page.getByText("nanoHome Furniture").first()).toBeVisible();
+  await expect(page.getByText("FURNITURE PRODUCTS").first()).toBeVisible();
+  // Regression guard: catalog-header.tsx previously hardcoded Vietnamese labels.
+  await expect(page.locator("body")).not.toContainText([
+    "nanoHome Nội Thất",
+    "Sản phẩm",
+  ]);
+});
+
+test("/ko/products returns 200 and renders Korean header", async ({ page }) => {
+  const response = await page.goto("/ko/products");
+  expect(response?.status()).toBe(200);
+  await expect(page.getByText("nanoHome 가구").first()).toBeVisible();
+  await expect(page.getByText("가구 상품").first()).toBeVisible();
+});
+
+test("/vi/products renders Vietnamese, not English or Korean", async ({ page }) => {
+  const response = await page.goto("/vi/products");
+  expect(response?.status()).toBe(200);
+  await expect(page.getByText("nanoHome Nội Thất").first()).toBeVisible();
 });
 
 test("auth session-like cookie survives the i18n plus Supabase refresh path", async ({

@@ -1,8 +1,12 @@
 "use client";
 
-import { ProductCard } from "./product-card";
+import Image from "next/image";
+import { Heart } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
 
-export const SWATCHES = [
+const SWATCHES = [
   "#111111",
   "#62616E",
   "#84818A",
@@ -19,13 +23,25 @@ export const SWATCHES = [
   "#C23B4F",
 ];
 
+/**
+ * Stable, locale-agnostic status kinds. The user-facing label is rendered
+ * via the `Products` i18n namespace, so the badge color comparison must use
+ * these enum values — never Vietnamese literal strings.
+ */
+export type ProductStatusKind = "in_stock" | "out_of_stock" | "sale";
+
+const STATUS_LABEL_KEY: Record<ProductStatusKind, "inStock" | "outOfStock" | "saleLabel"> = {
+  in_stock: "inStock",
+  out_of_stock: "outOfStock",
+  sale: "saleLabel",
+};
+
 export type ProductGridItem = {
   id: string;
   brand: string;
-  brandLogoUrl?: string | null;
   name: string;
   subtitle: string;
-  status: "CÓ SẴN" | "HẾT HÀNG" | "SALE";
+  status: ProductStatusKind;
   imageUrl: string;
   href: string;
   oldPrice: string | null;
@@ -34,31 +50,124 @@ export type ProductGridItem = {
   swatches: readonly string[];
 };
 
-export interface ProductGridProps {
+interface ProductGridProps {
   products: readonly ProductGridItem[];
   favorites: Set<string>;
   onToggleFavorite: (id: string) => void;
 }
 
+function getStatusClass(status: ProductStatusKind) {
+  if (status === "sale") {
+    return "bg-nh-red text-white";
+  }
+
+  if (status === "in_stock") {
+    return "bg-nh-green text-white";
+  }
+
+  return "border border-nh-border bg-white text-nh-muted";
+}
+
 export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGridProps) {
+  const t = useTranslations("Products");
+
   if (products.length === 0) {
     return (
       <section className="rounded border border-nh-border bg-white p-8 text-center text-sm text-nh-muted">
-        Chưa có dữ liệu sản phẩm để hiển thị.
+        {t("empty")}
       </section>
     );
   }
 
   return (
-    <section className="grid grid-cols-2 gap-3 sm:gap-6 xl:grid-cols-3 xl:gap-9">
-      {products.map((product) => (
-        <ProductCard
-          key={product.id}
-          product={product}
-          isFavorite={favorites.has(product.id)}
-          onToggleFavorite={onToggleFavorite}
-        />
-      ))}
+    <section className="grid grid-cols-1 gap-9 sm:grid-cols-2 xl:grid-cols-3">
+      {products.map((product) => {
+        const sale = product.status === "sale";
+
+        return (
+          <article
+            className="group flex min-w-0 flex-col gap-6 bg-white p-4"
+            key={product.id}
+          >
+            <div className="relative flex aspect-[4/3] w-full items-center justify-center bg-white p-4">
+              <button
+                className="absolute right-4 top-4 z-10 flex size-8 items-center justify-center rounded-full border border-nh-border bg-white opacity-100 transition-opacity duration-200 group-hover:shadow-sm"
+                type="button"
+                onClick={() => onToggleFavorite(product.id)}
+                aria-label={t("favoriteAria", { name: product.name })}
+              >
+                <Heart
+                  className={cn(
+                    "size-4 text-nh-ink transition-transform duration-200 group-hover:scale-110",
+                    favorites.has(product.id) && "fill-nh-ink",
+                  )}
+                />
+              </button>
+              <span
+                className={cn(
+                  "absolute left-4 top-4 z-10 px-1 py-0.5 text-center text-[12px] font-medium leading-4",
+                  getStatusClass(product.status),
+                )}
+              >
+                {t(STATUS_LABEL_KEY[product.status])}
+              </span>
+              <Link
+                aria-label={t("viewDetailAria", { name: product.name })}
+                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[6px] transition-transform duration-300 group-hover:scale-[1.03]"
+                href={product.href}
+              >
+                <Image
+                  alt={product.name}
+                  className="object-contain"
+                  fill
+                  sizes="(min-width: 1280px) 300px, (min-width: 640px) 45vw, 90vw"
+                  src={product.imageUrl}
+                />
+              </Link>
+            </div>
+
+            <div className="flex flex-col items-start gap-2 text-left">
+              <div className="text-[13px] font-medium leading-4 text-nh-ink">
+                {product.brand}
+              </div>
+              <h3 className="text-[16px] font-normal leading-6 text-nh-ink">
+                <Link className="transition-colors hover:text-nh-red" href={product.href}>
+                  {product.name}
+                </Link>
+              </h3>
+              <p className="text-[12px] font-medium leading-4 text-nh-muted">
+                {product.subtitle}
+              </p>
+              <div className="mt-1 flex w-full items-center justify-between gap-1">
+                {(product.swatches.length > 0 ? product.swatches : SWATCHES).slice(0, 14).map((swatch) => (
+                  <span
+                    className="size-3 shrink-0 border border-black"
+                    key={swatch}
+                    style={{ backgroundColor: swatch }}
+                  />
+                ))}
+              </div>
+              <div className="mt-2 flex flex-col items-center gap-1">
+                {sale && product.oldPrice ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px] font-normal leading-4 text-nh-muted line-through">
+                      {product.oldPrice}
+                    </span>
+                    {product.discount ? (
+                      <span className="bg-nh-red px-1.5 py-0.5 text-[12px] font-medium leading-4 text-white">
+                        {product.discount}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                <span className="text-[15px] font-semibold leading-5 text-nh-ink">
+                  {product.price}
+                </span>
+              </div>
+            </div>
+          </article>
+        );
+      })}
     </section>
   );
 }

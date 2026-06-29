@@ -8,9 +8,8 @@ import { Section5Benefits } from "@/components/product-detail/section-5-benefits
 import { Section6Recommended } from "@/components/product-detail/section-6-recommended";
 import type { RelatedProduct } from "@/components/product-detail/mock-data";
 import { COLORS } from "@/components/product-detail/mock-data";
-import { firstCloudinaryImage, isCloudinaryUrl } from "@/lib/image";
-import { getBrands } from "@/lib/queries/brands";
-import { getVariantProducts } from "@/lib/queries/products";
+import { getVariantProducts, type VariantProductListItem } from "@/lib/queries/products";
+import { variantDetailHref } from "@/lib/queries/variant-url";
 import { getVariantBySlug, getVariantsByProductId } from "@/lib/queries/variants";
 import type { Variant } from "@/types/db";
 
@@ -36,66 +35,64 @@ function variantText(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
-function variantRawText(variant: Variant, key: string): string {
+type VariantRawSource = { readonly raw?: unknown };
+
+function variantRawText(variant: VariantRawSource, key: string): string {
   const raw = variant.raw;
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     return "";
   }
 
-  return variantText(raw[key]);
+  return variantText((raw as Record<string, unknown>)[key]);
 }
 
-function getVariantPackshotUrl(variant: Variant): string {
-  return firstCloudinaryImage([
-    variant.cloudinary_ids[0],
-    variantRawText(variant, "cldr_packshot_url"),
-    variantRawText(variant, "cldr_packshot"),
-    variant.packshot_url,
-    ...variant.gallery_urls,
-  ]);
-}
-
-function getVariantLifestyleImages(variant: Variant): string[] {
-  const lifestyleFields = [
-    ["cldr_media_long", "cldr_long_url", "cldr_long"],
-    ["cldr_media_closeup", "cldr_closeup_url", "cldr_closeup"],
-    ["cldr_media_lifestyle_1", "cldr_lifestyle1_url", "cldr_lifestyle1"],
-    ["cldr_media_lifestyle_2", "cldr_lifestyle2_url", "cldr_lifestyle2"],
-    ["cldr_media_illustration", "cldr_illustration_url", "cldr_illustration"],
-  ];
-
-  return lifestyleFields
-    .map((keys) => keys.map((key) => variantRawText(variant, key)).find(Boolean) ?? "")
-    .filter(isCloudinaryUrl);
+function getVariantPackshotUrl(variant: Pick<Variant, "packshot_url"> & { readonly raw?: unknown }): string {
+  return (
+    variantRawText(variant, "cldr_packshot_url") ||
+    variantRawText(variant, "cldr_packshot") ||
+    variantText(variant.packshot_url)
+  );
 }
 
 function getVariantImages(variant: Variant): string[] {
-  const images = [getVariantPackshotUrl(variant), ...variant.gallery_urls, ...getVariantLifestyleImages(variant)].filter(isCloudinaryUrl);
-  return images.length > 0 ? images : [getVariantPackshotUrl(variant)];
+  return [getVariantPackshotUrl(variant), ...variant.gallery_urls].filter((url): url is string => Boolean(url));
 }
 
-function toRelatedProduct(variant: Variant): RelatedProduct {
-  const detailSlug = variantText(variant.slug_vi, variantText(variant.slug, variant.id));
+type RelatedVariant = Pick<
+  Variant,
+  | "id"
+  | "name"
+  | "slug"
+  | "slug_vi"
+  | "price"
+  | "on_sale"
+  | "in_stock"
+  | "packshot_url"
+  | "gallery_urls"
+  | "finish"
+  | "finish_vi"
+  | "size"
+>;
 
+function toRelatedProduct(variant: RelatedVariant | VariantProductListItem): RelatedProduct {
   return {
-    name: variantText(variant.name_vi, variantText(variant.name, "Sản phẩm")),
+    name: variantText(variant.name, "Sản phẩm"),
     brand: "nanoHome",
     category: [variantText(variant.finish_vi, variantText(variant.finish)), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
     price: formatPrice(variant.price),
-    image: getVariantPackshotUrl(variant) || "/images/p_lc2.png",
-    href: `/products/${encodeURIComponent(detailSlug)}`,
+    image: getVariantPackshotUrl(variant) || variant.gallery_urls[0] || "/images/p_lc2.png",
     available: variant.in_stock,
+    href: variantDetailHref(variant),
     tags: variant.on_sale ? ["Sale"] : undefined,
   };
 }
 
-function buildHeroProduct(variant: Variant, brand?: { logo_url: string | null; name: string }) {
+function buildHeroProduct(variant: Variant) {
   const gallery = getVariantImages(variant);
   const title = variantText(variant.name_vi, variantText(variant.name, "Sản phẩm"));
 
   return {
-    brand: brand?.name ?? "nanoHome",
-    brandLogoUrl: brand?.logo_url ?? null,
+    brand: "nanoHome",
     title,
     breadcrumbTitle: title,
     category: [variantText(variant.finish_vi, variantText(variant.finish)), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
@@ -134,34 +131,24 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
     notFound();
   }
 
-  const [siblingVariants, recommendedVariants, brands] = await Promise.all([
+  const [siblingVariants, recommendedVariants] = await Promise.all([
     variant.product_id !== null ? getVariantsByProductId(variant.product_id) : Promise.resolve([]),
-    getVariantProducts({ pageSize: 24 }),
-    getBrands(),
+    getVariantProducts({ pageSize: 4 }),
   ]);
-  const brand = variant.brand_id ? brands.find((item) => item.id === variant.brand_id) : undefined;
-  const similarCategoryVariants = recommendedVariants
-    .filter((item) => item.id !== variant.id)
-    .filter((item) => variant.category_id === null || item.category_id === variant.category_id);
-  const relatedSource = similarCategoryVariants.length > 0 ? similarCategoryVariants : siblingVariants.filter((item) => item.id !== variant.id);
-  const related = relatedSource.slice(0, 8).map(toRelatedProduct);
-  const basePrice = typeof variant.price === "number" ? variant.price : Number(variant.price ?? 0);
-  const recommended = similarCategoryVariants
-    .sort((a, b) => Math.abs(Number(a.price ?? 0) - basePrice) - Math.abs(Number(b.price ?? 0) - basePrice))
-    .slice(0, 8)
-    .map(toRelatedProduct);
-  const lifestyleImages = getVariantLifestyleImages(variant);
+  const related = siblingVariants.filter((item) => item.id !== variant.id).slice(0, 4).map(toRelatedProduct);
+  const recommended = recommendedVariants.filter((item) => item.id !== variant.id).map(toRelatedProduct);
+  const galleryImages = getVariantImages(variant);
 
   return (
     <main className="flex flex-col">
-      <Section1Hero product={buildHeroProduct(variant, brand)} />
+      <Section1Hero product={buildHeroProduct(variant)} />
       <Section2Specs
         specColumns={buildSpecColumns(variant)}
         description={variant.meta_description}
         designerDescription="Thông tin nhà thiết kế sẽ được cập nhật."
       />
       <Section3Related products={related} collectionName={variantText(variant.finish_vi, variantText(variant.finish, "Cùng dòng"))} />
-      <Section4Gallery galleryImages={lifestyleImages.length > 0 ? lifestyleImages : undefined} />
+      <Section4Gallery galleryImages={galleryImages.length > 0 ? galleryImages : undefined} />
       <Section5Benefits />
       <Section6Recommended products={recommended} />
     </main>
