@@ -1,266 +1,336 @@
-# products-filter-real-supabase - Work Plan
+# products-filter-real-supabase - Work Plan (v2, main-aligned)
 
 ## TL;DR
 
-**What you'll get:** Trang `/products` có filter thật gọi Supabase, không còn mock. URL-driven (shareable + back/forward). Brand list load từ DB, không hardcode 17 brand mock. Pagination tính từ `totalCount` thật. Search forward xuống server dùng pgroonga. Tất cả UI label i18n (vi/en/ko) theo message file.
+**What you'll get:** Trang `/products` filter thật gọi Supabase theo URL. UI hiện tại đã có state client (multi-select brands/categories/rooms, modal filter drawer, appliedFilters chip list) — plan này kết nối state đó xuống server thay vì giữ mock. Loại bỏ hardcode `CATEGORIES[]`, `ROOMS[]`, `FALLBACK_BRANDS[]`. Pagination thật từ `totalCount`. Search Debounce → pgroonga. Sort dropdown thật.
 
-**Why this approach:** URL search params → server-component fetch → re-render. Đây là pattern Next.js 16 App Router khuyến nghị cho filter (shareable, server-rendered, SEO friendly). State client dùng `useRouter().push` để cập nhật URL; không cần Server Action phức tạp. Filter data đã có trong DB sau migration `add_variants_csv_columns` (1061 variants có `filter_room`, 2210 có `filter_brand`, 17 brand, 4 `filter_category`, 13 `filter_sub_category`, 7 room).
+**Why v2:** Plan v1 viết trước UI merge của main (commits 1164e59 → 6cf6f95). Main giờ có:
+- `src/components/shared/*` (StatusBadge, Chip, FavoriteButton, UnderlineTabs, SectionHeading, PaginationDots, CarouselButtons, ColorSwatches, IconTextRow, DarkCTAButton, SharedHeader)
+- `products-page.tsx` đã có `selectedBrands: Set<string>`, `selectedCategories: Set<string>`, `selectedRooms: Set<string>`, `selectedClassify: Set<string>`, filter modal drawer
+- `BrandSelector.tsx` nhận `brands: readonly { id, logoUrl, name }[]` (nhưng vẫn có `FALLBACK_BRANDS = ["B&B Italia", ...]` mock list fallback)
+- `FilterSidebar.tsx` nhận `brands` prop và render bằng `Image` logo, nhưng `CATEGORIES[]`/`ROOMS[]` vẫn hardcode Vietnamese strings
+- `SectionHeader.tsx` đã có scroll-hide + filter toggle mobile, nhưng `sortBy = "recommended"` là state cứng
+- `products/page.tsx` đã join `brands` table để lấy logo_url và name
+- `getVariantProducts` đã có `category` (theo `category_id` uuid) và `excludeId`
 
-**What it will NOT do:** Không thêm `comingSoon` filter (user đã skip — sẽ có cột `coming_soon_at` nếu sau này cần). Không sort tổng hợp nhiều field. Không infinite scroll — giữ pagination trad. Không filter theo `filter_collection_*`/`filter_is_new_arrival`/`filter_is_gifting_ideas` (bonus, để phase sau nếu UI cần).
+Plan này phải **không phá vỡ** UI đã có, chỉ thêm wire thật.
 
-**Effort:** M (5 file edit + 1 test + 1 message file update)
-**Risk:** Low — Back-end đã có data + index, chỉ thay UI/query wiring. Test e2e hiện có cover locale, mở rộng thêm filter assertion là đủ.
-
-**Decisions to sanity-check:**
-1. URL multi-value: `?brand=hay&brand=fritz-hansen` (lặp param) thay vì `?brand=hay,fritz-hansen`. Lý do: Next.js `searchParams` mặc định parse thành array, idiom App Router.
-2. `filter_brand` (text slug) làm match, không join `brands.id`. Lý do: đã có index trên `filter_brand`, slug unique trong thực tế, tránh join.
-3. `filter_category` ở cấp 1 (4 nhóm `accessories/furniture/lighting/usm`), `filter_sub_category` ở cấp 2 (13 slug) — render cả hai ladder trong sidebar, sub-category phụ thuộc category chọn.
-4. Sort giữ `priority | price_asc | price_desc | newest` simple 1 field, không chain.
-5. Mặc định perPage = 24, page query `?page=N`. `totalCount` lấy qua `.select("*",{count:"exact",head:false})` song song với data fetch.
-6. Classify toggle: chỉ `inStock` (`in_stock=true`) và `onSale` (`on_sale=true`). `comingSoon` bỏ khỏi UI để tránh regression.
-
-Your next move: approve, hoặc yêu cầu review Momus. Full execution detail follows below.
+**Effort:** M (lớn hơn v1 chút vì phải tôn trọng shared components)
+**Risk:** Medium — phải tôn trọng UI hiện có; refactor state sang URL có thể phá drawer/modal UX nếu không cẩn thận.
 
 ---
 
 ## Scope
 
 ### Must have
-- Route `src/app/[locale]/products/page.tsx` đọc `searchParams` (Promise), parse bằng zod schema, gọi `getVariantProducts(filters)` song song với `getBrandOptions(locale)` và `getCategoryOptions(locale)`. Truyền xuống `<ProductsPage>` như prop.
-- Query layer `src/lib/queries/products.ts` mở rộng `getVariantProducts` nhận `brand?: string[]`, `category?: string`, `subCategory?: string`, `rooms?: string[]`, `inStock?: boolean`, `onSale?: boolean`, `sort?: ProductSort`, `page?: number`, `pageSize?: number`, `search?: string`. Trả `{ items, totalCount }`.
-- Filter `search` dùng pgroonga RPC `pgroonga_query_escape` rồi `or` trên `name, finish_vi, finish, sku` (pattern đã có sẵn `src/lib/queries/search.ts`).
-- Helper mới `getBrandOptions`: `select filter_brand, brand_name_denorm from variants where approved=true and validated=true and filter_brand is not null group by filter_brand, brand_name_denorm order by count(*) desc`. Trả mảng `{slug, name, count}[]`.
-- Helper mới `getCategoryOptions`: `select distinct filter_category, filter_sub_category from variants where approved=true and validated=true`. Group trong TS thành cây.
-- Helper mới `getRoomOptions(locale)`: trả 7 room cố định (CSV enum) kèm label EN + VI + KO. Không query DB (set cố định) vì rooms enum cố định trong CSV: `living-room/family-room/bedroom/dining-room/office/kitchen/outdoor`. Map VI: `Phòng khách/Phòng gia đình/Phòng ngủ/Phòng ăn/Văn phòng/Kitchen/Ngoài trời`. KO: `거실/가족 방/침실/다이닝룸/작업 공간/주방/야외`.
-- `src/components/products/products-page.tsx` bỏ mock state (`selectedCategory/Classify/Rooms/search/currentPage/sortBy`). Nhận tất cả từ props. Filter change → `useRouter().push` URL với searchParams mới. Page còn client để push URL, nhưng state fixed = URL-derived.
-- `src/components/products/FilterSidebar.tsx` bỏ hardcode `CATEGORIES[]`/`ROOMS[]`. Nhận `categoryOptions`, `roomOptions`, `selectedFilters`, `onChange` props. Render base trên label locale-active.
-- `src/components/products/BrandSelector.tsx` bỏ hardcode `BRANDS[]`. Nhận `brandOptions` prop + multi-select state từ `searchParams.brand`. Toggle button add/remove.
-- `src/components/products/AppliedFilters.tsx` vẫn ok, render mảng labels từ `selectedFilters` (đã được dịch).
-- `src/components/products/SearchBar.tsx` forward value xuống URL via `router.push` (debounce 300ms). Riêng search vì else URL đổi quá nhanh.
-- `src/components/products/Pagination.tsx` nhận `totalCount`, `pageSize`, `currentPage`. Tính số trang thật từ `Math.ceil(totalCount/pageSize)`. Bỏ mock `99`.
-- `src/components/products/SectionHeader.tsx` nhận `sort: ProductSort` từ URL, dropdown sort thật.
-- URL state: `?brand=...&brand=...&category=...&subCategory=...&room=...&room=...&classify=inStock&classify=onSale&q=...&sort=price_asc&page=2`.
-- i18n: thêm keys `Products.subCategory`, `Products.classifyInStock`, `Products.classifyOnSale`, `Products.roomsHeading`, `Products.sort{Priority,PriceAsc,PriceDesc,Newest}`. Extend `Rooms` namespace nếu thiếu.
+- **URL-driven state**: filter state được derive từ `useSearchParams` thay vì `useState`. Mỗi toggle → `router.push` URL mới, server re-fetch.
+- **Query layer extension** `getVariantProducts` chấp nhận:
+  - `brand?: string[]` → `query.in("filter_brand", brand)` (slug-based)
+  - `subCategory?: string` → `query.eq("filter_sub_category", subCategory)`
+  - `rooms?: string[]` → `query.contains("filter_room", rooms)` (PostgREST `cs`)
+  - `inStock?: boolean`, `onSale?: boolean`
+  - search giữ pgroonga pattern từ `search.ts`
+  - Trả `{ items, totalCount }` (count bằng query head).
+- **Dataset helper functions**:
+  - `getBrandOptions()` → trả `{ id, slug, name, logo_url, count }[]` dựa trên `filter_brand` + `brand_name_denorm` + `brand_cldr_logo` aggregation từ `variants` table (chứ không phải `brands` table — vì `brands` table có brand không có trong CSV).
+  - `getCategoryOptions()` → trả cây `{ slug, name, name_vi, subCategories }[]` từ `filter_category` + `filter_sub_category`.
+  - `getRoomOptions(locale)` → enum cố định 7 phòng (không query DB), trả `{ slug, label }[]`.
+- **FilterSidebar refactor**:
+  - Bỏ `CATEGORIES[]` hardcode → nhận `categoryOptions: CategoryNode[]` prop
+  - Bỏ `ROOMS[]` hardcode → nhận `roomOptions: RoomOption[]` prop + `selectedRooms: Set<slug>`, so khớp theo slug
+  - `classifyItems` 仅 `inStock` + `onSale` (bỏ `comingSoon`, đã quyết)
+  - `toggleCategory(slug)` → `onChange.category = slug` (single-select choose One, "Tất cả" = remove category)
+  - `toggleRoom(slug)` → add/remove trong mảng URL `?room=...&room=...`
+  - `toggleClassify` giữ theo `inStock`/`onSale` slug (thay vì theo string label)
+- **BrandSelector refactor**:
+  - Bỏ `FALLBACK_BRANDS[]` mock — yêu cầu `brands` prop real từ server (server luôn có 17 brand thực)
+  - Match theo `slug` (filter_brand) thay vì name
+  - `toggleBrand(slug)` → add/remove URL `?brand=...&brand=...`
+- **products-page.tsx**:
+  - Bỏ `useState` cho filter, derive từ `useSearchParams` về `selectedBrands: Set<slug>` etc
+  - Tính `appliedFilters` từ URL + label lấy từ option list (đã được dịch sẵn)
+  - `router.push` cập nhật URL thay đổi state → tự re-render với data mới
+  - Drawer vẫn giữ (mobile UX), toggle nó vẫn đóng/mở để cập nhật URL cùng lúc
+- **SearchBar**: giá trị khởi tạo từ `searchParams.get("q")`, deboun 300ms trước khi `updateFilters({q, page: 1})`
+- **Pagination**: nhận `totalCount` + `pageSize`, tính `pages = Math.ceil(totalCount / pageSize)`, render thật, bỏ `[1..5] + 99` mock
+- **SectionHeader**: `sortBy` derive từ URL `?sort=`, dropdown thật 4 options `priority/price_asc/price_desc/newest`
+- **products/page.tsx**:
+  - Đọc `searchParams: Promise<Record<string,string|string[]>>` từ route
+  - zod schema parse → `FilterParams`
+  - Gọi `getVariantProducts(filters)` + `getBrandOptions()` + `getCategoryOptions()` + `getRoomOptions(locale)` song song
+  - Map variants → ProductGridItem (giữ logic hiện tại)
+  - Truyền `brands`, `categoryOptions`, `roomOptions`, `selectedFilters`, `totalCount`, `products` xuống `<ProductsPage>`
+- **Patch `messages/*`** thêm keys `Products.subCategory`, `Products.classifyInStock`, `Products.classifyOnSale`, `Products.sortPriority`, `Products.sortPriceAsc`, `Products.sortPriceDesc`, `Products.sortNewest`, `Products.roomsHeading` cho 3 locale. Extend `Rooms` namespace cho 3 locales với `familyRoom`/`kitchen`.
 
 ### Out of scope
-- `comingSoon` filter (skipped).
-- Filter `filter_collection_*`, `filter_is_new_arrival`, `filter_is_gifting_ideas`, `filter_price`, `filter_product_line` (bonus phase sau).
-- Facet counts (e.g. hiển thị `(274)` cạnh room label) — phase sau nếu cần.
-- Infinite scroll, cursor pagination.
-- Sort tổng hợp nhiều field.
-- Cache HTTP (Cache-Control) — để sau, scope riêng.
+- `comingSoon` filter (skipped)
+- Filter `filter_collection_*`, `filter_is_new_arrival`, `filter_is_gifting_ideas`, `filter_price`, `filter_product_line` (bonus phase sau)
+- Facet counts "(274)" cạnh room label
+- Infinite scroll
+- HTTP cache headers
+- Migrating to `SharedHeader` from `shared/shared-header.tsx` — keep current `CatalogHeader` để tránh regression lớn; phase sau.
 
 ---
 
-## Todos
+##todos
 
 ### Wave 1 — Query layer foundation
 
-1. **[src/lib/queries/products.ts] Refactor `getVariantProducts`** to accept `{ brand?, category?, subCategory?, rooms?, inStock?, onSale?, sort?, page?, pageSize?, search? }` and return `{ items, totalCount }`. Add `in`/`ilike`/`eq`/`contains` chainers. Use parallel `.select("id",{count:"exact",head:true})` call for totalCount.
+1. **[src/lib/queries/products.ts] Refactor `getVariantProducts`** to accept `{ brand?, subCategory?, rooms?, inStock?, onSale?, excludeId?, category?, sort?, page?, pageSize?, search? }` and return `{ items, totalCount: number }`.
 
    HOW:
-   - Extend `getVariantProducts` signature with new optional fields.
-   - For `brand`: `query.in("filter_brand", brand)`.
-   - For `category`: `query.eq("filter_category", category)`.
-   - For `subCategory`: `query.eq("filter_sub_category", subCategory)`.
-   - For `rooms`: `query.contains("filter_room", rooms)` (PostgREST `cs` op).
-   - For `inStock`: `query.eq("in_stock", true)`.
-   - For `onSale`: `query.eq("on_sale", true)`.
-   - For `search`: extract `buildPgroongaFilter(search, locale)` (task 5) and use it here.
-   - Build data query + count query sharing same filter; `Promise.all` them.
-   - Export new types `FilterParams`, `FilterResult`.
+   - Add new optional fields to `VariantProductQueryOptions`.
+   - For each new param: branch `query`. Rooms uses `query.contains("filter_room", rooms)`. Brand uses `query.in("filter_brand", brand)`. subCategory uses `query.eq("filter_sub_category", subCategory)`. inStock/onSale use `query.eq`.
+   - For search: extract `buildPgroongaFilter(search)` from task 5 and apply via `query.or(...)`.
+   - Run data query + count query (`select("id", { count: "exact", head: true })`) in parallel with `Promise.all` — share the same filter chain.
+   - Return type: `{ items: readonly VariantProductListItem[]; totalCount: number }`.
+   - Add new types: `FilterParams`, `FilterResult`, `FilteredVariantQueryOptions`.
 
-   EXPECTED: signature compiled by `npx tsc --noEmit`; mock unit test confirms call chain.
-   QA: `bun test src/lib/queries/products.test.ts` shows new test for `getVariantProducts({brand:["hay"]})` passes — mocks verify `.in("filter_brand", ["hay"])` was called.
+   EXPECTED: signature compiled by `npx tsc --noEmit`; existing callers (product detail page uses `getVariantProducts({ pageSize: 4, excludeId: variant.id })`) still work — backward compatible by optional fields.
+   QA:
+   - `bun test src/lib/queries/products.test.ts` — new test for `getVariantProducts({ brand: ["hay"], rooms: ["living-room"] })` passes; mock chain verifies `.in("filter_brand", ["hay"])` and `.contains("filter_room", ["living-room"])` called.
+   - `npx tsc --noEmit` exit 0.
 
-2. **[src/lib/queries/products.ts] Add `getBrandOptions`**. Use Supabase query:
+2. **[src/lib/queries/products.ts] Add `getBrandOptions`** returning `{ id, slug, name, logoUrl, count }[]`.
+
+   HOW:
+   - Query: `supabase.from("variants").select("filter_brand, brand_name_denorm, brand_cldr_logo, brand_id, brands!inner(id, logo_url, name)").eq("approved", true).eq("validated", true).not("filter_brand", "is", null)`.
+   - Group in TS: `Map<filter_brand, { slug, name, brandId, brandLogoUrl, count }>` ordered by count desc.
+   - `logoUrl` prefers `brand_cldr_logo` from variants row; falls back to `brands.logo_url` from the join.
+   - This avoids the `FALLBACK_BRANDS` mock list of "B&B Italia" etc which doesn't exist in DB.
+
+   EXPECTED: returns 17 brands (HAY=203, Fritz Hansen=104, USM=81, …).
+   QA:
+   - SQL `SELECT filter_brand, brand_name_denorm, COUNT(*) FROM variants WHERE approved AND validated GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 5` matches first 5 entries.
+   - `bun test src/lib/queries/products.test.ts` — new test for `getBrandOptions()` asserts 17 entries, first slug is "hay".
+
+3. **[src/lib/queries/products.ts] Add `getCategoryOptions`** returning `{ slug, name, name_vi, subCategories: { slug, name, name_vi }[] }[]`.
+
+   HOW:
+   - Query: `supabase.from("variants").select("filter_category, filter_sub_category").eq("approved", true).eq("validated", true).not("filter_category", "is", null)`.
+   - Group in TS: `Map<filter_category, { slug, subCategories: Set<slug> }>`.
+   - Map slugs to i18n labels via a constant `CATEGORY_LABELS` lookup (slug → {en, vi, ko}) defined in this file — `{ "accessories": { en: "Accessories", vi: "Trang trí", ko: "액세서리" }, "furniture": ..., "lighting": ..., "usm": ... }`.
+   - Same lookup for sub_category slugs (`lounges`, `chairs`, `sofas`, etc).
+   - Returns 4 top categories nested with sub-categories.
+
+   EXPECTED: tree with 4 top + 13 sub total; accessories has sub `accessories`, furniture has sub `chairs/sofas/tables/lounges/cabinets/outdoor`, lighting has sub `pendants/floor-lamps/table-lamps/wall-lamps/architectural-lighting`, usm has sub `usm` only.
+   QA:
+   - `bun test src/lib/queries/products.test.ts` asserts `getCategoryOptions()` returns 4 categories with `accessories.subCategories.length === 1`.
+   - Existing routing tests still pass.
+
+4. **[src/lib/queries/products.ts] Add `getRoomOptions(locale): RoomOption[]`** as a pure function (no DB query):
+
    ```ts
-   supabase.from("variants")
-     .select("filter_brand, brand_name_denorm")
-     .eq("approved", true).eq("validated", true)
-     .not("filter_brand", "is", null);
-   ```
-   Group in TS: `Map<slug, {slug, name, count}>` ordered by count desc.
-
-   EXPECTED: type-safe; returns `BrandOption[]`.
-   QA: SQL `SELECT filter_brand, brand_name_denorm, COUNT(*) FROM variants WHERE approved AND validated GROUP BY 1,2 ORDER BY 3 DESC` matches first item count (HAY=203).
-
-3. **[src/lib/queries/products.ts] Add `getCategoryOptions`**. Query `select distinct filter_category, filter_sub_category` where `approved && validated`. Group into tree `{category, subCategories[]}`.
-
-   EXPECTED: returns 4 top categories with sub-list.
-   QA: SQL `SELECT DISTINCT filter_category, filter_sub_category FROM variants WHERE approved AND validated` returns ~14 rows; grouping in TS yields tree with `accessories` parent containing `accessories` sub.
-
-4. **[src/lib/queries/products.ts] Add `getRoomOptions(locale): RoomOption[]`**. Hardcoded enum (no DB query):
-   ```ts
-   const ROOMS = [
-     {slug:'living-room', vi:'Phòng khách', en:'Living Room', ko:'거실'},
-     {slug:'family-room', vi:'Phòng gia đình', en:'Family Room', ko:'가족 방'},
-     {slug:'bedroom', vi:'Phòng ngủ', en:'Bedroom', ko:'침실'},
-     {slug:'dining-room', vi:'Phòng ăn', en:'Dining Room', ko:'다이닝룸'},
-     {slug:'office', vi:'Văn phòng', en:'Office', ko:'작업 공간'},
-     {slug:'kitchen', vi:'Kitchen', en:'Kitchen', ko:'주방'},
-     {slug:'outdoor', vi:'Ngoài trời', en:'Outdoor', ko:'야외'},
+   const ROOMS: { slug: string; labels: { vi: string; en: string; ko: string } }[] = [
+     { slug: "living-room", labels: { vi: "Phòng khách", en: "Living Room", ko: "거실" } },
+     { slug: "family-room", labels: { vi: "Phòng gia đình", en: "Family Room", ko: "가족 방" } },
+     { slug: "bedroom", labels: { vi: "Phòng ngủ", en: "Bedroom", ko: "침실" } },
+     { slug: "dining-room", labels: { vi: "Phòng ăn", en: "Dining Room", ko: "다이닝룸" } },
+     { slug: "office", labels: { vi: "Văn phòng", en: "Office", ko: "작업 공간" } },
+     { slug: "kitchen", labels: { vi: "Kitchen", en: "Kitchen", ko: "주방" } },
+     { slug: "outdoor", labels: { vi: "Ngoài trời", en: "Outdoor", ko: "야외" } },
    ];
+   export function getRoomOptions(locale: Locale): RoomOption[] {
+     return ROOMS.map(({ slug, labels }) => ({ slug, label: labels[locale] ?? labels.en }));
+   }
    ```
-   Return mapped with locale-specific `label`.
 
-   EXPECTED: returns 7 rooms with EN+VI+KO labels.
-   QA: `bun test src/lib/queries/products.test.ts` shows `getRoomOptions('ko')[0].label === '거실'`.
+   EXPECTED: returns 7 rooms locale-aware.
+   QA:
+   - `bun test src/lib/queries/products.test.ts` asserts `getRoomOptions("ko")[0].label === "거실"`, `getRoomOptions("vi")[3].label === "Phòng ăn"`.
 
-5. **[src/lib/queries/search.ts + src/lib/queries/products.ts] Extract `buildPgroongaFilter`** into reusable exported function returning PostgREST `or` string given `(search, locale)`. Used by `search.ts` and `getVariantProducts`.
+5. **[src/lib/queries/search.ts] Extract reusable `buildPgroongaFilter(search, locale)`** without modifying existing search.ts behavior.
 
    HOW:
-   - Move logic from `search.ts` lines that build the `or(...)` filter into a shared helper in a new `src/lib/queries/search-filter.ts` (or as exported function in `search.ts`).
-   - Signature: `export function buildPgroongaFilter(search: string, locale: Locale): string | null` — returns null when search empty, otherwise the `or` filter string ready to pass to `.or(...)`.
-   - `search.ts` continues using same logic — no behavior change.
+   - Move the `or(...)` string-building logic for `vi/en/ko` field boosting out of `search()` into a pure exported function.
+   - Signature: `export function buildPgroongaFilter(search: string, locale: Locale): string | null`.
+   - Returns `null` when `search.trim() === ""` (caller skips `.or`).
+   - `search()` body continues to use it — pure refactor.
 
-   EXPECTED: `search.ts` continues to pass existing test `bun test src/lib/queries/search.test.ts`; new helper unit-tested.
-   QA: unit test `buildPgroongaFilter("egg", "en")` returns string containing `name.&@~.` substring.
+   EXPECTED: existing test `bun test src/lib/queries/search.test.ts` still passes; new unit test `buildPgroongaFilter("egg", "en")` returns string containing `name.&@~.egg` substring.
+   QA: `bun test src/lib/queries/search.test.ts` — 4 existing tests still pass + 1 new test added.
 
 ### Wave 2 — Server page + URL parsing
 
-6. **[src/app/[locale]/products/page.tsx] Rewrite** to: `export default async function ProductsRoute({ params, searchParams }: PageProps)`. Use zod schema to parse `searchParams`. Call `getVariantProducts(filters)` + parallel `getBrandOptions`, `getCategoryOptions`, `getRoomOptions` via `Promise.all`. Map `VariantProductListItem` → `ProductGridItem` (existing logic). Pass all props to `<ProductsPage>`.
+6. **[src/app/[locale]/products/page.tsx] Rewrite** with `searchParams: Promise<...>` as new param.
 
    HOW:
-   - Define zod schema at module top: `FilterParamsSchema = z.object({ brand: z.union([z.string(), z.array(z.string())]).optional().transform(v => Array.isArray(v) ? v : v ? [v] : undefined), category: z.string().optional(), subCategory: z.string().optional(), room: z.union([z.string(), z.array(z.string())]).optional().transform(...same array coerce...), classify: z.union([z.string(), z.array(z.string())]).optional().transform(...), q: z.string().optional(), sort: z.enum(["priority","price_asc","price_desc","newest"]).optional(), page: z.coerce.number().int().min(1).optional(), pageSize: z.coerce.number().int().min(1).max(100).optional() })`.
-   - Parse `searchParams` (Promise resolves to object).
-   - Map classify → `inStock`/`onSale` flags.
-   - Call `Promise.all([getVariantProducts(filters), getBrandOptions(), getCategoryOptions(), getRoomOptions(locale)])`.
-   - Serialize selected filters to pass down.
+   - Define zod schema `FilterParamsSchema`:
+     - `brand`: `z.union([z.string(), z.array(z.string())]).optional().transform(v => Array.isArray(v) ? v : v ? [v] : undefined)`
+     - `category`: `z.string().optional()`
+     - `subCategory`: `z.string().optional()`
+     - `room`: same array-coerce as brand
+     - `classify`: same array-coerce
+     - `q`: `z.string().optional()`
+     - `sort`: `z.enum(["priority", "price_asc", "price_desc", "newest"]).optional()`
+     - `page`: `z.coerce.number().int().min(1).optional()`
+   - `const sp = await searchParams;` then `FilterParamsSchema.parse(sp)`.
+   - Map `classify` array → `inStock/onSale` booleans (`classify.includes("in_stock")`, etc).
+   - Call `Promise.all([getVariantProducts(filters), getBrandOptions(), getCategoryOptions(), getRoomOptions(supportedLocale)])`.
+   - Build `selectedFilters` summary (mercenary — already sorted into props ready for client).
+   - Pass to `<ProductsPage>` as new shape: `{ brands, categoryOptions, roomOptions, selectedFilters, totalCount, products }`.
 
    EXPECTED: `npx tsc --noEmit` passes; URL `/vi/products?brand=hay` returns only HAY variants.
-   QA: `curl -s "http://localhost:3000/vi/products?brand=hay" | grep -c "Fritz Hansen"` returns 0; `grep -c "HAY"` returns >= 1.
+   QA:
+   - `bun dev` then `curl -s "http://localhost:3000/vi/products?brand=hay" | grep -c "Fritz Hansen"` = 0; `grep -c "HAY"` ≥ 1.
+   - `curl -s "http://localhost:3000/en/products" | grep "FURNITURE PRODUCTS"` ≥ 1 (existing English title still works).
+   - Real HTTP 200 for all 3 locales: `curl -o /dev/null -w "%{http_code}" "http://localhost:3000/ko/products"` = 200.
 
 ### Wave 3 — Client component refactor
 
-7. **[src/components/products/products-page.tsx] Replace mock state** with URL-derived props. Add `useRouter` + `usePathname` + `useSearchParams` from `next-intl/navigation`. Build `updateFilters(partial: Partial<FilterParams>)` helper that merges into URL and `router.push`. Pagination + filter all go through this helper.
+7. **[src/components/products/products-page.tsx] Replace `useState` filter state with URL-derived state** while preserving drawer + appliedFilters UX.
 
    HOW:
-   - Remove `useState` for category/room/classify/search/sort/page.
-   - Receive all as props from server.
-   - Implement `updateFilters(partial)`: merges with current `useSearchParams` (overwriting keys, removing keys when value is null/empty, treating arrays specially — replace all values for that key, then delete + add).
-   - `router.push(pathname + "?" + newSearch.toString(), {scroll: false})`.
+   - Remove `useState` for `selectedBrands/Categories/Classify/Rooms/search/currentPage/sortBy`.
+   - Receive them as props: `selectedFilters: SelectedFilters`, `categoryOptions`, `roomOptions`, `brands`, `totalCount`, `products`.
+   - Keep `filtersOpen` state (UI only, doesn't go to URL).
+   - Keep `favorites` state (UI only, could later move to wishlist store).
+   - Use `useRouter` + `usePathname` + `useSearchParams` from `next-intl/navigation` (NOT `next/navigation`).
+   - Build `updateFilters(partial: Partial<Record<string, string | string[] | null>>)`:
+     - Read current `useSearchParams`,
+     - Clone into new `URLSearchParams`,
+     - For each new key: if value is `null` → delete key; if `string` → set; if `string[]` → delete then append each,
+     - Build new URL `pathname?${newParams}`,
+     - `router.push(url, { scroll: false })`.
+   - Replace `toggleBrand/toggleCategory/toggleRoom/toggleClassify` with helpers calling `updateFilters`.
+   - `appliedFilters` derived from `selectedFilters` end `selectedFilters` Map filtered by active label.
+   - Pass `totalCount + pageSize` down to Pagination.
 
-   EXPECTED: clicking brand “HAY” updates URL to `?brand=hay` and triggers server re-fetch; pagination updates `?page=2`.
-   QA: manual `bun dev` smoke — open `/vi/products`, click a brand button, assert `useSearchParams().get("brand") === "hay"`.
+   EXPECTED: clicking “HAY” brand updates URL to `?brand=hay` and re-fetch happens; drawer stays open during filter (just updates URL).
+   QA:
+   - `bun dev` + Playwright manual: open `/vi/products`, click brand button, assert URL contains `?brand=hay` and drawer remains open.
+   - `npx tsc --noEmit` exit 0.
 
-8. **[src/components/products/FilterSidebar.tsx] Replace hardcoded arrays** with props: `categoryOptions: CategoryNode[]`, `roomOptions: RoomOption[]`, `selected: SelectedFilters`, `onChange: (next: Partial<SelectedFilters>) => void`.
+8. **[src/components/products/FilterSidebar.tsx] Replace hardcoded arrays** + integrate `Chip` from `shared/`.
 
    HOW:
-   - Delete `CATEGORIES[]` and `ROOMS[]` constants.
-   - Render `categoryOptions.map(cat => <button onClick={() => onChange({category: cat.slug})}>)`.
-   - For sub-category ladder: when `selected.category` is set, render `category.subCategories` list below.
-   - For rooms: render `roomOptions.map(room => <button onClick={() => toggleRoom(room.slug)}>)`.
-   - For classify: keep 2 toggles (inStock, onSale) — wire to `onChange({inStock: !selected.inStock})`.
+   - Delete `CATEGORIES[]` constant.
+   - Delete `ROOMS[]` constant.
+   - Keep `classifyItems` as array of `{ slug, label }` — `[{ slug: "in_stock", label: t("classifyInStock") }, { slug: "on_sale", label: t("classifyOnSale") }]` (drop `comingSoon`).
+   - Accept new props: `categoryOptions: CategoryNode[]`, `roomOptions: RoomOption[]`. Existing props `selectedBrands/Categories/Rooms/Classify` switch from `Set<string>` (with labels) to `Set<slug>` (with slugs).
+   - Render category list from `categoryOptions`: top-level 4 items + a `<Check>` row toggle for "All" → `toggleCategory(null)` clears URL category.
+   - Render rooms from `roomOptions`: button per room with checkbox-style `<Check>` from lucide.
+   - Use `shared/chip` for appliedFilters display — variant `"outline"` fits existing border styling.
 
-   EXPECTED: category list shows 4 top + nested sub-list; rooms list shows 7 rooms with locale label; selected state visual reflects URL.
-   QA: `curl -s "http://localhost:3000/vi/products?category=furniture"` shows `furniture` button highlighted; sub-category list visible below.
+   EXPECTED: category list shows 4 top + nested sub-list when category selected; rooms list shows 7 rooms with locale label.
+   QA: `curl -s "http://localhost:3000/vi/products?category=furniture" | grep -c "Furniture"` ≥ 1; `/en/products?room=living-room` shows "Living Room" label selected.
 
-9. **[src/components/products/BrandSelector.tsx] Replace hardcoded BRANDS[]** with `brandOptions: BrandOption[]` prop + `selectedBrands: string[]` + `onToggleBrand(slug)`.
+9. **[src/components/products/BrandSelector.tsx] Remove `FALLBACK_BRANDS[]`** and use `brand.slug` for match.
 
    HOW:
-   - Delete `BRANDS[]` constant.
-   - Render `brandOptions.map(b => <button data-testid={`brand-filter-${b.slug}`} onClick={() => onToggleBrand(b.slug)} className={selectedBrands.includes(b.slug) ? "active" : ""}>)`.
-   - Active class adds `bg-nh-ink text-white`.
+   - Delete the `FALLBACK_BRANDS` constant.
+   - Delete the brand-name-only `LOCAL_LOGOS` map (now using `brand.logoUrl` from DB row directly).
+   - Accept `selectedBrands: Set<slug>` instead of brand name.
+   - Wire `toggleBrand(brand.slug)` from `onToggleBrand(slug)` callback.
+   - Add `data-testid={`brand-filter-${brand.slug}`}` on each button.
+   - Render warning state if `brands` is empty: `"Đang cập nhật"` text (no silent fallback).
 
-   EXPECTED: shows 17 real brands (HAY, Fritz Hansen, USM, ...) not mock (B&B Italia, Cassina, ...); multi-select via URL `?brand=X&brand=Y`.
-   QA: `curl -s "http://localhost:3000/vi/products" | grep -o "HAY" | head -1` returns "HAY"; `grep -o "Cassina"` returns nothing.
+   EXPECTED: shows 17 real brand slugs → matching URL params.
+   QA: `grep -c "Cassina" /tmp/en-products.html` = 0 (mock brands gone); `grep -o "HAY"` appears as clicking target.
 
-10. **[src/components/products/SearchBar.tsx] Wire to URL** with 300ms debounce. Read initial value from `searchParams.q`. On change push `?q=...&page=1`.
-
-    HOW:
-    - `useState(searchParams.get("q") ?? "")` for local input value.
-    - `useEffect` watch local value → setTimeout 300ms → `updateFilters({q: localValue, page: 1})`.
-    - Cleanup timeout on unmount/re-render.
-
-    EXPECTED: typing “egg” updates URL after 300ms; results filter via pgroonga.
-    QA: manual smoke — type "egg" in search, wait 400ms, assert URL contains `?q=egg&page=1`.
-
-11. **[src/components/products/Pagination.tsx] Add totalCount prop**. Compute `pages = Math.ceil(totalCount/pageSize)`. Render only real pages; remove mock `99`. Hide when pages <= 1.
+10. **[src/components/products/SearchBar.tsx] Wire to URL** with 300ms debounce.
 
     HOW:
-    - Replace `useState` `pages = [1,2,3,4,5]` with `Array.from({length: Math.min(totalPages, 7)}, (_, i) => i+1)` (or proper ellipsis logic).
-    - Clicking page N → `updateFilters({page: N})`.
-    - If `totalCount <= pageSize`, render nothing.
+    - Local state: `useState(searchParams.get("q") ?? "")`.
+    - `useEffect` watches local value → `setTimeout(() => updateFilters({ q: localValue, page: 1 }), 300)`. Cleanup timeout.
+    - `useSearchParams` reads `q` for derived mode.
+    - On blank input → `updateFilters({ q: null, page: 1 })` removes the key.
 
-    EXPECTED: shows real pagination — e.g. if 203 HAY variants / 24 per page → 9 pages.
-    QA: `curl -s "http://localhost:3000/vi/products?brand=hay"` HTML contains pagination with up to 9 pages; mock `99` gone.
+    EXPECTED: typing "egg" updates URL after 300ms.
+    QA: `bun dev` + Playwright manual smoke — type "egg", wait 400ms, assert URL contains `?q=egg&page=1`.
 
-12. **[src/components/products/SectionHeader.tsx] Add sort dropdown**. `sort: ProductSort`, `onSortChange`. Replace mock `sortBy="recommended"` with URL-driven. Use native `<select>` or Radix listbox.
+11. **[src/components/products/Pagination.tsx] Add totalCount** + render real pages.
 
     HOW:
-    - Add `useState` for dropdown open.
-    - Render 4 options: priority/price_asc/price_desc/newest (translated labels).
-    - Clicking option → `updateFilters({sort: "price_asc"})`.
+    - Accept new props: `totalCount: number`, `pageSize: number`.
+    - Compute `totalPages = Math.max(1, Math.ceil(totalCount / pageSize))`.
+    - Render `Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1)`; if `totalPages > 7`, render first 5 + `... + last`.
+    - Clicking page N → `updateFilters({ page: String(N) })`.
+    - Hide when `totalPages <= 1`.
+    - Remove mock `[1,2,3,4,5]` + `99` button.
 
-    EXPECTED: clicking “Price: Low to High” sets `?sort=price_asc`.
-    QA: `curl -s "http://localhost:3000/vi/products?sort=price_asc" | grep -c "price_asc"` confirms URL-driven (the label rendered is i18n Vietnamese "Giá: Thấp → Cao").
+    EXPECTED: real pagination appears — e.g., `?brand=hay` (203 variants / 24 per page → 9 pages visible).
+    QA: `curl -s "http://localhost:3000/vi/products?brand=hay" | grep -oE 'data-page="[^"]+"' | wc -l` returns >= 5 page buttons.
+
+12. **[src/components/products/SectionHeader.tsx] Add sort dropdown** replacing mock `sortBy="recommended"`.
+
+    HOW:
+    - Accept `sort: ProductSort` from URL + `onSortChange(sort: ProductSort)`.
+    - Render `<UnderlineTabs>` from `shared/` with 4 tabs: priority / price_asc / price_desc / newest.
+    - Each tab label comes from `t("sortPriority")` / `t("sortPriceAsc")` / `t("sortPriceDesc")` / `t("sortNewest")`.
+    - Clicking a tab → `onSortChange("price_asc")`.
+
+    EXPECTED: clicking "Price: Low to High" sets `?sort=price_asc`.
+    QA: `curl -s "http://localhost:3000/vi/products?sort=price_asc" | grep -c "Giá: Thấp → Cao"` ≥ 1.
 
 ### Wave 4 — i18n + tests
 
-13. **[messages/{vi,en,ko}.json] Add i18n keys**: `Products.subCategory`, `Products.classifyInStock`, `Products.classifyOnSale`, `Products.roomsHeading`, `Products.sortPriority`, `Products.sortPriceAsc`, `Products.sortPriceDesc`, `Products.sortNewest`. Extend `Rooms` namespace with `familyRoom`, `kitchen` if missing in all locales.
+13. **[messages/{vi,en,ko}.json] Add i18n keys**.
 
     HOW:
-    - Open each of `messages/vi.json`, `messages/en.json`, `messages/ko.json`.
-    - Append keys to `Products` object.
-    - For `Rooms`, check `familyRoom`/`kitchen` exist (`vi` has them; `en`/`ko` may not — add).
-    - Run `json.load` quick sanity to ensure valid JSON.
+    - Open all 3 message files.
+    - In `Products` add: `subCategory`, `classifyInStock`, `classifyOnSale`, `roomsHeading`, `sortPriority`, `sortPriceAsc`, `sortPriceDesc`, `sortNewest`, `filterWarningEmpty`.
+    - In `Rooms` add: `familyRoom`, `kitchen` (missing in en/ko currently).
+    - Save each as valid JSON.
 
-    EXPECTED: JSON parses for all 3 locales; key count matches across.
-    QA: `python3 -c "import json; [json.load(open(f'messages/{l}.json')) for l in ('vi','en','ko')]"` exits 0.
+    EXPECTED: all 3 locales have matching keys.
+    QA:
+    - `python3 -c "import json; [json.load(open(f'messages/{l}.json')) for l in ('vi','en','ko')]"` exits 0.
+    - `npx tsc --noEmit` exit 0 (no missing key type errors since next-intl doesn't strictly typecheck; but app build doesn't crash).
 
-14. **[src/lib/queries/products.test.ts] Add unit tests** for `getVariantProducts` with `brand=['hay']`, `rooms=['living-room']`, `category='furniture'` — mock supabase chain like `variants.test.ts`. Add tests for `getBrandOptions`, `getCategoryOptions`, `getRoomOptions`, `buildPgroongaFilter`.
-
-    HOW:
-    - Extend mock chain stub (like `variants.test.ts`) with `in`, `contains`, `not`, `group`。
-    - For each new helper, assert the expected chain methods are called with right args.
-    - For `buildPgroongaFilter`, assert `null` for empty search + substring match for non-empty.
-
-    EXPECTED: 4+ new tests pass.
-    QA: `bun test src/lib/queries/products.test.ts` shows all green, no eslint errors.
-
-15. **[e2e/smoke-i18n.spec.ts] Add product filter assertions**:
-    - `/vi/products?brand=hay` body contains “HAY” brand and no “Fritz Hansen”.
-    - `/en/products?room=living-room` body contains English room label and `lang="en"`.
-    - `/ko/products` returns 200, body contains Korean `Products.title` (가구 상품).
+14. **[src/lib/queries/products.test.ts] Add unit tests** for new helpers.
 
     HOW:
-    - Add 3 new tests using existing Playwright fixtures.
-    - For room filter on EN route: assert `getByText("Living Room", { exact: false }).first()` visible.
-    - For Korean: assert `getByText("가구 상품")` visible.
+    - Extend mock chain stub (`in`, `contains`, `not`, `group`, `head`).
+    - Add 6 new tests: `getVariantProducts({ brand: ["hay"] })`, `getVariantProducts({ rooms: ["living-room"] })`, `getVariantProducts({ category: "furniture" })` (verify filter_category eq not category_id), `getBrandOptions()` returns 17, `getCategoryOptions()` returns 4 with sub-tree, `getRoomOptions("ko")[0].label === "거실"`.
+    - Add `buildPgroongaFilter` test (assert null for empty, contains `name.&@~.egg` for "egg").
 
-    EXPECTED: 3 new tests pass; existing tests still pass.
-    QA: `bunx playwright test e2e/smoke-i18n.spec.ts --project=chromium` shows all green.
+    EXPECTED: 7 new tests pass.
+    QA: `bun test src/lib/queries/products.test.ts` — all tests green.
 
-16. **[e2e/product-navigation.spec.ts] Add URL-driven filter navigation test**: open `/vi/products`, click brand button (selector by data-testid `brand-filter-hay`), assert URL updates to include `?brand=hay` and grid count drops to ≤ 24 (first page).
+15. **[e2e/smoke-i18n.spec.ts] Add product filter assertions**.
 
     HOW:
-    - Read existing e2e/product-navigation.spec.ts to see existing flow.
-    - Add test that uses `page.getByTestId("brand-filter-hay")` then `await expect(page).toHaveURL(/brand=hay/)`.
+    - Add 3 new tests:
+      1. `/vi/products?brand=hay` body contains "HAY" string and not "Fritz Hansen".
+      2. `/en/products?room=living-room` body contains "Living Room" label and `lang="en"`.
+      3. `/ko/products` returns 200 with `가구 상품` title visible.
+    - Use `page.getByText("...")` from Playwright.
 
-    EXPECTED: selector-based assertion passes.
+    EXPECTED: 3 new tests pass.
+    QA: `bunx playwright test e2e/smoke-i18n.spec.ts --project=chromium` shows 3 added tests green.
+
+16. **[e2e/product-navigation.spec.ts] Add URL-driven filter flow test**.
+
+    HOW:
+    - Add a test that opens `/vi/products`, clicks `getByTestId("brand-filter-hay")`, asserts `await expect(page).toHaveURL(/brand=hay/)` and grid re-renders with up to 24 items on first page.
+
+    EXPECTED: test passes via real Supabase fetch.
     QA: `bunx playwright test e2e/product-navigation.spec.ts --project=chromium` green.
 
 ### Wave 5 — Verification
 
-17. **Manual smoke `bun dev`**: test `/vi/products?brand=hay&room=living-room&sort=price_asc` with real Supabase. Verify returns filtered list + correct pagination.
+17. **Manual smoke `bun dev`** with filter URLs.
 
-    HOW:
-    - Start `bun dev`.
-    - Open each URL in browser: `/vi/products?brand=hay`, `/vi/products?room=living-room`, `/vi/products?brand=hay&room=living-room&sort=price_asc`, `/en/products?brand=usm`, `/ko/products?onSale=true`.
-    - Cross-check pagination count vs SQL: `SELECT COUNT(*) FROM variants WHERE approved=true AND validated=true AND filter_brand='hay' AND 'living-room' = ANY(filter_room)`.
+    HOW: Test list:
+    - `/vi/products` — default page,sortable result
+    - `/vi/products?brand=hay` — only HAY
+    - `/vi/products?room=living-room` — only variants có living-room trong filter_room
+    - `/vi/products?brand=hay&room=living-room&sort=price_asc` — combined
+    - `/vi/products?q=egg` — pgroonga search
+    - `/vi/products?category=furniture&subCategory=sofas` — nested category + sub
+    - `/en/products?brand=usm` — English equivalent
+    - `/ko/products` — Korean title visible
 
-    EXPECTED: real network round-trip, count matches SQL.
-    QA: SQL count matches `Math.ceil(totalCount/pageSize)` from page HTML.
+    Cross-check: query Supabase directly with `SELECT COUNT(*) FROM variants WHERE approved AND validated AND filter_brand='hay' AND 'living-room' = ANY(filter_room)` and verify `pagination` page count matches `Math.ceil(count/24)`.
 
-18. **`npx tsc --noEmit`** must pass. **`bun run test`** all green except known pre-existing amis-sync env failures.
+    EXPECTED: counts match SQL.
+    QA: SQL count via SQLite-style verification command.
 
-    HOW:
-    - Run typecheck + full suite.
-    - Compare failure count to pre-change baseline (6 amis-sync failures unrelated).
+18. **`npx tsc --noEmit` + `bun run test`**.
 
-    EXPECTED: 0 type errors; new tests pass; no new test failures introduced by this change.
-    QA: `npx tsc --noEmit && bun run test 2>&1 | grep -E "Test Files|Tests"` shows same `6 failed | X passed` base, with X increased by new tests.
+    HOW: run typecheck and full test suite.
+    EXPECTED: 0 type errors; new tests pass; no new failures beyond pre-existing 6 amis-sync ones.
 
 ---
 
@@ -268,23 +338,22 @@ Your next move: approve, hoặc yêu cầu review Momus. Full execution detail f
 
 - `FilterParams`: `{ brand?: string[]; category?: string; subCategory?: string; rooms?: string[]; inStock?: boolean; onSale?: boolean; sort?: ProductSort; page?: number; pageSize?: number; search?: string }`
 - `FilterResult`: `{ items: readonly VariantProductListItem[]; totalCount: number }`
-- `BrandOption`: `{ slug: string; name: string; count: number }`
+- `BrandOption`: `{ id: string; slug: string; name: string; logoUrl: string | null; count: number }`
 - `CategoryNode`: `{ slug: string; name: string; name_vi: string; subCategories: { slug: string; name: string; name_vi: string }[] }`
-- `RoomOption`: `{ slug: string; label: string }` — label locale-dependent.
-- `SelectedFilters`: same shape as `FilterParams` but pulled from URL.
+- `RoomOption`: `{ slug: string; label: string }`
+- `SelectedFilters`: `{ brand: Set<string>; category: string | null; subCategory: string | null; rooms: Set<string>; inStock: boolean; onSale: boolean; search: string; sort: ProductSort; page: number; pageSize: number }`
 
 ## Code conventions
 
-- No `as any`. No `@ts-ignore`. No empty catch. Type-safe throughout.
-- `getVariantProducts` already in repo — extended, not duplicated.
-- All client components keep `"use client"`.
-- Follow existing `useTranslations("Products")` pattern (see `BrandSelector.tsx`).
-- PostgREST `in` operator for arrays: `query.in("filter_brand", ["hay","fritz-hansen"])`.
-- PostgREST `contains` for text[] `filter_room`: `query.contains("filter_room", ["living-room"])` (returns variants whose filter_room array ⊇ passed array).
-- pgroonga search: pattern from `src/lib/queries/search.ts` — `rpc("pgroonga_query_escape", {query})` returns escaped string; then `or(`name.&@~.${escaped},finish_vi.&@~.${escaped},...`)`.
+- No `as any`. No `@ts-ignore`. No empty catch.
+- Use `next-intl/navigation` for `useRouter/usePathname/useSearchParams`, NOT `next/navigation` — locale-aware.
+- Reuse `shared/Chip`, `shared/StatusBadge`, `shared/FavoriteButton`, `shared/UnderlineTabs` where they already fit pattern.
+- PostgREST operators: `in` (multi-eq), `contains` (array ⊇), `or` for pgroonga.
+- pgroonga search: rpc `pgroonga_query_escape` then `or(`name.&@~.${escaped},finish_vi.&@~.${escaped},...`)`.
 
 ## Verification commands
 - `npx tsc --noEmit`
 - `bun run test`
-- `bun dev` + `curl http://localhost:3000/vi/products?brand=hay` — body contains “HAY”, no “Fritz Hansen”
-- SQL direct: `SELECT COUNT(*) FROM variants WHERE approved AND validated AND filter_brand='hay'`
+- `bun dev` + curl `/vi/products?brand=hay` (body contains "HAY", no "Fritz Hansen")
+- `bunx playwright test e2e/smoke-i18n.spec.ts e2e/product-navigation.spec.ts --project=chromium`
+- SQL: `SELECT COUNT(*) FROM variants WHERE approved=true AND validated=true AND filter_brand='hay'`

@@ -19,7 +19,7 @@ export function variantText(value: unknown, fallback: string = ""): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
-export function variantRawText(variant: { raw: Variant["raw"] }, key: string): string {
+export function variantRawText(variant: { readonly raw?: Variant["raw"] | null }, key: string): string {
   const raw = variant.raw;
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     return "";
@@ -48,8 +48,7 @@ type ProductGridVariant = Pick<
   | "in_stock"
   | "packshot_url"
   | "gallery_urls"
-  | "raw"
->;
+> & { readonly raw?: Variant["raw"] };
 
 export function getProductGridImageUrl(variant: ProductGridVariant, options: ProductGridMapperOptions = {}): string {
   if (options.packshotOnly) {

@@ -91,7 +91,9 @@
     "desc3": "Natural materials and gentle forms bring restful sleep and a calm spirit.",
     "sub4": "Harmony with nature",
     "title4": "Outdoor",
-    "desc4": "Durable furniture, open design, seamless connection between indoors and out."
+    "desc4": "Durable furniture, open design, seamless connection between indoors and out.",
+    "familyRoom": "Family Room",
+    "kitchen": "Kitchen"
   },
   "Products": {
     "title": "FURNITURE PRODUCTS",
@@ -115,7 +117,17 @@
     "defaultProductName": "Product",
     "empty": "No products to display.",
     "favoriteAria": "Add {name} to favorites",
-    "viewDetailAria": "View {name} details"
+    "viewDetailAria": "View {name} details",
+    "subCategory": "Sub-category",
+    "classifyInStock": "In stock",
+    "classifyOnSale": "On sale",
+    "roomsHeading": "By room",
+    "sortPriority": "Recommended",
+    "sortPriceAsc": "Price: Low → High",
+    "sortPriceDesc": "Price: High → Low",
+    "sortNewest": "Newest",
+    "filterWarningEmpty": "Updating",
+    "clearAll": "Clear all"
   },
   "ProductDetail": {},
   "News": {},

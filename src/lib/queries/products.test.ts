@@ -5,12 +5,17 @@ type QueryMock = PromiseLike<QueryResult> & {
   readonly select: ReturnType<typeof vi.fn>;
   readonly eq: ReturnType<typeof vi.fn>;
   readonly ilike: ReturnType<typeof vi.fn>;
+  readonly in: ReturnType<typeof vi.fn>;
   readonly order: ReturnType<typeof vi.fn>;
+  readonly or: ReturnType<typeof vi.fn>;
+  readonly overlaps: ReturnType<typeof vi.fn>;
   readonly range: ReturnType<typeof vi.fn>;
 };
 
 const state = vi.hoisted(() => {
   const eqCalls: Array<readonly [string, string | boolean]> = [];
+  const inCalls: Array<readonly [string, readonly string[]]> = [];
+  const overlapCalls: Array<readonly [string, readonly string[]]> = [];
   const chain: QueryMock = {
     select: vi.fn(() => chain),
     eq: vi.fn((column: string, value: string | boolean) => {
@@ -18,11 +23,20 @@ const state = vi.hoisted(() => {
       return chain;
     }),
     ilike: vi.fn(() => chain),
+    in: vi.fn((column: string, value: readonly string[]) => {
+      inCalls.push([column, value]);
+      return chain;
+    }),
     order: vi.fn(() => chain),
+    or: vi.fn(() => chain),
+    overlaps: vi.fn((column: string, value: readonly string[]) => {
+      overlapCalls.push([column, value]);
+      return chain;
+    }),
     range: vi.fn(() => chain),
     then: (resolve) => Promise.resolve({ data: [{}], error: null }).then(resolve),
   };
-  return { chain, eqCalls, from: vi.fn(() => chain) };
+  return { chain, eqCalls, from: vi.fn(() => chain), inCalls, overlapCalls };
 });
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -33,6 +47,8 @@ import { getProducts, getVariantProducts } from "./products";
 
 beforeEach(() => {
   state.eqCalls.length = 0;
+  state.inCalls.length = 0;
+  state.overlapCalls.length = 0;
   vi.clearAllMocks();
 });
 
@@ -70,6 +86,42 @@ describe("getVariantProducts", () => {
     expect(selectArg).toContain("id");
     expect(selectArg).toContain("slug_vi");
     expect(selectArg).toContain("price");
+    expect(selectArg).toContain("filter_brand");
+    expect(selectArg).toContain("filter_category");
+    expect(selectArg).toContain("filter_sub_category");
+    expect(selectArg).toContain("filter_room_vi");
     expect(selectArg).not.toBe("*");
+  });
+
+  it("applies product list filters when options are present", async () => {
+    // Given: product-list filters selected by the user.
+    // When: variants are fetched for the filtered listing page.
+    await getVariantProducts({
+      brand: ["knoll"],
+      category: ["furniture"],
+      room: ["living-room"],
+      search: "lamp",
+      status: "sale",
+      subCategory: ["table-lamps"],
+    });
+
+    // Then: each selected filter is applied at the Supabase query boundary.
+    expect(state.inCalls).toContainEqual(["filter_brand", ["knoll"]]);
+    expect(state.inCalls).toContainEqual(["filter_category", ["furniture"]]);
+    expect(state.inCalls).toContainEqual(["filter_sub_category", ["table-lamps"]]);
+    expect(state.overlapCalls).toContainEqual(["filter_room", ["living-room"]]);
+    expect(state.chain.or).toHaveBeenCalledWith("name.ilike.%lamp%,name_vi.ilike.%lamp%");
+    expect(state.eqCalls).toContainEqual(["on_sale", true]);
+  });
+
+  it("maps status filters to stock and sale columns", async () => {
+    // Given: stock status filters from the UI.
+    // When: each status is queried.
+    await getVariantProducts({ status: "in_stock" });
+    await getVariantProducts({ status: "out_of_stock" });
+
+    // Then: the status contract maps to the persisted boolean columns.
+    expect(state.eqCalls).toContainEqual(["in_stock", true]);
+    expect(state.eqCalls).toContainEqual(["in_stock", false]);
   });
 });

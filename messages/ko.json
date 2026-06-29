@@ -91,7 +91,9 @@
     "desc3": "자연 소재와 부드러운 형태가 편안한 수면과 차분한 마음을 가져다줍니다.",
     "sub4": "자연과의 조화",
     "title4": "야외",
-    "desc4": "내구성 좋은 가구와 열린 디자인, 실내외의 자연스러운 연결."
+    "desc4": "내구성 좋은 가구와 열린 디자인, 실내외의 자연스러운 연결.",
+    "familyRoom": "가족 방",
+    "kitchen": "주방"
   },
   "Products": {
     "title": "가구 상품",
@@ -115,7 +117,17 @@
     "defaultProductName": "상품",
     "empty": "표시할 상품이 없습니다.",
     "favoriteAria": "{name} 위시리스트에 추가",
-    "viewDetailAria": "{name} 상세 보기"
+    "viewDetailAria": "{name} 상세 보기",
+    "subCategory": "하위 카테고리",
+    "classifyInStock": "재고 있음",
+    "classifyOnSale": "세일 중",
+    "roomsHeading": "공간별",
+    "sortPriority": "추천",
+    "sortPriceAsc": "가격: 낮은순",
+    "sortPriceDesc": "가격: 높은순",
+    "sortNewest": "최신순",
+    "filterWarningEmpty": "업데이트 중",
+    "clearAll": "전체 지우기"
   },
   "ProductDetail": {},
   "News": {},
