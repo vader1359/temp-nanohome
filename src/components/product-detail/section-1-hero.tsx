@@ -12,13 +12,32 @@ import {
 import { Breadcrumb, ColorSelector } from "@/components/product-detail";
 import { DarkCTAButton, FavoriteButton, IconTextRow, StatusBadge } from "@/components/shared";
 import { product as fallbackProduct, breadcrumbs } from "@/components/product-detail/mock-data";
+import { useCart } from "@/components/cart/cart-context";
 
 interface Section1HeroProps {
-  product?: typeof fallbackProduct;
+  product?: typeof fallbackProduct & {
+    id?: string;
+    sku?: string;
+  };
 }
 
 export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
   const [activeThumb, setActiveThumb] = useState(0);
+  const { addItem } = useCart();
+
+  const handleAddToCart = () => {
+    addItem({
+      id: product.id ?? product.sku ?? product.title,
+      name: product.title,
+      category: product.category,
+      price: product.newPrice,
+      originalPrice: product.oldPrice || undefined,
+      discount: product.discount || undefined,
+      badge: product.onSale ? "SALE" : "ĐANG CÓ HÀNG",
+      badgeTone: product.onSale ? "sale" : "stock",
+      image: product.gallery[0] ?? "/images/p_lc2.png",
+    });
+  };
 
   return (
     <section className="flex flex-col bg-white">
@@ -117,7 +136,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
 
           {/* CTA row */}
           <div className="flex gap-4">
-            <DarkCTAButton variant="solid" className="grow gap-2 leading-[20px]">
+            <DarkCTAButton type="button" onClick={handleAddToCart} variant="solid" className="grow gap-2 leading-[20px]">
               <ShoppingCart className="h-4 w-4" />
               Thêm vào giỏ
             </DarkCTAButton>

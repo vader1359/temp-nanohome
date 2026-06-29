@@ -76,6 +76,8 @@ function buildHeroProduct(variant: Variant) {
   const title = variantText(variant.name_vi, variantText(variant.name, "Sản phẩm"));
 
   return {
+    id: variant.id,
+    sku: variantText(variant.sku, variant.id),
     brand: "nanoHome",
     title,
     breadcrumbTitle: title,
