@@ -1,4 +1,4 @@
-wing: temp_nanohome
+wing: temp_nanohome_slimd_staging
 rooms:
 - name: messages
   description: Files from messages/
