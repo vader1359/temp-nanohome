@@ -1,77 +1,35 @@
 import { setRequestLocale } from "next-intl/server";
 import { ProductsPage } from "@/components/products/products-page";
-import type { ProductGridItem } from "@/components/products/ProductGrid";
+import { variantToProductGridItem } from "@/lib/products/mapper";
+import { getBrands } from "@/lib/queries/brands";
 import { getVariantProducts } from "@/lib/queries/products";
-import type { Variant } from "@/types/db";
 
 interface PageProps {
   params: Promise<{ locale: string }>;
-}
-
-const priceFormatter = new Intl.NumberFormat("vi-VN", {
-  currency: "VND",
-  maximumFractionDigits: 0,
-  style: "currency",
-});
-
-function formatPrice(price: Variant["price"]): string {
-  if (price === null) {
-    return "Liên hệ";
-  }
-
-  return priceFormatter.format(Number(price));
-}
-
-function variantText(value: unknown, fallback = ""): string {
-  return typeof value === "string" && value.length > 0 ? value : fallback;
-}
-
-function variantRawText(variant: Variant, key: string): string {
-  const raw = variant.raw;
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    return "";
-  }
-
-  return variantText(raw[key]);
-}
-
-function getVariantImageUrl(variant: Variant): string {
-  return (
-    variantRawText(variant, "cldr_packshot_url") ||
-    variantRawText(variant, "cldr_packshot") ||
-    variantText(variant.packshot_url) ||
-    variant.gallery_urls[0] ||
-    "/images/p_lc2.png"
-  );
-}
-
-function variantToGridItem(variant: Variant): ProductGridItem {
-  const imageUrl = getVariantImageUrl(variant);
-  const discount = variant.discount_percent !== null ? `-${variant.discount_percent}%` : null;
-  const name = variantText(variant.name_vi, variantText(variant.name, "Sản phẩm"));
-  const detailSlug = variantText(variant.slug_vi, variantText(variant.slug, variant.id));
-
-  return {
-    id: variant.id,
-    brand: "nanoHome",
-    name,
-    subtitle: [variantText(variant.finish_vi, variantText(variant.finish)), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
-    status: variant.on_sale ? "SALE" : variant.in_stock ? "ĐANG CÓ HÀNG" : "HẾT HÀNG",
-    imageUrl,
-    href: `/san-pham/${encodeURIComponent(detailSlug)}`,
-    oldPrice: variant.compare_at_price !== null ? formatPrice(variant.compare_at_price) : null,
-    discount,
-    price: formatPrice(variant.price),
-    swatches: [],
-  };
 }
 
 export default async function ProductsRoute({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const variants = await getVariantProducts({ pageSize: 24 });
-  const products = variants.map(variantToGridItem);
+  const [variants, brands] = await Promise.all([
+    getVariantProducts({ pageSize: 24 }),
+    getBrands(),
+  ]);
+  const brandById = new Map(brands.map((brand) => [brand.id, brand]));
+  const products = variants.map((variant) => {
+    const brand = variant.brand_id ? brandById.get(variant.brand_id) : undefined;
 
-  return <ProductsPage products={products} />;
+    return variantToProductGridItem(variant, {
+      brandLogoUrl: brand?.logo_url ?? null,
+      brandName: brand?.name ?? null,
+    });
+  });
+
+  return (
+    <ProductsPage
+      brands={brands.map(({ id, logo_url, name }) => ({ id, logoUrl: logo_url, name }))}
+      products={products}
+    />
+  );
 }

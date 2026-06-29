@@ -67,7 +67,7 @@ const cardPositionClasses: Record<Hotspot["cardPlacement"], string> = {
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-export function Hero() {
+export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) }: { products?: HotspotProduct[] }) {
   const t = useTranslations("Hero");
   const [activeIndex, setActiveIndex] = useState(0);
   const [openCard, setOpenCard] = useState<number | null>(null);
@@ -100,7 +100,7 @@ export function Hero() {
   };
 
   return (
-    <section className="relative min-h-[620px] h-[calc(100svh-150px)] max-h-[886px] w-full overflow-hidden lg:h-[886px]">
+    <section className="relative min-h-[465px] h-[calc((100svh-150px)*0.75)] max-h-[665px] w-full overflow-hidden lg:h-[665px]">
       {/* Background layers */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -111,30 +111,28 @@ export function Hero() {
       <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/35" />
 
       {/* Brand logo */}
-      <Image
-        src="/images/brand_logo_hero.png"
-        alt="NanoHome"
-        width={148}
-        height={48}
-        priority
-        className="absolute bottom-[272px] left-6 z-20 h-auto w-[120px] object-contain lg:left-12 lg:w-[164px]"
-      />
+      <div className="site-shell absolute inset-x-0 bottom-[250px] z-20 sm:bottom-[310px] lg:bottom-[340px]">
+        <Image src="/images/brand_logo_hero.png" alt="NanoHome" width={148} height={48} priority className="h-auto w-[110px] object-contain sm:w-[130px] lg:w-[156px]" />
+      </div>
 
       {/* Title + CTA */}
-      <div className="absolute inset-x-0 bottom-[58px] z-10 px-6 sm:px-8 lg:px-12">
-        <div className="max-w-[720px]">
-          <h1 className="text-3xl font-normal leading-9 sm:text-4xl sm:leading-10 lg:text-[48px] lg:leading-[56px] text-white">
+      <div className="absolute inset-x-0 bottom-16 z-10 lg:bottom-20">
+        <div className="site-shell">
+          <h1 className="break-words text-3xl font-normal leading-9 text-white sm:text-4xl sm:leading-10 lg:text-[48px] lg:leading-[56px]">
             <span className="block">{t("titleLine1")}</span>
             <span className="block">{t("titleLine2")}</span>
           </h1>
-          <button className="mt-6 rounded-none border border-white bg-[#111111] px-8 py-4 text-sm font-medium uppercase leading-5 tracking-wider text-white transition-colors hover:bg-white hover:text-[#111111]">
+          <button className="mt-8 rounded-none border border-white bg-white px-5 py-2.5 text-xs font-medium uppercase leading-4 tracking-wider text-[#111111] transition-colors hover:bg-[#111111] hover:text-white">
             {t("cta")}
           </button>
         </div>
       </div>
 
       {/* Hotspots with product cards */}
-      {hotspotData.map((hotspot, index) => (
+      {hotspotData.map((hotspot, index) => {
+        const product = products[index] ?? hotspot.product;
+
+        return (
         <div
           key={hotspot.position}
           ref={(el) => {
@@ -178,10 +176,10 @@ export function Hero() {
                 </button>
 
                 {/* Product thumbnail */}
-                <div className="relative h-[180px] w-full bg-[#f5f5f5]">
+                <div className="relative aspect-[4/5] w-full bg-white">
                   <Image
-                    src={hotspot.product.image}
-                    alt={hotspot.product.name}
+                    src={product.image}
+                    alt={product.name}
                     fill
                     className="object-contain p-4"
                     sizes="280px"
@@ -190,38 +188,33 @@ export function Hero() {
 
                 {/* Product info */}
                 <div className="px-4 pb-4 pt-3">
-                  <p className="text-sm font-semibold leading-tight text-[#111]">
-                    {hotspot.product.brand}
-                  </p>
-                  <h3 className="mt-1 truncate text-sm leading-snug text-[#444]">
-                    {hotspot.product.name}
+                  <h3 className="line-clamp-2 text-sm leading-snug text-[#444]">
+                    {product.name}
                   </h3>
-                  <p className="mt-2 text-[15px] font-semibold text-[#111]">
-                    {hotspot.product.price}
-                  </p>
                 </div>
               </div>
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
 
       {/* Slide navigation arrows */}
       <button
         type="button"
         onClick={goToPrevious}
         aria-label="Previous slide"
-        className="absolute left-4 top-1/2 z-20 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111] sm:left-6 lg:left-12"
+        className="absolute left-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111] sm:left-4 lg:left-8"
       >
-        <ChevronLeft className="h-6 w-6" />
+        <ChevronLeft className="size-4" />
       </button>
       <button
         type="button"
         onClick={goToNext}
         aria-label="Next slide"
-        className="absolute right-4 top-1/2 z-20 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111] sm:right-6 lg:right-12"
+        className="absolute right-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#111] sm:right-4 lg:right-8"
       >
-        <ChevronRight className="h-6 w-6" />
+        <ChevronRight className="size-4" />
       </button>
 
       {/* Pagination dots */}

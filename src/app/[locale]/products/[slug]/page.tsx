@@ -8,6 +8,7 @@ import { Section5Benefits } from "@/components/product-detail/section-5-benefits
 import { Section6Recommended } from "@/components/product-detail/section-6-recommended";
 import type { RelatedProduct } from "@/components/product-detail/mock-data";
 import { COLORS } from "@/components/product-detail/mock-data";
+import { getBrands } from "@/lib/queries/brands";
 import { getVariantProducts } from "@/lib/queries/products";
 import { getVariantBySlug, getVariantsByProductId } from "@/lib/queries/variants";
 import type { Variant } from "@/types/db";
@@ -51,28 +52,46 @@ function getVariantPackshotUrl(variant: Variant): string {
   );
 }
 
+function getVariantLifestyleImages(variant: Variant): string[] {
+  const lifestyleFields = [
+    ["cldr_media_long", "cldr_long_url", "cldr_long"],
+    ["cldr_media_closeup", "cldr_closeup_url", "cldr_closeup"],
+    ["cldr_media_lifestyle_1", "cldr_lifestyle1_url", "cldr_lifestyle1"],
+    ["cldr_media_lifestyle_2", "cldr_lifestyle2_url", "cldr_lifestyle2"],
+    ["cldr_media_illustration", "cldr_illustration_url", "cldr_illustration"],
+  ];
+
+  return lifestyleFields
+    .map((keys) => keys.map((key) => variantRawText(variant, key)).find(Boolean) ?? "")
+    .filter((url): url is string => Boolean(url));
+}
+
 function getVariantImages(variant: Variant): string[] {
-  return [getVariantPackshotUrl(variant), ...variant.gallery_urls].filter((url): url is string => Boolean(url));
+  return [getVariantPackshotUrl(variant), ...getVariantLifestyleImages(variant)].filter((url): url is string => Boolean(url));
 }
 
 function toRelatedProduct(variant: Variant): RelatedProduct {
+  const detailSlug = variantText(variant.slug_vi, variantText(variant.slug, variant.id));
+
   return {
     name: variantText(variant.name_vi, variantText(variant.name, "Sản phẩm")),
     brand: "nanoHome",
     category: [variantText(variant.finish_vi, variantText(variant.finish)), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
     price: formatPrice(variant.price),
     image: getVariantPackshotUrl(variant) || variant.gallery_urls[0] || "/images/p_lc2.png",
+    href: `/products/${encodeURIComponent(detailSlug)}`,
     available: variant.in_stock,
     tags: variant.on_sale ? ["Sale"] : undefined,
   };
 }
 
-function buildHeroProduct(variant: Variant) {
+function buildHeroProduct(variant: Variant, brand?: { logo_url: string | null; name: string }) {
   const gallery = getVariantImages(variant);
   const title = variantText(variant.name_vi, variantText(variant.name, "Sản phẩm"));
 
   return {
-    brand: "nanoHome",
+    brand: brand?.name ?? "nanoHome",
+    brandLogoUrl: brand?.logo_url ?? null,
     title,
     breadcrumbTitle: title,
     category: [variantText(variant.finish_vi, variantText(variant.finish)), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
@@ -89,7 +108,6 @@ function buildSpecColumns(variant: Variant) {
   return [
     [
       { label: "Tên sản phẩm", value: variantText(variant.name_vi, variantText(variant.name, "Sản phẩm")) },
-      { label: "SKU", value: variantText(variant.sku, "Đang cập nhật") },
       { label: "Tình trạng", value: variant.in_stock ? "Đang có hàng" : "Hết hàng" },
       { label: "Hoàn thiện", value: variantText(variant.finish_vi, variantText(variant.finish, "Đang cập nhật")) },
     ],
@@ -97,7 +115,6 @@ function buildSpecColumns(variant: Variant) {
       { label: "Kích thước", value: variantText(variant.size, "Đang cập nhật") },
       { label: "Giá", value: formatPrice(variant.price) },
       { label: "Giảm giá", value: variant.discount_percent !== null ? `${variant.discount_percent}%` : "Không" },
-      { label: "Mã sản phẩm", value: variant.id },
     ],
   ];
 }
@@ -111,21 +128,34 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
     notFound();
   }
 
-  const siblingVariants = variant.product_id !== null ? await getVariantsByProductId(variant.product_id) : [];
-  const related = siblingVariants.filter((item) => item.id !== variant.id).slice(0, 4).map(toRelatedProduct);
-  const recommended = (await getVariantProducts({ pageSize: 4 })).filter((item) => item.id !== variant.id).map(toRelatedProduct);
-  const galleryImages = getVariantImages(variant);
+  const [siblingVariants, recommendedVariants, brands] = await Promise.all([
+    variant.product_id !== null ? getVariantsByProductId(variant.product_id) : Promise.resolve([]),
+    getVariantProducts({ pageSize: 24 }),
+    getBrands(),
+  ]);
+  const brand = variant.brand_id ? brands.find((item) => item.id === variant.brand_id) : undefined;
+  const similarCategoryVariants = recommendedVariants
+    .filter((item) => item.id !== variant.id)
+    .filter((item) => variant.category_id === null || item.category_id === variant.category_id);
+  const relatedSource = similarCategoryVariants.length > 0 ? similarCategoryVariants : siblingVariants.filter((item) => item.id !== variant.id);
+  const related = relatedSource.slice(0, 8).map(toRelatedProduct);
+  const basePrice = typeof variant.price === "number" ? variant.price : Number(variant.price ?? 0);
+  const recommended = similarCategoryVariants
+    .sort((a, b) => Math.abs(Number(a.price ?? 0) - basePrice) - Math.abs(Number(b.price ?? 0) - basePrice))
+    .slice(0, 8)
+    .map(toRelatedProduct);
+  const lifestyleImages = getVariantLifestyleImages(variant);
 
   return (
     <main className="flex flex-col">
-      <Section1Hero product={buildHeroProduct(variant)} />
+      <Section1Hero product={buildHeroProduct(variant, brand)} />
       <Section2Specs
         specColumns={buildSpecColumns(variant)}
         description={variant.meta_description}
         designerDescription="Thông tin nhà thiết kế sẽ được cập nhật."
       />
       <Section3Related products={related} collectionName={variantText(variant.finish_vi, variantText(variant.finish, "Cùng dòng"))} />
-      <Section4Gallery galleryImages={galleryImages.length > 0 ? galleryImages : undefined} />
+      <Section4Gallery galleryImages={lifestyleImages.length > 0 ? lifestyleImages : undefined} />
       <Section5Benefits />
       <Section6Recommended products={recommended} />
     </main>

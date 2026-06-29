@@ -11,13 +11,13 @@ export function Pagination({ currentPage, setCurrentPage }: PaginationProps) {
   const pages = [1, 2, 3, 4, 5];
 
   return (
-    <nav className="flex flex-wrap items-center gap-2 overflow-x-auto py-2 sm:gap-4">
+    <nav className="flex flex-wrap items-center justify-center gap-2 overflow-x-auto py-2 sm:gap-3">
       {pages.map((page) => {
         const active = currentPage === page;
         return (
           <button
             className={cn(
-              "flex size-8 items-center justify-center border bg-white text-center text-[14px] font-normal leading-6 sm:size-9 sm:text-[16px]",
+              "flex size-7 items-center justify-center border bg-white text-center text-[12px] font-normal leading-5 sm:size-8 sm:text-[14px]",
               active ? "border-nh-icon-gray text-nh-ink" : "border-nh-border text-nh-muted"
             )}
             key={page}
@@ -28,10 +28,10 @@ export function Pagination({ currentPage, setCurrentPage }: PaginationProps) {
           </button>
         );
       })}
-      <span className="text-[14px] font-normal leading-6 text-nh-muted sm:text-[16px]">...</span>
+      <span className="text-[12px] font-normal leading-5 text-nh-muted sm:text-[14px]">...</span>
       <button
         className={cn(
-          "flex size-8 items-center justify-center border bg-white text-center text-[14px] font-normal leading-6 sm:size-9 sm:text-[16px]",
+          "flex size-7 items-center justify-center border bg-white text-center text-[12px] font-normal leading-5 sm:size-8 sm:text-[14px]",
           currentPage === 99 ? "border-nh-icon-gray text-nh-ink" : "border-nh-border text-nh-muted"
         )}
         type="button"

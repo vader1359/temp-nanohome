@@ -10,7 +10,7 @@ const iconMap: Record<string, React.ElementType> = {
 
 export function Section5Benefits() {
   return (
-    <section className="flex flex-col items-center bg-white px-4 py-12 sm:px-8 md:py-[60px]">
+    <section className="flex flex-col items-center bg-white py-12 md:py-[60px]">
       {/* Header */}
       <div className="flex flex-col items-center gap-3">
         <span className="text-[14px] font-medium uppercase text-[#444]">
@@ -22,13 +22,13 @@ export function Section5Benefits() {
       </div>
 
       {/* 4 benefit cards */}
-      <div className="mt-[50px] flex w-full max-w-[1200px] flex-col gap-6 md:flex-row">
+      <div className="site-shell mt-[50px] flex max-w-[1200px] flex-col gap-6 md:flex-row">
         {benefits.map((b) => {
           const Icon = iconMap[b.icon] ?? Truck;
           return (
             <div
               key={b.title}
-              className="flex flex-1 flex-col items-center gap-6 p-6 text-center"
+              className="flex flex-1 flex-col items-center gap-6 bg-[#F5F3F0] p-6 text-center"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F5F3F0]">
                 <Icon className="h-6 w-6 text-[#111]" strokeWidth={1.4} />

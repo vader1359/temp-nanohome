@@ -17,7 +17,7 @@ export function ColorSelector({
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <span className="text-[14px] font-medium uppercase text-[#111]">{header}</span>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {colors.map((c, i) => (
           <button
             key={c.name}
@@ -26,16 +26,14 @@ export function ColorSelector({
             title={c.name}
             onClick={() => setSelected(i)}
             className={cn(
-              "rounded-full p-1 transition",
+              "flex min-h-[44px] min-w-[44px] items-center justify-center p-1 transition",
               selected === i ? "ring-1 ring-[#111]" : "ring-0",
             )}
             style={{ background: "transparent" }}
           >
             <span
-              className="block rounded-full"
+              className="block size-6"
               style={{
-                width: 32,
-                height: 32,
                 background: c.hex,
                 border: c.hex.toLowerCase() === "#e8e8e8" ? "1px solid #ddd" : undefined,
               }}

@@ -12,8 +12,8 @@ export function SearchBar({ search, setSearch }: SearchBarProps) {
   const t = useTranslations("Products");
 
   return (
-    <label className="flex w-full items-center gap-2 rounded-lg border border-nh-border px-4 py-3">
-      <Search className="size-4 text-nh-ink" />
+    <label className="flex w-full items-center gap-2 border-b border-nh-border px-0 py-3">
+      <Search className="size-3.5 text-nh-muted" strokeWidth={1.5} />
       <input
         className="w-full bg-transparent text-[12px] font-normal leading-4 text-nh-ink outline-none placeholder:text-nh-border"
         placeholder={t("searchPlaceholder")}

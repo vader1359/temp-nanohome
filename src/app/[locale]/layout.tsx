@@ -4,6 +4,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { isSupportedLocale, routing } from "@/i18n/routing";
+import { Header } from "@/components/header";
+import { Footer } from "@/components/sections/footer";
 import { Providers } from "../providers";
 import Script from "next/script";
 import "../globals.css";
@@ -78,7 +80,11 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${libreFranklin.variable} antialiased font-[family-name:var(--font-libre-franklin)]`}>
         <NextIntlClientProvider messages={messages} locale={locale}>
-          <Providers>{children}</Providers>
+          <Providers>
+            <Header />
+            {children}
+            <Footer />
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>

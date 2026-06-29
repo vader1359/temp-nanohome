@@ -5,64 +5,65 @@ import Image from "next/image";
 
 import { cn } from "@/lib/utils";
 
-type Brand =
-  | { name: string; type: "text" }
-  | { name: string; type: "image"; src: string; width: number };
+type BrandLogoItem = { id: string; logoUrl: string | null; name: string };
 
-const brands: Brand[] = [
-  { name: "Cassina", type: "text" },
-  { name: "B&B Italia", type: "text" },
-  { name: "Maxalto", type: "image", src: "/images/maxalto_logo.png", width: 120 },
-  { name: "Fritz Hansen", type: "text" },
-  { name: "USM", type: "image", src: "/images/usm_logo.png", width: 96 },
-  { name: "Vitra", type: "image", src: "/images/vitra_logo.png", width: 104 },
-  { name: "Knoll", type: "image", src: "/images/knoll_logo.png", width: 104 },
-  { name: "&Tradition", type: "text" },
-  { name: "Flos", type: "text" },
+const FALLBACK_BRANDS: BrandLogoItem[] = [
+  { id: "cassina", logoUrl: null, name: "Cassina" },
+  { id: "bb-italia", logoUrl: null, name: "B&B Italia" },
+  { id: "maxalto", logoUrl: "/images/maxalto_logo.png", name: "Maxalto" },
+  { id: "fritz-hansen", logoUrl: null, name: "Fritz Hansen" },
+  { id: "usm", logoUrl: "/images/usm_logo.png", name: "USM" },
+  { id: "vitra", logoUrl: "/images/vitra_logo.png", name: "Vitra" },
+  { id: "knoll", logoUrl: "/images/knoll_logo.png", name: "Knoll" },
+  { id: "and-tradition", logoUrl: null, name: "&Tradition" },
+  { id: "flos", logoUrl: null, name: "Flos" },
 ];
 
-function BrandLogo({ brand }: { brand: Brand }) {
-  if (brand.type === "text") {
-    return (
-      <span className="whitespace-nowrap text-sm font-medium uppercase leading-5 tracking-wide text-[#111111]">
-        {brand.name}
-      </span>
-    );
+function BrandLogo({ brand }: { brand: BrandLogoItem }) {
+  if (!brand.logoUrl) {
+    return <span className="min-w-[112px] whitespace-nowrap text-center text-sm font-semibold uppercase tracking-wide">{brand.name}</span>;
   }
 
   return (
-    <span className="flex h-8 items-center justify-center">
+    <span className="flex h-12 min-w-[136px] items-center justify-center">
       <Image
-        src={brand.src}
+        src={brand.logoUrl!}
         alt={brand.name}
-        width={brand.width}
-        height={32}
-        className="h-7 w-auto object-contain grayscale contrast-200 brightness-0 dark:invert-0 md:h-8"
-        style={{ objectFit: "contain" }}
+        width={128}
+        height={48}
+        className="h-10 w-auto max-w-[156px] object-contain grayscale contrast-200 brightness-0"
       />
     </span>
   );
 }
 
-export function Brands() {
+export function Brands({ brands }: { brands: readonly BrandLogoItem[] }) {
   const t = useTranslations("Brands");
+  const logoBrands = brands.length > 0 ? brands : FALLBACK_BRANDS;
 
   return (
-    <section className="flex h-[240px] flex-col items-center gap-[30px] overflow-x-auto bg-white px-6 pt-[60px] pb-[60px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden lg:px-0">
-      <p className="text-center text-sm font-medium uppercase leading-5 text-[#111111]">
-        {t("eyebrow")}
-      </p>
+    <section className="relative flex flex-col items-center gap-[30px] overflow-x-auto bg-white py-12 [scrollbar-width:none] sm:py-16 lg:py-20 [&::-webkit-scrollbar]:hidden">
+      <style>{`@keyframes brand-marquee { 0% { transform: translateX(0); } 100% { transform: translateX(calc(-50% - 1.75rem)); } }`}</style>
+      <div className="flex w-full flex-col items-center gap-[30px]">
+      <div className="site-shell">
+        <p className="text-center text-sm font-medium uppercase leading-5 text-[#111111]">
+          {t("eyebrow")}
+        </p>
+      </div>
 
       <div
         className={cn(
-          "flex w-max flex-nowrap items-center gap-8 sm:gap-14 lg:w-full lg:justify-center",
+          "flex w-max flex-nowrap items-center gap-8 motion-safe:animate-[brand-marquee_50s_linear_infinite] lg:gap-14",
           "text-[#111111]",
         )}
       >
-        {[...brands, ...brands].map((brand, index) => (
-          <BrandLogo key={`${brand.name}-${index}`} brand={brand} />
+        {[...logoBrands, ...logoBrands].map((brand, index) => (
+          <BrandLogo key={`${brand.id}-${index}`} brand={brand} />
         ))}
       </div>
+      </div>
+      <div className="pointer-events-none absolute left-0 top-0 h-full w-8 bg-gradient-to-r from-white to-transparent lg:hidden" />
+      <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white to-transparent lg:hidden" />
     </section>
   );
 }

@@ -83,6 +83,7 @@
 }
 
 @theme inline {
+  --breakpoint-2xl: 90rem;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -177,4 +178,34 @@
     color: var(--foreground);
     font-family: var(--font-libre-franklin), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   }
+}
+
+.site-shell {
+  width: 100%;
+  max-width: none;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .site-shell { padding-inline: 1.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .site-shell {
+    max-width: 960px;
+    padding-inline: 0;
+  }
+}
+
+@media (min-width: 1280px) {
+  .site-shell { max-width: 1024px; }
+}
+
+@media (min-width: 1440px) {
+  .site-shell { max-width: 1280px; }
+}
+
+@media (min-width: 1441px) {
+  .site-shell { max-width: 1440px; }
 }

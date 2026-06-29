@@ -1,30 +1,72 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ArrowUpDown, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 
 interface SectionHeaderProps {
+  appliedFilters: string[];
+  onOpenFilters: () => void;
+  onRemoveFilter: (value: string) => void;
   sortBy: string;
 }
 
-export function SectionHeader({ sortBy }: SectionHeaderProps) {
+export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, sortBy }: SectionHeaderProps) {
   const t = useTranslations("Products");
   const sortLabel = sortBy === "recommended" ? t("sortRecommended") : sortBy;
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    const updateHidden = () => setHidden(window.scrollY > 120);
+    updateHidden();
+    window.addEventListener("scroll", updateHidden, { passive: true });
+    return () => window.removeEventListener("scroll", updateHidden);
+  }, []);
 
   return (
-    <section className="sticky top-0 z-10 flex w-full flex-col items-start justify-between gap-3 bg-white py-4 min-[380px]:flex-row min-[380px]:items-center">
-      <h1 className="text-left text-[18px] font-medium leading-[26px] text-nh-ink">
-        {t("title")}
-      </h1>
-      <button className="flex max-w-full items-center gap-2 bg-white text-left" type="button">
-        <span className="text-[14px] font-normal leading-5 text-nh-muted">{t("sortBy")}</span>
-        <span className="min-w-0 truncate text-[14px] font-medium uppercase leading-5 tracking-[0.04em] text-nh-ink">
-          {sortLabel}
-        </span>
-        <span className="flex size-7 items-center justify-center bg-white">
-          <ChevronDown className="size-4 text-nh-ink" />
-        </span>
-      </button>
+    <section className={`sticky top-0 z-40 w-full overflow-hidden bg-white transition-all ${hidden ? "h-0 border-y-0" : "border-y border-nh-ink"}`}>
+      <div className="site-shell flex flex-col items-start gap-2 py-1.5 sm:py-1">
+        <div className={hidden ? "hidden" : "flex w-full items-center justify-between gap-3"}>
+          <h1 className="text-left text-[16px] font-medium leading-6 text-nh-ink">
+            {t("title")}
+          </h1>
+          <div className="flex items-center gap-1">
+            <button
+              aria-label={`${t("sortBy")} ${sortLabel}`}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center bg-white text-nh-ink"
+              type="button"
+            >
+              <ArrowUpDown className="size-4" />
+            </button>
+            <button
+              aria-label="Mở bộ lọc"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center bg-white text-nh-ink lg:hidden"
+              onClick={onOpenFilters}
+              type="button"
+            >
+              <SlidersHorizontal className="size-4" />
+            </button>
+          </div>
+        </div>
+        {!hidden && appliedFilters.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 py-1.5">
+            <span className="text-[12px] font-normal leading-4 text-nh-muted">
+              {t("appliedFilters")}
+            </span>
+            {appliedFilters.map((filter) => (
+              <button
+                className="flex items-center gap-1 border border-nh-border px-1.5 py-1 text-[12px] font-normal leading-4 text-nh-ink"
+                key={filter}
+                type="button"
+                onClick={() => onRemoveFilter(filter)}
+              >
+                {filter}
+                <X className="size-3 text-nh-ink" />
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

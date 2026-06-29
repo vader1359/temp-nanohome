@@ -33,7 +33,7 @@ export function ProductCard({ p }: { p: RelatedProduct }) {
         {/* favorite - top right */}
         <button
           aria-label="Yêu thích"
-          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-[#111] shadow-sm transition hover:bg-white"
+          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-[#111] shadow-sm transition hover:bg-white"
         >
           <Heart className="h-4 w-4" strokeWidth={1.6} />
         </button>
@@ -52,7 +52,7 @@ export function ProductCard({ p }: { p: RelatedProduct }) {
         <p className="text-[15px] font-semibold leading-[20px] text-[#111]">{p.price}</p>
         {p.available && (
           <span className="text-[12px] font-medium leading-[16px] text-[#00A63E]">
-            ĐANG CÓ HÀNG
+            CÓ SẴN
           </span>
         )}
       </div>

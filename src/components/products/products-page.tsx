@@ -1,33 +1,36 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CatalogHeader } from "./catalog-header";
+import { useEffect, useMemo, useState } from "react";
+import { X } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { FilterSidebar } from "./FilterSidebar";
-import { AppliedFilters } from "./AppliedFilters";
 import { BrandSelector } from "./BrandSelector";
 import { SearchBar } from "./SearchBar";
 import { ProductGrid, type ProductGridItem } from "./ProductGrid";
 import { Pagination } from "./Pagination";
 
 interface ProductsPageProps {
+  brands: readonly { id: string; logoUrl: string | null; name: string }[];
   products: readonly ProductGridItem[];
 }
 
-export function ProductsPage({ products }: ProductsPageProps) {
-  const [selectedCategory, setSelectedCategory] = useState("Tất cả");
+export function ProductsPage({ brands, products }: ProductsPageProps) {
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [selectedClassify, setSelectedClassify] = useState<Set<string>>(new Set());
   const [selectedRooms, setSelectedRooms] = useState<Set<string>>(new Set());
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [sortBy] = useState("recommended");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const appliedFilters = useMemo(() => {
     const filters = [
-      ...(selectedCategory !== "Tất cả" ? [selectedCategory] : []),
+      ...Array.from(selectedCategories),
       ...Array.from(selectedClassify),
       ...Array.from(selectedRooms),
+      ...Array.from(selectedBrands),
     ];
 
     if (search.trim()) {
@@ -35,10 +38,21 @@ export function ProductsPage({ products }: ProductsPageProps) {
     }
 
     return filters;
-  }, [search, selectedCategory, selectedClassify, selectedRooms]);
+  }, [search, selectedBrands, selectedCategories, selectedClassify, selectedRooms]);
 
   const toggleClassify = (value: string) => {
     setSelectedClassify((current) => {
+      const next = new Set(current);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  };
+
+  const toggleCategory = (value: string) => {
+    setSelectedCategories((current) => {
+      if (value === "Tất cả") return new Set();
+
       const next = new Set(current);
       if (next.has(value)) next.delete(value);
       else next.add(value);
@@ -55,14 +69,32 @@ export function ProductsPage({ products }: ProductsPageProps) {
     });
   };
 
+  const toggleBrand = (value: string) => {
+    setSelectedBrands((current) => {
+      const next = new Set(current);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  };
+
   const removeFilter = (value: string) => {
-    if (value === selectedCategory) setSelectedCategory("Tất cả");
+    setSelectedCategories((current) => {
+      const next = new Set(current);
+      next.delete(value);
+      return next;
+    });
     setSelectedClassify((current) => {
       const next = new Set(current);
       next.delete(value);
       return next;
     });
     setSelectedRooms((current) => {
+      const next = new Set(current);
+      next.delete(value);
+      return next;
+    });
+    setSelectedBrands((current) => {
       const next = new Set(current);
       next.delete(value);
       return next;
@@ -79,23 +111,84 @@ export function ProductsPage({ products }: ProductsPageProps) {
     });
   };
 
+  useEffect(() => {
+    if (!filtersOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [filtersOpen]);
+
   return (
-    <main className="min-h-screen bg-white text-nh-ink">
-      <CatalogHeader />
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
-        <SectionHeader sortBy={sortBy} />
-        <div className="flex flex-col gap-9 lg:flex-row lg:items-start">
+    <main className="min-h-screen bg-[#faf9f8] text-nh-ink">
+      <SectionHeader
+        appliedFilters={appliedFilters}
+        onOpenFilters={() => setFiltersOpen(true)}
+        onRemoveFilter={removeFilter}
+        sortBy={sortBy}
+      />
+      {filtersOpen ? (
+        <div className="fixed inset-0 z-[70] flex justify-end bg-black/40 lg:hidden" role="dialog" aria-modal="true" aria-label="Bộ lọc sản phẩm">
+          <div className="h-dvh w-full max-w-[420px] overflow-y-auto bg-white pb-8 shadow-[-12px_0_30px_rgba(0,0,0,0.18)]">
+            <div className="sticky top-0 z-30 mb-4 flex flex-col gap-3 border-b border-nh-border bg-white px-4 pb-3 pt-4 sm:px-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[18px] font-medium uppercase text-nh-ink">Bộ lọc</h2>
+                <button className="flex size-11 items-center justify-center" type="button" aria-label="Đóng bộ lọc" onClick={() => setFiltersOpen(false)}>
+                  <X className="size-5" />
+                </button>
+              </div>
+              {appliedFilters.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  <span className="w-full text-[12px] font-normal leading-4 text-nh-muted">Đang áp dụng :</span>
+                  {appliedFilters.map((filter) => (
+                    <button
+                      className="flex items-center gap-1 border border-nh-border px-1.5 py-1 text-[12px] font-normal leading-4 text-nh-ink"
+                      key={filter}
+                      type="button"
+                      onClick={() => removeFilter(filter)}
+                    >
+                      {filter}
+                      <X className="size-3 text-nh-ink" />
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <div className="px-4 sm:px-6">
+            <FilterSidebar
+              brands={brands}
+              variant="modal"
+              selectedBrands={selectedBrands}
+              selectedCategories={selectedCategories}
+              toggleBrand={toggleBrand}
+              toggleCategory={toggleCategory}
+              selectedClassify={selectedClassify}
+              toggleClassify={toggleClassify}
+              selectedRooms={selectedRooms}
+              toggleRoom={toggleRoom}
+            />
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <div className="site-shell flex flex-col gap-8 pb-8 pt-0">
+        <div className="flex flex-col gap-6 pt-3 sm:pt-5 lg:flex-row lg:items-start">
           <FilterSidebar
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
+            brands={brands}
+            selectedBrands={selectedBrands}
+            selectedCategories={selectedCategories}
+            toggleBrand={toggleBrand}
+            toggleCategory={toggleCategory}
             selectedClassify={selectedClassify}
             toggleClassify={toggleClassify}
             selectedRooms={selectedRooms}
             toggleRoom={toggleRoom}
           />
-          <div className="flex flex-1 flex-col gap-8">
-            <AppliedFilters appliedFilters={appliedFilters} onRemove={removeFilter} />
-            <BrandSelector />
+          <div className="flex min-w-0 flex-1 flex-col gap-8">
+            <BrandSelector brands={brands} selectedBrands={selectedBrands} toggleBrand={toggleBrand} />
             <SearchBar search={search} setSearch={setSearch} />
             <ProductGrid products={products} favorites={favorites} onToggleFavorite={toggleFavorite} />
             <Pagination currentPage={currentPage} setCurrentPage={setCurrentPage} />

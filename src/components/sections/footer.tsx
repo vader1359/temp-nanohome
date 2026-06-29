@@ -38,8 +38,8 @@ export function Footer() {
   const [openShowroom, setOpenShowroom] = useState<number | null>(0);
 
   return (
-    <footer className="min-h-[480px] bg-[#1F1F1F] px-6 pt-20 pb-12 md:px-12 md:pt-24 md:pb-7">
-      <div className="mx-auto max-w-[1400px] flex flex-col gap-10 md:grid md:grid-cols-2 md:gap-8 lg:flex lg:flex-row lg:justify-between lg:gap-8">
+    <footer className="min-h-[480px] bg-[#1F1F1F] py-12 md:py-24">
+      <div className="site-shell grid grid-cols-2 gap-8 md:gap-10 lg:flex lg:flex-row lg:justify-between lg:gap-8">
         {linkColumns.map((column) => (
           <div key={column.heading} className="flex flex-col gap-5">
             <h4 className="text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
@@ -59,6 +59,20 @@ export function Footer() {
             </ul>
           </div>
         ))}
+
+        <div className="flex flex-col gap-5">
+          <h4 className="text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
+            {t("col6Heading")}
+          </h4>
+          <ul className="flex flex-col gap-4">
+            {contacts.map(({ icon: Icon, key }) => (
+              <li key={key} className="flex items-center gap-2 text-sm font-normal leading-[21px] text-[#F1F1F1]">
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>{t(key)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         <div className="flex flex-col gap-5 md:max-w-[280px]">
           <h4 className="text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
@@ -90,20 +104,6 @@ export function Footer() {
                 </li>
               );
             })}
-          </ul>
-        </div>
-
-        <div className="flex flex-col gap-5">
-          <h4 className="text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
-            {t("col6Heading")}
-          </h4>
-          <ul className="flex flex-col gap-4">
-            {contacts.map(({ icon: Icon, key }) => (
-              <li key={key} className="flex items-center gap-2 text-sm font-normal leading-[21px] text-[#F1F1F1]">
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>{t(key)}</span>
-              </li>
-            ))}
           </ul>
         </div>
       </div>

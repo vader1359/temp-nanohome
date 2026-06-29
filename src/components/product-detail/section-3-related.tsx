@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ProductCard } from "./product-card";
+import { useKeenSlider } from "keen-slider/react";
+import "keen-slider/keen-slider.css";
+import { ProductCard, type ProductGridItem } from "@/components/products/product-card";
 import { relatedSet as fallbackRelatedSet, type RelatedProduct } from "./mock-data";
 
 interface Section3RelatedProps {
@@ -10,36 +12,81 @@ interface Section3RelatedProps {
   collectionName?: string;
 }
 
-export function Section3Related({ products = fallbackRelatedSet, collectionName = "Bộ sưu tập" }: Section3RelatedProps) {
-  const [start, setStart] = useState(0);
-  const visible = 4;
-  const maxStart = Math.max(0, products.length - visible);
+function toProductGridItem(product: RelatedProduct, index: number): ProductGridItem {
+  return {
+    id: product.name || String(index),
+    brand: product.brand,
+    name: product.name,
+    subtitle: product.category,
+    status: product.available ? "CÓ SẴN" : "HẾT HÀNG",
+    imageUrl: product.image,
+    href: product.href ?? "#",
+    oldPrice: null,
+    discount: null,
+    price: product.price,
+    swatches: [],
+  };
+}
 
-  const canPrev = start > 0;
-  const canNext = start < maxStart;
-  const items = products.slice(start, start + visible);
+export function Section3Related({ products = fallbackRelatedSet }: Section3RelatedProps) {
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const items = products.slice(0, 8).map(toProductGridItem);
+  const [sliderRef, slider] = useKeenSlider<HTMLDivElement>({
+    initial: 0,
+    mode: "free-snap",
+    slideChanged(s) {
+      setCurrentSlide(s.track.details.rel);
+    },
+    created() {
+      setLoaded(true);
+    },
+    slides: { perView: 1.25, spacing: 12 },
+    breakpoints: {
+      "(min-width: 640px)": { slides: { perView: 2.25, spacing: 20 } },
+      "(min-width: 1024px)": { slides: { perView: 4, spacing: 24 } },
+    },
+  });
+
+  const maxIdx = slider.current?.track.details.maxIdx ?? 0;
+  const canPrev = loaded && currentSlide > 0;
+  const canNext = loaded && currentSlide < maxIdx;
+
+  function toggleFavorite(id: string) {
+    setFavorites((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   return (
-    <section className="bg-white px-4 py-12 sm:px-8 md:py-16">
-      <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-8">
-        {/* Header */}
+    <section className="bg-white py-12 md:py-16">
+      <div className="site-shell flex flex-col gap-8">
         <div className="flex items-start justify-between gap-6">
           <div className="flex flex-col items-start gap-3">
             <h2 className="text-[24px] font-medium text-[#444]">Sản phẩm cùng bộ</h2>
-            <span className="rounded-full bg-[#F5F3F0] px-4 py-1 text-[12px] font-medium text-[#666]">
-              {collectionName}
-            </span>
           </div>
           <a href="#" className="mt-1 text-[14px] font-normal text-[#111] hover:underline">
             Xem tất cả
           </a>
         </div>
 
-        {/* Carousel */}
-        <div className="relative">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {items.map((p) => (
-              <ProductCard key={p.name} p={p} />
+        <div className="relative overflow-hidden">
+          <div ref={sliderRef} className="keen-slider overflow-visible">
+            {items.map((product) => (
+              <div className="keen-slider__slide" key={product.id}>
+                <ProductCard
+                  product={product}
+                  isFavorite={favorites.has(product.id)}
+                  onToggleFavorite={toggleFavorite}
+                />
+              </div>
             ))}
           </div>
 
@@ -47,8 +94,8 @@ export function Section3Related({ products = fallbackRelatedSet, collectionName 
             type="button"
             aria-label="Sản phẩm trước"
             disabled={!canPrev}
-            onClick={() => setStart((s) => Math.max(0, s - 1))}
-            className="absolute left-2 top-[38%] flex h-9 w-9 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
+            onClick={() => slider.current?.prev()}
+            className="absolute left-2 top-[38%] flex h-11 w-11 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
           >
             <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
           </button>
@@ -56,8 +103,8 @@ export function Section3Related({ products = fallbackRelatedSet, collectionName 
             type="button"
             aria-label="Sản phẩm tiếp theo"
             disabled={!canNext}
-            onClick={() => setStart((s) => Math.min(maxStart, s + 1))}
-            className="absolute right-2 top-[38%] flex h-9 w-9 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"
+            onClick={() => slider.current?.next()}
+            className="absolute right-2 top-[38%] flex h-11 w-11 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"
           >
             <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
           </button>
