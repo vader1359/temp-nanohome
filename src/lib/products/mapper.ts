@@ -12,6 +12,10 @@ export function formatVndPrice(price: number | null): string {
     return "Liên hệ";
   }
 
+  if (Number(price) === 0) {
+    return "Contact Us";
+  }
+
   return priceFormatter.format(Number(price));
 }
 

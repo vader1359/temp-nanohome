@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useOptimistic, useState, useTransition } from "react";
 import { X } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { SectionHeader } from "./SectionHeader";
 import { FilterSidebar } from "./FilterSidebar";
@@ -61,14 +60,15 @@ export function ProductsPage({
 }: ProductsPageProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [, startTransition] = useTransition();
+  const [optimisticFilters, setOptimisticFilters] = useOptimistic(currentFilters);
 
-  const selectedBrands = useMemo(() => new Set(currentFilters.brand), [currentFilters.brand]);
-  const selectedCategories = useMemo(() => new Set(currentFilters.category), [currentFilters.category]);
-  const selectedRooms = useMemo(() => new Set(currentFilters.room), [currentFilters.room]);
-  const selectedSubCategories = useMemo(() => new Set(currentFilters.subCategory), [currentFilters.subCategory]);
+  const selectedBrands = useMemo(() => new Set(optimisticFilters.brand), [optimisticFilters.brand]);
+  const selectedCategories = useMemo(() => new Set(optimisticFilters.category), [optimisticFilters.category]);
+  const selectedRooms = useMemo(() => new Set(optimisticFilters.room), [optimisticFilters.room]);
+  const selectedSubCategories = useMemo(() => new Set(optimisticFilters.subCategory), [optimisticFilters.subCategory]);
 
   const brandLabel = useMemo(
     () => new Map(brandOptions.map((brand) => [brand.slug, brand.name])),
@@ -97,57 +97,74 @@ export function ProductsPage({
     status?: SelectedProductFilters["status"];
     subCategory?: readonly string[];
   }) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (patch.brand !== undefined) setMultiParam(params, "brand", patch.brand);
-    if (patch.category !== undefined) setMultiParam(params, "category", patch.category);
-    if (patch.subCategory !== undefined) setMultiParam(params, "subCategory", patch.subCategory);
-    if (patch.room !== undefined) setMultiParam(params, "room", patch.room);
-    if (patch.status !== undefined) {
-      if (patch.status === null) params.delete("status");
-      else params.set("status", patch.status);
-    }
-    if (patch.q !== undefined) {
-      if (patch.q === null || patch.q.trim() === "") params.delete("q");
-      else params.set("q", patch.q.trim());
-    }
-    if (patch.sort !== undefined) params.set("sort", patch.sort);
-    if (patch.page !== undefined) {
-      if (patch.page <= 1) params.delete("page");
-      else params.set("page", String(patch.page));
-    }
-    if (patch.page === undefined) params.delete("page");
+    const nextFilters: SelectedProductFilters = {
+      ...optimisticFilters,
+      brand: patch.brand ?? optimisticFilters.brand,
+      category: patch.category ?? optimisticFilters.category,
+      room: patch.room ?? optimisticFilters.room,
+      sort: patch.sort ?? optimisticFilters.sort,
+      status: patch.status !== undefined ? patch.status : optimisticFilters.status,
+      subCategory: patch.subCategory ?? optimisticFilters.subCategory,
+      q: patch.q !== undefined ? patch.q?.trim() ?? "" : optimisticFilters.q,
+      page: patch.page ?? 1,
+    };
+
+    const params = new URLSearchParams();
+    setMultiParam(params, "brand", nextFilters.brand);
+    setMultiParam(params, "category", nextFilters.category);
+    setMultiParam(params, "subCategory", nextFilters.subCategory);
+    setMultiParam(params, "room", nextFilters.room);
+    if (nextFilters.status) params.set("status", nextFilters.status);
+    if (nextFilters.q.trim()) params.set("q", nextFilters.q.trim());
+    if (nextFilters.sort !== "priority") params.set("sort", nextFilters.sort);
+    if (nextFilters.page > 1) params.set("page", String(nextFilters.page));
     const qs = params.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    startTransition(() => {
+      setOptimisticFilters(nextFilters);
+      router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    });
   };
 
   const appliedFilters = useMemo(() => {
     const filters = [
-      ...currentFilters.brand.map((slug) => brandLabel.get(slug) ?? slug),
-      ...currentFilters.category.map((slug) => categoryLabel.get(slug) ?? slug),
-      ...currentFilters.subCategory.map((slug) => categoryLabel.get(slug) ?? slug),
-      ...currentFilters.room.map((slug) => roomLabel.get(slug) ?? slug),
+      ...optimisticFilters.brand.map((slug) => brandLabel.get(slug) ?? slug),
+      ...optimisticFilters.category.map((slug) => categoryLabel.get(slug) ?? slug),
+      ...optimisticFilters.subCategory.map((slug) => categoryLabel.get(slug) ?? slug),
+      ...optimisticFilters.room.map((slug) => roomLabel.get(slug) ?? slug),
     ];
-    if (currentFilters.status) filters.push(currentFilters.status);
-    if (currentFilters.q.trim()) filters.push(currentFilters.q.trim());
+    if (optimisticFilters.status) filters.push(optimisticFilters.status);
+    if (optimisticFilters.q.trim()) filters.push(optimisticFilters.q.trim());
     return filters;
-  }, [brandLabel, categoryLabel, currentFilters, roomLabel]);
+  }, [brandLabel, categoryLabel, optimisticFilters, roomLabel]);
 
   const resetFilters = () => {
-    router.push(pathname, { scroll: false });
+    startTransition(() => {
+      setOptimisticFilters({
+        brand: [],
+        category: [],
+        page: 1,
+        q: "",
+        room: [],
+        sort: "priority",
+        status: null,
+        subCategory: [],
+      });
+      router.push(pathname, { scroll: false });
+    });
     setFiltersOpen(false);
   };
 
   const removeFilter = (label: string) => {
-    const brand = currentFilters.brand.find((slug) => (brandLabel.get(slug) ?? slug) === label);
-    if (brand) return updateUrl({ brand: currentFilters.brand.filter((slug) => slug !== brand) });
-    const category = currentFilters.category.find((slug) => (categoryLabel.get(slug) ?? slug) === label);
-    if (category) return updateUrl({ category: currentFilters.category.filter((slug) => slug !== category) });
-    const subCategory = currentFilters.subCategory.find((slug) => (categoryLabel.get(slug) ?? slug) === label);
-    if (subCategory) return updateUrl({ subCategory: currentFilters.subCategory.filter((slug) => slug !== subCategory) });
-    const room = currentFilters.room.find((slug) => (roomLabel.get(slug) ?? slug) === label);
-    if (room) return updateUrl({ room: currentFilters.room.filter((slug) => slug !== room) });
-    if (currentFilters.status === label) return updateUrl({ status: null });
-    if (currentFilters.q === label) return updateUrl({ q: null });
+    const brand = optimisticFilters.brand.find((slug) => (brandLabel.get(slug) ?? slug) === label);
+    if (brand) return updateUrl({ brand: optimisticFilters.brand.filter((slug) => slug !== brand) });
+    const category = optimisticFilters.category.find((slug) => (categoryLabel.get(slug) ?? slug) === label);
+    if (category) return updateUrl({ category: optimisticFilters.category.filter((slug) => slug !== category) });
+    const subCategory = optimisticFilters.subCategory.find((slug) => (categoryLabel.get(slug) ?? slug) === label);
+    if (subCategory) return updateUrl({ subCategory: optimisticFilters.subCategory.filter((slug) => slug !== subCategory) });
+    const room = optimisticFilters.room.find((slug) => (roomLabel.get(slug) ?? slug) === label);
+    if (room) return updateUrl({ room: optimisticFilters.room.filter((slug) => slug !== room) });
+    if (optimisticFilters.status === label) return updateUrl({ status: null });
+    if (optimisticFilters.q === label) return updateUrl({ q: null });
   };
 
   const toggleFavorite = (id: string) => {
@@ -176,7 +193,7 @@ export function ProductsPage({
         onRemoveFilter={removeFilter}
         onResetFilters={resetFilters}
         onSortChange={(sort) => updateUrl({ sort })}
-        sortBy={currentFilters.sort}
+        sortBy={optimisticFilters.sort}
       />
       {filtersOpen ? (
         <div className="fixed inset-0 z-[70] flex justify-end bg-black/40 lg:hidden" role="dialog" aria-modal="true" aria-label="Bộ lọc sản phẩm">
@@ -200,13 +217,13 @@ export function ProductsPage({
                 selectedBrands={selectedBrands}
                 selectedCategories={selectedCategories}
                 selectedRooms={selectedRooms}
-                selectedStatus={currentFilters.status}
+                selectedStatus={optimisticFilters.status}
                 selectedSubCategories={selectedSubCategories}
-                toggleBrand={(brand) => updateUrl({ brand: toggleValue(currentFilters.brand, brand) })}
-                toggleCategory={(category) => updateUrl({ category: toggleValue(currentFilters.category, category), subCategory: [] })}
-                toggleRoom={(room) => updateUrl({ room: toggleValue(currentFilters.room, room) })}
-                toggleStatus={(status) => updateUrl({ status: currentFilters.status === status ? null : status })}
-                toggleSubCategory={(subCategory) => updateUrl({ subCategory: toggleValue(currentFilters.subCategory, subCategory) })}
+                toggleBrand={(brand) => updateUrl({ brand: toggleValue(optimisticFilters.brand, brand) })}
+                toggleCategory={(category) => updateUrl({ category: toggleValue(optimisticFilters.category, category), subCategory: [] })}
+                toggleRoom={(room) => updateUrl({ room: toggleValue(optimisticFilters.room, room) })}
+                toggleStatus={(status) => updateUrl({ status: optimisticFilters.status === status ? null : status })}
+                toggleSubCategory={(subCategory) => updateUrl({ subCategory: toggleValue(optimisticFilters.subCategory, subCategory) })}
                 variant="modal"
               />
             </div>
@@ -222,27 +239,27 @@ export function ProductsPage({
             selectedBrands={selectedBrands}
             selectedCategories={selectedCategories}
             selectedRooms={selectedRooms}
-            selectedStatus={currentFilters.status}
+            selectedStatus={optimisticFilters.status}
             selectedSubCategories={selectedSubCategories}
-            toggleBrand={(brand) => updateUrl({ brand: toggleValue(currentFilters.brand, brand) })}
-            toggleCategory={(category) => updateUrl({ category: toggleValue(currentFilters.category, category), subCategory: [] })}
-            toggleRoom={(room) => updateUrl({ room: toggleValue(currentFilters.room, room) })}
-            toggleStatus={(status) => updateUrl({ status: currentFilters.status === status ? null : status })}
-            toggleSubCategory={(subCategory) => updateUrl({ subCategory: toggleValue(currentFilters.subCategory, subCategory) })}
+            toggleBrand={(brand) => updateUrl({ brand: toggleValue(optimisticFilters.brand, brand) })}
+            toggleCategory={(category) => updateUrl({ category: toggleValue(optimisticFilters.category, category), subCategory: [] })}
+            toggleRoom={(room) => updateUrl({ room: toggleValue(optimisticFilters.room, room) })}
+            toggleStatus={(status) => updateUrl({ status: optimisticFilters.status === status ? null : status })}
+            toggleSubCategory={(subCategory) => updateUrl({ subCategory: toggleValue(optimisticFilters.subCategory, subCategory) })}
           />
           <div className="flex min-w-0 flex-1 flex-col gap-8">
             <BrandSelector
               brandOptions={brandOptions}
               selectedBrands={selectedBrands}
-              toggleBrand={(brand) => updateUrl({ brand: toggleValue(currentFilters.brand, brand) })}
+              toggleBrand={(brand) => updateUrl({ brand: toggleValue(optimisticFilters.brand, brand) })}
             />
             <SearchBar
-              search={currentFilters.q}
+              search={optimisticFilters.q}
               setSearch={(q) => updateUrl({ q, page: 1 })}
             />
             <ProductGrid products={products} favorites={favorites} onToggleFavorite={toggleFavorite} />
             <Pagination
-              currentPage={currentFilters.page}
+              currentPage={optimisticFilters.page}
               pageSize={pageSize}
               setCurrentPage={(page) => updateUrl({ page })}
               totalCount={totalCount}

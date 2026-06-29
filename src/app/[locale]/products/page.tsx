@@ -202,7 +202,7 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
   const fmt = buildPriceFormatter(supportedLocale);
 
   function formatPrice(price: Variant["price"]): string {
-    if (price === null) return t("contactForPrice");
+    if (price === null || Number(price) === 0) return t("contactForPrice");
     return fmt.format(Number(price));
   }
 

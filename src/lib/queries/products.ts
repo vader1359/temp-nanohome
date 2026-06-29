@@ -48,12 +48,13 @@ export type VariantProductListItem = Pick<
   | "media_long"
   | "media_closeup"
   | "filter_sub_category"
+  | "filter_is_new_arrival"
 >;
 
 export type VariantProductFacetItem = Pick<Variant, "filter_brand" | "filter_category" | "filter_room_vi" | "filter_sub_category">;
 
 const VARIANT_PRODUCT_LIST_COLUMNS =
-  "id,name,name_vi,slug,slug_vi,price,compare_at_price,discount_percent,on_sale,in_stock,packshot_url,gallery_urls,finish,finish_vi,size,product_id,brand_id,brand_cldr_logo,brand_name_denorm,category_id,filter_brand,filter_category,filter_room,filter_room_vi,media_lifestyle_1,media_lifestyle_2,cldr_media_lifestyle_1,cldr_media_lifestyle_2,media_long,media_closeup,filter_sub_category";
+  "id,name,name_vi,slug,slug_vi,price,compare_at_price,discount_percent,on_sale,in_stock,packshot_url,gallery_urls,finish,finish_vi,size,product_id,brand_id,brand_cldr_logo,brand_name_denorm,category_id,filter_brand,filter_category,filter_room,filter_room_vi,media_lifestyle_1,media_lifestyle_2,cldr_media_lifestyle_1,cldr_media_lifestyle_2,media_long,media_closeup,filter_sub_category,filter_is_new_arrival";
 
 export function productRange(page = 1, pageSize = 24): readonly [number, number] {
   if (!Number.isInteger(page) || !Number.isInteger(pageSize) || page < 1 || pageSize < 1) {
@@ -143,13 +144,81 @@ function postgrestFilterValue(searchTerm: string): string {
   return `"${searchTerm.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-function pgroongaVariantSearchFilter(searchTerm: string): string {
+function variantSearchFilter(searchTerm: string): string {
   const filterValue = postgrestFilterValue(searchTerm);
-  return VARIANT_SEARCH_COLUMNS.map((column) => `${column}.&@~.${filterValue}`).join(",");
+  return VARIANT_SEARCH_COLUMNS.map((column) => `${column}.ilike.%${filterValue}%`).join(",");
+}
+
+type FuzzySearchRpcClient = {
+  readonly rpc: (fn: "search_variant_products_fuzzy", args: FuzzySearchRpcArgs) => Promise<{ readonly data: readonly VariantProductListItem[] | null; readonly error: Error | null }>;
+};
+
+type FuzzyCountRpcClient = {
+  readonly rpc: (fn: "search_variant_products_fuzzy_count", args: Omit<FuzzySearchRpcArgs, "sort_key" | "result_limit" | "result_offset">) => Promise<{ readonly data: number | null; readonly error: Error | null }>;
+};
+
+type FuzzySearchRpcArgs = {
+  readonly search_query: string;
+  readonly brand_filters: readonly string[] | null;
+  readonly category_filters: readonly string[] | null;
+  readonly sub_category_filters: readonly string[] | null;
+  readonly room_filters: readonly string[] | null;
+  readonly status_filter: VariantProductStatus | null;
+  readonly category_id_filter: string | null;
+  readonly exclude_variant_id: string | null;
+  readonly sort_key?: ProductSort;
+  readonly result_limit?: number;
+  readonly result_offset?: number;
+};
+
+function rpcArray(values: readonly string[] | undefined): readonly string[] | null {
+  return hasValues(values) ? values : null;
+}
+
+function fuzzySearchArgs(options: VariantProductQueryOptions, searchTerm: string): FuzzySearchRpcArgs {
+  const [from] = productRange(options.page, options.pageSize);
+  return {
+    search_query: searchTerm,
+    brand_filters: rpcArray(options.brand),
+    category_filters: rpcArray(options.category),
+    sub_category_filters: rpcArray(options.subCategory),
+    room_filters: rpcArray(options.room),
+    status_filter: options.status ?? null,
+    category_id_filter: options.categoryId ?? null,
+    exclude_variant_id: options.excludeId ?? null,
+    sort_key: options.sort ?? "priority",
+    result_limit: options.pageSize ?? 24,
+    result_offset: from,
+  };
+}
+
+function fuzzyCountArgs(options: Omit<VariantProductQueryOptions, "page" | "pageSize" | "sort">, searchTerm: string): Omit<FuzzySearchRpcArgs, "sort_key" | "result_limit" | "result_offset"> {
+  return {
+    search_query: searchTerm,
+    brand_filters: rpcArray(options.brand),
+    category_filters: rpcArray(options.category),
+    sub_category_filters: rpcArray(options.subCategory),
+    room_filters: rpcArray(options.room),
+    status_filter: options.status ?? null,
+    category_id_filter: options.categoryId ?? null,
+    exclude_variant_id: options.excludeId ?? null,
+  };
 }
 
 export async function getVariantProducts(options: VariantProductQueryOptions = {}): Promise<readonly VariantProductListItem[]> {
   const supabase = createAdminClient();
+  const searchTerm = options.search?.trim();
+
+  if (searchTerm) {
+    const { data, error } = await (supabase as unknown as FuzzySearchRpcClient).rpc(
+      "search_variant_products_fuzzy",
+      fuzzySearchArgs(options, searchTerm),
+    );
+    if (error === null) {
+      return data ?? [];
+    }
+  }
+
   const [from, to] = productRange(options.page, options.pageSize);
   let query = supabase
     .from("variants")
@@ -182,7 +251,7 @@ export async function getVariantProducts(options: VariantProductQueryOptions = {
   }
 
   if (options.search !== undefined && options.search.trim() !== "") {
-    query = query.or(pgroongaVariantSearchFilter(options.search.trim()));
+    query = query.or(variantSearchFilter(options.search.trim()));
   }
 
   switch (options.status) {
@@ -211,7 +280,10 @@ export async function getVariantProducts(options: VariantProductQueryOptions = {
       query = query.order("source_created_at", { ascending: false, nullsFirst: false });
       break;
     case "priority":
-      query = query.order("priority", { ascending: false, nullsFirst: false });
+      query = query
+        .order("in_stock", { ascending: false, nullsFirst: false })
+        .order("filter_is_new_arrival", { ascending: false, nullsFirst: false })
+        .order("priority", { ascending: true, nullsFirst: false });
       break;
   }
 
@@ -225,6 +297,18 @@ export async function getVariantProducts(options: VariantProductQueryOptions = {
 
 export async function getVariantProductCount(options: Omit<VariantProductQueryOptions, "page" | "pageSize" | "sort"> = {}): Promise<number> {
   const supabase = createAdminClient();
+  const searchTerm = options.search?.trim();
+
+  if (searchTerm) {
+    const { data, error } = await (supabase as unknown as FuzzyCountRpcClient).rpc(
+      "search_variant_products_fuzzy_count",
+      fuzzyCountArgs(options, searchTerm),
+    );
+    if (error === null) {
+      return data ?? 0;
+    }
+  }
+
   let query = supabase
     .from("variants")
     .select("id", { count: "exact", head: true })
@@ -256,7 +340,7 @@ export async function getVariantProductCount(options: Omit<VariantProductQueryOp
   }
 
   if (options.search !== undefined && options.search.trim() !== "") {
-    query = query.or(pgroongaVariantSearchFilter(options.search.trim()));
+    query = query.or(variantSearchFilter(options.search.trim()));
   }
 
   switch (options.status) {

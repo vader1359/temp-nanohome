@@ -27,6 +27,11 @@ interface FilterSidebarProps {
   variant?: "desktop" | "modal";
 }
 
+function keepsOriginalLogoColor(brand: BrandOption): boolean {
+  const brandKey = `${brand.slug} ${brand.name}`.toLowerCase();
+  return brandKey.includes("usm") || brandKey.includes("unite");
+}
+
 function CardSection({
   title,
   children,
@@ -195,6 +200,7 @@ export function FilterSidebar({
               <div className="flex flex-wrap gap-2">
                 {brandOptions.map((brand) => {
                   const checked = selectedBrands.has(brand.slug);
+                  const preserveLogoColor = keepsOriginalLogoColor(brand);
                   return (
                     <button
                       className={cn(
@@ -215,8 +221,11 @@ export function FilterSidebar({
                         <Image
                           alt={brand.name}
                           className={cn(
-                            "h-3.5 w-auto max-w-[72px] object-contain grayscale contrast-200 brightness-0 transition-[filter] group-hover:brightness-0 group-hover:invert",
-                            checked && "brightness-0 invert"
+                            "h-3.5 w-auto max-w-[72px] object-contain transition-[filter]",
+                            preserveLogoColor
+                              ? ""
+                              : "grayscale contrast-200 brightness-0 group-hover:brightness-0 group-hover:invert",
+                            checked && !preserveLogoColor && "brightness-0 invert"
                           )}
                           height={14}
                           src={brand.logoUrl}

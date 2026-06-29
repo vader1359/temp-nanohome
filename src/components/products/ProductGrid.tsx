@@ -69,8 +69,9 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
 
   return (
     <section className="grid grid-cols-1 gap-9 sm:grid-cols-2 xl:grid-cols-3">
-      {products.map((product) => {
+      {products.map((product, index) => {
         const sale = product.status === "sale";
+        const priorityImage = index < 6;
 
         return (
             <article
@@ -111,11 +112,13 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
                   aria-label={t("viewDetailAria", { name: product.name })}
                   className="relative flex h-full w-full items-end justify-center overflow-hidden rounded-[6px] transition-transform duration-300 group-hover:scale-[1.03]"
                   href={product.href}
+                  prefetch={priorityImage}
                 >
                   <Image
                     alt={product.name}
                     className="object-contain object-bottom"
                     fill
+                    priority={priorityImage}
                     sizes="(min-width: 1280px) 360px, (min-width: 640px) 45vw, 90vw"
                     src={product.imageUrl}
                   />
@@ -138,7 +141,7 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
                     {product.brand}
                   </div>
                 )}
-              <h3 className="line-clamp-2 text-balance text-[13px] font-normal leading-5 text-nh-ink sm:text-[16px] sm:leading-6">
+              <h3 className="line-clamp-2 min-h-10 text-balance text-[13px] font-normal leading-5 text-nh-ink sm:min-h-12 sm:text-[16px] sm:leading-6">
                 <Link className="transition-colors hover:text-nh-red" href={product.href}>
                   {product.name}
                 </Link>
@@ -146,7 +149,7 @@ export function ProductGrid({ products, favorites, onToggleFavorite }: ProductGr
               <p className="text-[12px] font-normal leading-4 text-nh-muted">
                 {product.subtitle}
               </p>
-              <div className="mt-2 flex flex-col items-center gap-1">
+              <div className="mt-2 flex flex-col items-start gap-1 text-left">
                 {sale && product.oldPrice ? (
                   <div className="flex items-center gap-2">
                     <span className="text-[12px] font-normal leading-4 text-nh-muted line-through">

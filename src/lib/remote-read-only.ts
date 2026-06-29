@@ -9,6 +9,11 @@ export class RemoteWriteBlockedError extends Error {
   }
 }
 
+const SUPABASE_READ_RPC_PATHS = new Set([
+  "/rest/v1/rpc/search_variant_products_fuzzy",
+  "/rest/v1/rpc/search_variant_products_fuzzy_count",
+]);
+
 export const supabaseReadOnlyFetch: typeof fetch = async (input, init) => {
   const request = new Request(input, init);
   assertReadOnlyMethod("Supabase", request.method, request.url);
@@ -45,6 +50,10 @@ export function assertAmisRequestAllowed(url: URL, method: string): void {
 
 function assertReadOnlyMethod(system: "Supabase", method: string, url: string): void {
   const normalizedMethod = method.toUpperCase();
+  if (normalizedMethod === "POST" && SUPABASE_READ_RPC_PATHS.has(new URL(url).pathname)) {
+    return;
+  }
+
   if (!READ_ONLY_HTTP_METHODS.has(normalizedMethod)) {
     throw new RemoteWriteBlockedError(system, normalizedMethod, url);
   }

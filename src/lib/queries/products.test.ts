@@ -89,6 +89,7 @@ describe("getVariantProducts", () => {
     expect(selectArg).toContain("filter_brand");
     expect(selectArg).toContain("filter_category");
     expect(selectArg).toContain("filter_sub_category");
+    expect(selectArg).toContain("filter_is_new_arrival");
     expect(selectArg).toContain("filter_room_vi");
     expect(selectArg).not.toBe("*");
   });
@@ -110,8 +111,21 @@ describe("getVariantProducts", () => {
     expect(state.inCalls).toContainEqual(["filter_category", ["furniture"]]);
     expect(state.inCalls).toContainEqual(["filter_sub_category", ["table-lamps"]]);
     expect(state.overlapCalls).toContainEqual(["filter_room", ["living-room"]]);
-    expect(state.chain.or).toHaveBeenCalledWith("name.ilike.%lamp%,name_vi.ilike.%lamp%");
+    expect(state.chain.or).toHaveBeenCalledWith(
+      "name_vi.ilike.%lamp%,name.ilike.%lamp%,sku.ilike.%lamp%,finish_vi.ilike.%lamp%,finish.ilike.%lamp%,brand_name_denorm.ilike.%lamp%",
+    );
     expect(state.eqCalls).toContainEqual(["on_sale", true]);
+  });
+
+  it("prioritizes in-stock new arrivals with lower priority scores by default", async () => {
+    // Given: the default product grid sort.
+    // When: variants are fetched without an explicit sort.
+    await getVariantProducts({ page: 1 });
+
+    // Then: stock status, new-arrival status, and low Supabase priority scores drive the default order.
+    expect(state.chain.order).toHaveBeenNthCalledWith(1, "in_stock", { ascending: false, nullsFirst: false });
+    expect(state.chain.order).toHaveBeenNthCalledWith(2, "filter_is_new_arrival", { ascending: false, nullsFirst: false });
+    expect(state.chain.order).toHaveBeenNthCalledWith(3, "priority", { ascending: true, nullsFirst: false });
   });
 
   it("maps status filters to stock and sale columns", async () => {

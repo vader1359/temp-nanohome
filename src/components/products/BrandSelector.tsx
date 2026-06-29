@@ -11,6 +11,11 @@ interface BrandSelectorProps {
   toggleBrand: (value: string) => void;
 }
 
+function keepsOriginalLogoColor(brand: BrandOption): boolean {
+  const brandKey = `${brand.slug} ${brand.name}`.toLowerCase();
+  return brandKey.includes("usm") || brandKey.includes("unite");
+}
+
 export function BrandSelector({ brandOptions, selectedBrands, toggleBrand }: BrandSelectorProps) {
   const t = useTranslations("Products");
 
@@ -25,6 +30,7 @@ export function BrandSelector({ brandOptions, selectedBrands, toggleBrand }: Bra
         <div className="flex flex-wrap items-center gap-4">
           {brandOptions.map((brand) => {
             const active = selectedBrands.has(brand.slug);
+            const preserveLogoColor = keepsOriginalLogoColor(brand);
 
             return (
               <button
@@ -45,8 +51,11 @@ export function BrandSelector({ brandOptions, selectedBrands, toggleBrand }: Bra
                   <Image
                     alt={brand.name}
                     className={cn(
-                      "h-3.5 w-auto max-w-[72px] object-contain grayscale contrast-200 brightness-0 transition-[filter] group-hover:brightness-0 group-hover:invert",
-                      active && "brightness-0 invert",
+                      "h-3.5 w-auto max-w-[72px] object-contain transition-[filter]",
+                      preserveLogoColor
+                        ? ""
+                        : "grayscale contrast-200 brightness-0 group-hover:brightness-0 group-hover:invert",
+                      active && !preserveLogoColor && "brightness-0 invert",
                     )}
                     height={14}
                     src={brand.logoUrl}
