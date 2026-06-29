@@ -1,10 +1,10 @@
 {
   "people": [
-    "Ian Tran"
+    "Ian Tran",
+    "Expected"
   ],
   "projects": [
-    "nanohome-ecommerce",
-    "Vercel"
+    "nanohome-ecommerce"
   ],
   "topics": []
 }
