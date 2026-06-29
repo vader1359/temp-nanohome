@@ -8,6 +8,7 @@ import { Section5Benefits } from "@/components/product-detail/section-5-benefits
 import { Section6Recommended } from "@/components/product-detail/section-6-recommended";
 import type { RelatedProduct } from "@/components/product-detail/mock-data";
 import { COLORS } from "@/components/product-detail/mock-data";
+import { firstCloudinaryImage, isCloudinaryUrl } from "@/lib/image";
 import { getVariantProducts } from "@/lib/queries/products";
 import { getVariantBySlug, getVariantsByProductId } from "@/lib/queries/variants";
 import type { Variant } from "@/types/db";
@@ -44,15 +45,18 @@ function variantRawText(variant: Variant, key: string): string {
 }
 
 function getVariantPackshotUrl(variant: Variant): string {
-  return (
-    variantRawText(variant, "cldr_packshot_url") ||
-    variantRawText(variant, "cldr_packshot") ||
-    variantText(variant.packshot_url)
-  );
+  return firstCloudinaryImage([
+    variant.cloudinary_ids[0],
+    variantRawText(variant, "cldr_packshot_url"),
+    variantRawText(variant, "cldr_packshot"),
+    variant.packshot_url,
+    ...variant.gallery_urls,
+  ]);
 }
 
 function getVariantImages(variant: Variant): string[] {
-  return [getVariantPackshotUrl(variant), ...variant.gallery_urls].filter((url): url is string => Boolean(url));
+  const images = [getVariantPackshotUrl(variant), ...variant.gallery_urls].filter(isCloudinaryUrl);
+  return images.length > 0 ? images : [getVariantPackshotUrl(variant)];
 }
 
 function toRelatedProduct(variant: Variant): RelatedProduct {

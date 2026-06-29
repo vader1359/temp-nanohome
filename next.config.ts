@@ -29,11 +29,6 @@ const nextConfig: NextConfig = {
         hostname: "s3-alpha-sig.figma.com",
         pathname: "/img/**",
       },
-      {
-        protocol: "https",
-        hostname: "v5.airtableusercontent.com",
-        pathname: "/**",
-      },
     ],
   },
   // next-intl 3.x wires `next-intl/config` through `experimental.turbo`,

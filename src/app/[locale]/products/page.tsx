@@ -1,6 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 import { ProductsPage } from "@/components/products/products-page";
 import type { ProductGridItem } from "@/components/products/ProductGrid";
+import { firstCloudinaryImage } from "@/lib/image";
 import { getVariantProducts } from "@/lib/queries/products";
 import type { Variant } from "@/types/db";
 
@@ -36,13 +37,13 @@ function variantRawText(variant: Variant, key: string): string {
 }
 
 function getVariantImageUrl(variant: Variant): string {
-  return (
-    variantRawText(variant, "cldr_packshot_url") ||
-    variantRawText(variant, "cldr_packshot") ||
-    variantText(variant.packshot_url) ||
-    variant.gallery_urls[0] ||
-    "/images/p_lc2.png"
-  );
+  return firstCloudinaryImage([
+    variant.cloudinary_ids[0],
+    variantRawText(variant, "cldr_packshot_url"),
+    variantRawText(variant, "cldr_packshot"),
+    variant.packshot_url,
+    ...variant.gallery_urls,
+  ]);
 }
 
 function variantToGridItem(variant: Variant): ProductGridItem {
