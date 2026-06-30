@@ -33,10 +33,8 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    queueMicrotask(() => {
-      setItems(readStoredWishlistItems());
-      setHydrated(true);
-    });
+    setItems(readStoredWishlistItems());
+    setHydrated(true);
   }, []);
 
   useEffect(() => {

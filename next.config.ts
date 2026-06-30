@@ -10,8 +10,27 @@ import "./src/lib/env";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
+type WebpackConfig = Parameters<NonNullable<NextConfig["webpack"]>>[0];
+type WatchIgnored = NonNullable<NonNullable<WebpackConfig["watchOptions"]>["ignored"]>;
+
+const ignoredDevArtifacts = ["**/.playwright-mcp/**", "**/.omo/**", "**/.debug-journal.md"];
+
+function ignoredEntries(ignored: WatchIgnored | undefined): string[] {
+  if (ignored === undefined) return [];
+  return Array.isArray(ignored) ? ignored.map(String) : [String(ignored)];
+}
+
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  webpack(config) {
+    return {
+      ...config,
+      watchOptions: {
+        ...config.watchOptions,
+        ignored: [...ignoredEntries(config.watchOptions?.ignored), ...ignoredDevArtifacts],
+      },
+    } satisfies WebpackConfig;
+  },
   images: {
     remotePatterns: [
       {
