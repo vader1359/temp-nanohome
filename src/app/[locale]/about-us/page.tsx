@@ -29,7 +29,7 @@ export default async function AboutUsPage({ params }: Readonly<{ params: Promise
       <section className="mx-auto flex max-w-[1344px] flex-col gap-12 px-4 py-[60px] sm:px-6 lg:px-12">
         <EditorialHeader eyebrow={t("eyebrow")} title={t("heading")} />
         <div className="group relative aspect-[1360/615] overflow-hidden bg-[#e1e1e1]">
-          <img src="/images/about_img.png" alt="Không gian nội thất cao cấp nanoHome" className="h-full w-full object-cover" />
+          <img src="/images/space.jpg" alt="Không gian nội thất cao cấp nanoHome" className="h-full w-full object-cover" />
           <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2" aria-hidden="true">
             <span className="size-2 rounded-full bg-white" />
             <span className="size-2 rounded-full border border-white" />

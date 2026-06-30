@@ -7,15 +7,13 @@ import {
   Menu,
   Minus,
   Plus,
-  Search,
   ShoppingCart,
-  UserRound,
   X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCart, type CartItem } from "@/components/cart/cart-context";
 import { useWishlist, type WishlistItem } from "@/components/wishlist/wishlist-context";
 import { cn } from "@/lib/utils";
@@ -23,18 +21,17 @@ import { cn } from "@/lib/utils";
 export function Header() {
   const t = useTranslations("Header");
   const locale = useLocale();
-  const router = useRouter();
+  const pathname = usePathname();
+  const [currentQuery, setCurrentQuery] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [headerSearch, setHeaderSearch] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [cartTab, setCartTab] = useState<CartSidebarTab>("cart");
   const { items, addItem, clearCart, getItemCount, removeItem, updateQuantity } = useCart();
   const { items: wishlistItems, clearWishlist, getItemCount: getWishlistCount, removeItem: removeWishlistItem } = useWishlist();
   const cartCount = getItemCount();
   const wishlistCount = getWishlistCount();
-  const topLeft = ["brandFurniture", "brandLighting", "brandPreLove"] as const;
-  const topRight = ["showrooms", "about", "news", "contact", "signIn"] as const;
+  const topLeft = ["brandFurniture", "brandLighting"] as const;
+  const topRight = ["showrooms", "about", "news", "contact"] as const;
   const nav = [
     "products",
     "livingRoom",
@@ -46,6 +43,48 @@ export function Header() {
     "bySet",
   ] as const;
   const productsPath = `/${locale}/products`;
+  const localeOptions = [
+    { code: "vi", label: "VN" },
+    { code: "en", label: "EN" },
+    { code: "ko", label: "KO" },
+  ] as const;
+
+  const localeHref = (nextLocale: (typeof localeOptions)[number]["code"]) => {
+    const segments = pathname.split("/");
+    if (segments[1] === "vi" || segments[1] === "en" || segments[1] === "ko") {
+      segments[1] = nextLocale;
+    } else {
+      segments.splice(1, 0, nextLocale);
+    }
+
+    return `${segments.join("/") || `/${nextLocale}`}${currentQuery}`;
+  };
+
+  const localeSwitcher = (
+    <div className="flex gap-1.5 text-xs">
+      {localeOptions.map(({ code, label }, index) => (
+        <span key={code} className="contents">
+          {index > 0 ? <span>|</span> : null}
+          <Link
+            href={localeHref(code)}
+            className={locale === code ? "text-[#111]" : "text-[#999] hover:text-[#111]"}
+            hrefLang={code}
+          >
+            {label}
+          </Link>
+        </span>
+      ))}
+    </div>
+  );
+
+  const topLeftHref = (key: (typeof topLeft)[number]): string => {
+    switch (key) {
+      case "brandFurniture":
+        return `/${locale}`;
+      case "brandLighting":
+        return `${productsPath}?category=lighting`;
+    }
+  };
 
   const topRightHref = (key: (typeof topRight)[number]): string => {
     switch (key) {
@@ -55,8 +94,7 @@ export function Header() {
         return `/${locale}/news`;
       case "showrooms":
       case "contact":
-      case "signIn":
-        return "#";
+        return `/${locale}/about-us`;
     }
   };
 
@@ -65,27 +103,20 @@ export function Header() {
       case "products":
         return productsPath;
       case "livingRoom":
-        return `${productsPath}?room=${encodeURIComponent("Phòng khách")}`;
+        return `${productsPath}?room=living-room`;
       case "diningRoom":
-        return `${productsPath}?room=${encodeURIComponent("Phòng ăn")}`;
+        return `${productsPath}?room=dining-room`;
       case "bedroom":
-        return `${productsPath}?room=${encodeURIComponent("Phòng ngủ")}`;
+        return `${productsPath}?room=bedroom`;
       case "workspace":
-        return `${productsPath}?room=${encodeURIComponent("Không gian làm việc")}`;
+        return `${productsPath}?room=office`;
       case "outdoor":
-        return `${productsPath}?category=${encodeURIComponent("Nội thất ngoài trời")}`;
+        return `${productsPath}?room=outdoor`;
       case "accessories":
-        return `${productsPath}?category=${encodeURIComponent("Trang trí")}`;
+        return `${productsPath}?subCategory=accessories`;
       case "bySet":
         return productsPath;
     }
-  };
-
-  const submitHeaderSearch = () => {
-    const value = headerSearch.trim();
-    if (value.length === 0) return;
-    router.push(`${productsPath}?q=${encodeURIComponent(value)}`);
-    setDrawerOpen(false);
   };
 
   const openWishlist = () => {
@@ -112,6 +143,10 @@ export function Header() {
     };
   }, [cartOpen]);
 
+  useEffect(() => {
+    setCurrentQuery(window.location.search);
+  }, []);
+
   return (
     <header className="relative z-30 min-h-[80px] bg-white lg:h-[150px]">
       <div className="site-shell py-4">
@@ -121,7 +156,7 @@ export function Header() {
             {topLeft.map((key) => (
               <Link
                 key={key}
-                href="#"
+                href={topLeftHref(key)}
                 className="text-xs leading-[18px] text-[#666]"
               >
                 {t(key)}
@@ -201,29 +236,6 @@ export function Header() {
 
           {/* Desktop full icons row */}
           <div className="hidden lg:flex lg:items-center lg:gap-5 lg:ml-auto">
-            {searchOpen ? (
-              <form
-                className="flex items-center gap-2 border-b border-[#cfc9c0]"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  submitHeaderSearch();
-                }}
-              >
-                <input
-                  aria-label="Header product search"
-                  className="w-[180px] bg-transparent text-xs outline-none"
-                  value={headerSearch}
-                  onChange={(event) => setHeaderSearch(event.target.value)}
-                />
-                <button aria-label="Submit search" type="submit">
-                  <Search className="size-5 stroke-[1.4]" />
-                </button>
-              </form>
-            ) : (
-              <button aria-label="Search" type="button" onClick={() => setSearchOpen(true)}>
-                <Search className="size-5 stroke-[1.4]" />
-              </button>
-            )}
             <button aria-label="Wishlist" type="button" onClick={openWishlist} className="relative" data-wishlist-target>
               <Heart className="size-5 stroke-[1.4]" />
               {wishlistCount > 0 ? (
@@ -238,22 +250,7 @@ export function Header() {
                 {cartCount}
               </span>
             </button>
-            <button aria-label="Account">
-              <UserRound className="size-5 stroke-[1.4]" />
-            </button>
-            <div className="flex gap-1.5 text-xs">
-              <span className={locale === "vi" ? "text-[#111]" : "text-[#999]"}>
-                VN
-              </span>
-              <span>|</span>
-              <span className={locale === "en" ? "text-[#111]" : "text-[#999]"}>
-                EN
-              </span>
-              <span>|</span>
-              <span className={locale === "ko" ? "text-[#111]" : "text-[#999]"}>
-                KO
-              </span>
-            </div>
+            {localeSwitcher}
           </div>
         </div>
 
@@ -265,9 +262,6 @@ export function Header() {
             {/* Icon bar + locale */}
             <div className="flex items-center justify-between border-b border-[#cfc9c0] pb-4">
               <div className="flex items-center gap-5 text-[#111]">
-                <button aria-label="Search" type="button" onClick={() => setSearchOpen((open) => !open)}>
-                  <Search className="size-5 stroke-[1.4]" />
-                </button>
                 <button aria-label="Wishlist" type="button" onClick={openWishlist} className="relative" data-wishlist-target>
                   <Heart className="size-5 stroke-[1.4]" />
                   {wishlistCount > 0 ? (
@@ -276,47 +270,10 @@ export function Header() {
                     </span>
                   ) : null}
                 </button>
-                <button aria-label="Account">
-                  <UserRound className="size-5 stroke-[1.4]" />
-                </button>
               </div>
-              <div className="flex gap-1.5 text-xs">
-                <span
-                  className={locale === "vi" ? "text-[#111]" : "text-[#999]"}
-                >
-                  VN
-                </span>
-                <span>|</span>
-                <span
-                  className={locale === "en" ? "text-[#111]" : "text-[#999]"}
-                >
-                  EN
-                </span>
-                <span>|</span>
-                <span
-                  className={locale === "ko" ? "text-[#111]" : "text-[#999]"}
-                >
-                  KO
-                </span>
-              </div>
+              {localeSwitcher}
             </div>
             {/* Category nav */}
-              {searchOpen ? (
-                <form
-                  className="border-b border-[#cfc9c0] py-3"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    submitHeaderSearch();
-                  }}
-                >
-                  <input
-                    aria-label="Mobile product search"
-                    className="w-full bg-transparent text-sm outline-none"
-                    value={headerSearch}
-                    onChange={(event) => setHeaderSearch(event.target.value)}
-                  />
-                </form>
-              ) : null}
               <nav className="flex flex-col gap-3 border-b border-[#cfc9c0] py-4">
               {nav.map((key) => (
                 <Link
@@ -334,7 +291,7 @@ export function Header() {
               {topLeft.map((key) => (
                 <Link
                   key={key}
-                  href="#"
+                  href={topLeftHref(key)}
                   onClick={() => setDrawerOpen(false)}
                   className="text-sm leading-[18px] text-[#666]"
                 >

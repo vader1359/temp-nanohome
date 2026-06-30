@@ -21,17 +21,26 @@ interface PageProps {
   params: Promise<{ locale: string }>;
 }
 
+export const revalidate = 3600;
+
 export default async function Page({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [variants, brands] = await Promise.all([
-    getVariantProducts({ pageSize: 8 }),
+  const [fritzHansenVariants, chairVariants, lampVariants, brands] = await Promise.all([
+    getVariantProducts({
+      brand: ["fritz-hansen"],
+      pageSize: 8,
+      sort: "priority",
+      subCategory: ["chairs", "accessories"],
+    }),
+    getVariantProducts({ pageSize: 12, sort: "priority", subCategory: ["chairs"] }),
+    getVariantProducts({ pageSize: 12, sort: "priority", subCategory: ["table-lamps", "floor-lamps", "pendants", "wall-lamps", "lighting"] }),
     getBrands(),
   ]);
 
   const brandById = new Map(brands.map((brand) => [brand.id, brand]));
-  const toGridItem = (variant: (typeof variants)[number], options: { packshotOnly?: boolean } = {}) => {
+  const toGridItem = (variant: (typeof fritzHansenVariants)[number], options: { packshotOnly?: boolean } = {}) => {
     const brand = variant.brand_id ? brandById.get(variant.brand_id) : undefined;
 
     return variantToProductGridItem(variant, {
@@ -41,13 +50,13 @@ export default async function Page({ params }: PageProps) {
     });
   };
 
-  const packshotProducts = variants
+  const packshotProducts = fritzHansenVariants
     .map((v) => toGridItem(v, { packshotOnly: true }))
     .filter((p) => p.imageUrl !== "");
   const gridProducts =
     packshotProducts.length > 0
       ? packshotProducts
-      : variants.map((v) => toGridItem(v));
+      : fritzHansenVariants.map((v) => toGridItem(v));
 
   const heroProducts = gridProducts.slice(0, 3).map((product) => ({
     image: product.imageUrl,
@@ -56,7 +65,10 @@ export default async function Page({ params }: PageProps) {
     price: product.price,
   }));
 
-  const featuredSlice = variants.slice(0, 2);
+  const featuredSlice = [
+    chairVariants[0] ?? fritzHansenVariants[0],
+    lampVariants[0] ?? fritzHansenVariants[1] ?? fritzHansenVariants[0],
+  ].filter((variant): variant is (typeof fritzHansenVariants)[number] => variant !== undefined);
   const featuredPackshot = featuredSlice
     .map((v) => toGridItem(v, { packshotOnly: true }))
     .filter((p) => p.imageUrl !== "");

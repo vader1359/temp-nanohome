@@ -125,7 +125,7 @@ export function ProductGrid({ products }: ProductGridProps) {
   }
 
   return (
-    <section className="grid grid-cols-1 gap-9 sm:grid-cols-2 xl:grid-cols-3">
+    <section className="grid grid-cols-2 gap-4 sm:gap-9 xl:grid-cols-3">
       {products.map((product, index) => {
         const sale = product.status === "sale";
         const priorityImage = index < 6;
@@ -133,7 +133,7 @@ export function ProductGrid({ products }: ProductGridProps) {
 
         return (
             <article
-              className="group flex aspect-[4/6] min-w-0 flex-col gap-4 overflow-hidden bg-white p-4"
+              className="group flex aspect-[40/78] min-w-0 flex-col gap-3 overflow-hidden bg-white p-2 sm:aspect-[10/13] sm:gap-4 sm:p-4"
               key={product.id}
               data-product-brand={product.brandSlug ?? product.brand}
               data-product-card=""
@@ -143,9 +143,9 @@ export function ProductGrid({ products }: ProductGridProps) {
               data-product-status={product.status}
               data-product-subcategory={product.subCategory ?? ""}
             >
-              <div className="relative flex min-h-0 w-full flex-1 items-end justify-center bg-white px-8 pb-8 pt-14 sm:px-10 sm:pb-10 sm:pt-16">
+              <div className="relative flex min-h-0 w-full flex-1 items-end justify-center bg-white px-2 pb-3 pt-8 sm:px-4 sm:pb-5 sm:pt-10">
                 <button
-                  className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 sm:right-1.5 sm:top-1.5"
+                  className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 sm:right-1.5 sm:top-1.5"
                   type="button"
                   onClick={(event) => {
                     const card = event.currentTarget.closest<HTMLElement>("[data-product-card]");
@@ -158,7 +158,7 @@ export function ProductGrid({ products }: ProductGridProps) {
                   <Heart
                     strokeWidth={1.5}
                     className={cn(
-                      "size-5 text-nh-ink transition-transform duration-200 group-hover:scale-110",
+                      "size-4 text-nh-ink transition-transform duration-200 group-hover:scale-110",
                       favorited && "fill-nh-red text-nh-red",
                     )}
                   />
@@ -191,26 +191,26 @@ export function ProductGrid({ products }: ProductGridProps) {
 
               <div className="mx-1 flex flex-col items-start gap-2 text-left sm:mx-1.5">
                 {product.brandLogoUrl ? (
-                  <div className="relative h-4 w-[96px]">
+                  <div className="relative h-3 w-[76px] sm:h-3.5 sm:w-[84px]">
                     <Image
                       alt={product.brand}
                       className="object-contain object-left grayscale contrast-200 brightness-0"
                       fill
-                      sizes="96px"
+                      sizes="84px"
                       src={product.brandLogoUrl}
                     />
                   </div>
                 ) : (
-                  <div className="text-[13px] font-medium leading-4 text-nh-ink">
+                  <div className="text-[11px] font-medium leading-3 text-nh-ink sm:text-[12px] sm:leading-4">
                     {product.brand}
                   </div>
                 )}
-              <h3 className="line-clamp-2 min-h-10 text-balance text-[13px] font-normal leading-5 text-nh-ink sm:min-h-12 sm:text-[16px] sm:leading-6">
+              <h3 className="line-clamp-2 min-h-8 text-balance text-[11px] font-normal leading-4 text-nh-ink sm:min-h-9 sm:text-[12px] sm:leading-[18px]">
                 <Link className="transition-colors hover:text-nh-red" href={product.href}>
                   {product.name}
                 </Link>
               </h3>
-              <p className="text-[12px] font-normal leading-4 text-nh-muted">
+              <p className="text-[11px] font-normal leading-4 text-nh-muted sm:text-[12px]">
                 {product.subtitle}
               </p>
               <div className="mt-2 flex flex-col items-start gap-1 text-left">

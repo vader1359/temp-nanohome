@@ -8,12 +8,16 @@ import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.css";
 
 const images = [
-  "/images/insta_1.jpg",
-  "/images/insta_2.jpg",
-  "/images/insta_3.jpg",
-  "/images/insta_4.jpg",
-  "/images/insta_5.jpg",
-  "/images/insta_6.jpg",
+  "/images/home/instagram/instagram-1.jpg",
+  "/images/home/instagram/instagram-2.jpg",
+  "/images/home/instagram/instagram-3.jpg",
+  "/images/home/instagram/instagram-4.jpg",
+  "/images/home/instagram/instagram-5.jpg",
+  "/images/home/instagram/instagram-6.jpg",
+  "/images/home/instagram/instagram-7.jpg",
+  "/images/home/instagram/instagram-8.jpg",
+  "/images/home/instagram/instagram-9.jpg",
+  "/images/home/instagram/instagram-10.jpg",
 ];
 
 export function InstagramGallery() {
@@ -141,7 +145,7 @@ export function InstagramGallery() {
                 type="button"
                 onClick={() => slider.current?.moveToIdx(idx)}
                 aria-label={`Go to Instagram slide ${idx + 1}`}
-                className={`size-1.5 rounded-full transition-colors ${
+                className={`size-1.5 shrink-0 rounded-full transition-colors ${
                   currentSlide === idx ? "bg-[#111]" : "border border-[#111]/30"
                 }`}
               />

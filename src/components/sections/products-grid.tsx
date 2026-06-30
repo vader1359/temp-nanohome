@@ -14,7 +14,6 @@ export function ProductsGrid({ products }: ProductsGridProps) {
   const t = useTranslations("ProductGrid");
   const [active, setActive] = useState(0);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [visibleCount, setVisibleCount] = useState(8);
   const [slideIdx, setSlideIdx] = useState(0);
   const [sliderLoaded, setSliderLoaded] = useState(false);
 
@@ -47,7 +46,8 @@ export function ProductsGrid({ products }: ProductsGridProps) {
     });
   };
 
-  const visibleProducts = products.slice(0, visibleCount);
+  const mobileProducts = products.slice(0, 6);
+  const desktopProducts = products.slice(0, 8);
 
   return (
     <section className="py-12 sm:py-16 lg:py-20">
@@ -67,7 +67,7 @@ export function ProductsGrid({ products }: ProductsGridProps) {
         {/* Mobile carousel — visible below sm */}
         <div className="mt-10 block sm:hidden">
           <div ref={sliderRef} className="keen-slider">
-            {visibleProducts.map((p) => (
+            {mobileProducts.map((p) => (
               <div key={p.id} className="keen-slider__slide">
                 <ProductCard
                   product={p}
@@ -77,9 +77,9 @@ export function ProductsGrid({ products }: ProductsGridProps) {
               </div>
             ))}
           </div>
-          {sliderLoaded && visibleProducts.length > 1 && (
+          {sliderLoaded && mobileProducts.length > 1 && (
             <div className="mt-6 flex items-center justify-center gap-2">
-              {visibleProducts.map((_, idx) => (
+              {mobileProducts.map((_, idx) => (
                 <button
                   key={idx}
                   type="button"
@@ -96,26 +96,16 @@ export function ProductsGrid({ products }: ProductsGridProps) {
 
         {/* Desktop grid — visible at sm and above */}
         <div className="mt-14 hidden sm:mt-16 sm:grid sm:grid-cols-3 sm:gap-x-6 sm:gap-y-16 lg:gap-x-8 lg:gap-y-20 2xl:grid-cols-4">
-          {visibleProducts.map((p) => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              isFavorite={favorites.has(p.id)}
-              onToggleFavorite={toggleFavorite}
-            />
+          {desktopProducts.map((p, index) => (
+            <div key={p.id} className={index >= 6 ? "hidden 2xl:block" : undefined}>
+              <ProductCard
+                product={p}
+                isFavorite={favorites.has(p.id)}
+                onToggleFavorite={toggleFavorite}
+              />
+            </div>
           ))}
         </div>
-
-        {visibleCount < products.length && (
-          <div className="mt-20 hidden text-center sm:block">
-            <button
-              className="h-[52px] bg-[#111] px-8 text-sm font-medium uppercase text-white"
-              onClick={() => setVisibleCount((count) => Math.min(count + 4, products.length))}
-            >
-              Xem thêm
-            </button>
-          </div>
-        )}
       </div>
     </section>
   );

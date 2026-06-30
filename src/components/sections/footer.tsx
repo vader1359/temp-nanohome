@@ -39,25 +39,34 @@ function footerLinkHref(link: FooterLinkKey): string {
   switch (link) {
     case "col1Link1":
       return "/about-us";
+    case "col1Link2":
+      return "/about-us";
+    case "col1Link3":
+      return "/news";
     case "col1Link4":
       return "/news";
+    case "col1Link5":
+      return "/about-us";
+    case "col2Link1":
+      return "/products?category=furniture";
+    case "col2Link2":
+      return "/products?category=lighting";
+    case "col3Link1":
+      return "/products?brand=usm";
+    case "col3Link2":
+      return "/products?category=furniture";
+    case "col3Link3":
+      return "/products?category=lighting";
+    case "col3Link4":
+      return "/products?subCategory=accessories";
     case "col4Link1":
       return "/brands";
     case "col4Link2":
       return "/designers";
+    case "col4Link3":
+      return "/news";
     case "col4Link4":
       return "/catalogs";
-    case "col1Link2":
-    case "col1Link3":
-    case "col1Link5":
-    case "col2Link1":
-    case "col2Link2":
-    case "col3Link1":
-    case "col3Link2":
-    case "col3Link3":
-    case "col3Link4":
-    case "col4Link3":
-      return "#";
   }
 }
 

@@ -38,8 +38,8 @@ export function ProductCard({
   const sale = product.status === "sale";
 
   return (
-    <article className="group flex min-w-0 flex-col gap-4 bg-white p-2 sm:gap-6 sm:p-4">
-      <div className="relative flex aspect-[4/5] w-full items-end justify-center bg-white px-12 pb-16 pt-24 sm:px-8 sm:pb-10 sm:pt-14">
+    <article className="group flex min-w-0 flex-col gap-3 bg-white p-2 sm:gap-4 sm:p-4">
+      <div className="relative flex aspect-[4/5] w-full items-end justify-center bg-white px-6 pb-8 pt-14 sm:px-5 sm:pb-7 sm:pt-10">
         <button
           className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 sm:right-1.5 sm:top-1.5"
           type="button"
@@ -78,21 +78,21 @@ export function ProductCard({
 
       <div className="flex flex-col items-start gap-2 px-3 pb-3 text-left sm:px-4 sm:pb-4">
         {product.brandLogoUrl ? (
-          <div className="relative h-4 w-[96px]">
+          <div className="relative h-3 w-[76px] sm:h-3.5 sm:w-[84px]">
             <Image
               alt={product.brand}
               className="object-contain object-left grayscale contrast-200 brightness-0"
               fill
-              sizes="96px"
+              sizes="84px"
               src={product.brandLogoUrl}
             />
           </div>
         ) : (
-          <div className="text-[13px] font-medium leading-4 text-nh-ink">
+          <div className="text-[11px] font-medium leading-3 text-nh-ink sm:text-[12px] sm:leading-4">
             {product.brand}
           </div>
         )}
-        <h3 className="line-clamp-2 text-[12px] font-light leading-4 text-nh-ink sm:text-[16px] sm:leading-6">
+        <h3 className="line-clamp-2 min-h-8 text-[11px] font-light leading-4 text-nh-ink sm:min-h-9 sm:text-[12px] sm:leading-[18px]">
           <Link className="transition-colors hover:text-nh-red" href={product.href}>
             {product.name}
           </Link>

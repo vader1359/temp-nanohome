@@ -63,6 +63,12 @@ const cardPositionClasses: Record<Hotspot["cardPlacement"], string> = {
   "above-left": "bottom-full right-0 mb-3",
 };
 
+const heroImages = [
+  "/images/home/hero/hero-1.jpg",
+  "/images/home/hero/hero-2.jpg",
+  "/images/home/hero/hero-3.jpg",
+];
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -92,11 +98,11 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
   }, [openCard]);
 
   const goToPrevious = () => {
-    setActiveIndex((current) => (current === 0 ? 2 : current - 1));
+    setActiveIndex((current) => (current === 0 ? heroImages.length - 1 : current - 1));
   };
 
   const goToNext = () => {
-    setActiveIndex((current) => (current === 2 ? 0 : current + 1));
+    setActiveIndex((current) => (current === heroImages.length - 1 ? 0 : current + 1));
   };
 
   return (
@@ -104,7 +110,7 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
       {/* Background layers */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url(/images/hero_bg.png)" }}
+        style={{ backgroundImage: `url(${heroImages[activeIndex]})` }}
         aria-hidden="true"
       />
       <div className="absolute inset-0 bg-linear-to-r from-black/55 via-black/25 to-black/20" />
@@ -219,7 +225,7 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
 
       {/* Pagination dots */}
       <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2.5">
-        {[0, 1, 2].map((index) => (
+        {heroImages.map((_, index) => (
           <button
             key={index}
             type="button"

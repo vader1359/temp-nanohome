@@ -18,6 +18,7 @@ import type { Variant } from "@/types/db";
 import type { Locale } from "@/i18n/routing";
 
 const PAGE_SIZE = 24;
+const FEATURED_FIRST_BRAND = "fritz-hansen";
 
 const FilterSchema = z.object({
   brand: z
@@ -163,6 +164,23 @@ function getImageUrl(variant: VariantProductListItem): string {
   ]) || "/images/p_lc2.png";
 }
 
+function mergePreferredBrandFirst(
+  preferredVariants: readonly VariantProductListItem[],
+  variants: readonly VariantProductListItem[],
+): readonly VariantProductListItem[] {
+  const seen = new Set<string>();
+  const merged: VariantProductListItem[] = [];
+
+  for (const variant of [...preferredVariants, ...variants]) {
+    if (seen.has(variant.id)) continue;
+    seen.add(variant.id);
+    merged.push(variant);
+    if (merged.length >= PAGE_SIZE) break;
+  }
+
+  return merged;
+}
+
 export default async function ProductsRoute({ params, searchParams }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -185,9 +203,20 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
     page: filters.page ?? 1,
     pageSize: PAGE_SIZE,
   };
+  const shouldPreferFritzHansen =
+    queryOptions.sort === "priority" &&
+    queryOptions.page === 1 &&
+    queryOptions.brand === undefined;
+  const preferredBrandQueryOptions: VariantProductQueryOptions = {
+    ...queryOptions,
+    brand: [FEATURED_FIRST_BRAND],
+  };
 
-  const [variants, totalCount, brands, categories, facets] = await Promise.all([
+  const [variants, preferredBrandVariants, totalCount, brands, categories, facets] = await Promise.all([
     getCachedVariantProducts(queryOptions),
+    shouldPreferFritzHansen
+      ? getCachedVariantProducts(preferredBrandQueryOptions)
+      : Promise.resolve([]),
     getCachedVariantProductCount(queryOptions),
     getCachedBrands(),
     getCachedCategories(),
@@ -278,7 +307,10 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
 
   const roomOptions = getRoomOptions(supportedLocale);
 
-  const products = variants.map(toGridItem);
+  const prioritizedVariants = shouldPreferFritzHansen
+    ? mergePreferredBrandFirst(preferredBrandVariants, variants)
+    : variants;
+  const products = prioritizedVariants.map(toGridItem);
 
   return (
     <ProductsPage
