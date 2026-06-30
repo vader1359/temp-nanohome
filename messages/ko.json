@@ -130,13 +130,33 @@
     "clearAll": "전체 지우기"
   },
   "ProductDetail": {},
-  "News": {},
+  "News": {
+    "title": "뉴스",
+    "description": "nanoHome의 생활 공간, 브랜드, 프로젝트, 디자인 이야기를 전합니다.",
+    "categoryAll": "전체",
+    "categoryProducts": "상품",
+    "categoryBrands": "브랜드",
+    "categoryProjects": "프로젝트",
+    "categoryHomes": "홈",
+    "categoryServices": "서비스",
+    "categoryEvents": "이벤트",
+    "categoryCulture": "문화",
+    "metaLabel": "뉴스",
+    "fallbackTitle": "nanoHome 뉴스",
+    "fallbackBody": "기사 내용이 업데이트 중입니다.",
+    "dateUpdating": "업데이트 중"
+  },
   "Cart": {},
   "Checkout": {},
   "Auth": {},
   "Search": {},
   "Brands": {
-    "eyebrow": "공식 공인 유통사"
+    "eyebrow": "공식 공인 유통사",
+    "title": "현재 취급 브랜드",
+    "description": "nanoHome은 장식 조명, 건축 조명, 야외 조명, 프리미엄 소재와 액세서리까지 세계적인 가구 및 조명 브랜드의 독점 파트너임을 자랑스럽게 생각합니다.",
+    "fallbackName": "브랜드",
+    "detailLabel": "브랜드",
+    "fallbackDescription": "브랜드 정보가 업데이트 중입니다."
   },
   "Newsletter": {
     "title": "우선 알림 목록 가입",
@@ -147,9 +167,23 @@
     "phonePlaceholder": "전화번호 입력",
     "cta": "상담 예약"
   },
-  "Designers": {},
-  "Catalogs": {},
-  "Static": {},
+  "Designers": {
+    "title": "뛰어난 인테리어 디자이너",
+    "fallbackName": "디자이너",
+    "detailLabel": "디자이너",
+    "fallbackDescription": "디자이너 정보가 업데이트 중입니다."
+  },
+  "Catalogs": {
+    "title": "카탈로그",
+    "description": "nanoHome의 가구 및 조명 브랜드 공식 카탈로그를 살펴보세요.",
+    "fallbackOrigin": "공식 카탈로그",
+    "download": "카탈로그 다운로드"
+  },
+  "Static": {
+    "relatedProducts": "관련 상품",
+    "fallbackProduct": "상품",
+    "fallbackProductDescription": "상품 정보가 업데이트 중입니다."
+  },
   "Footer": {
     "col1Heading": "소개",
     "col1Link1": "nanoHome 소개",

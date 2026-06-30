@@ -3,7 +3,7 @@
 import { ChevronRight, Globe, Mail, Phone } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 const linkColumns = [
@@ -33,6 +33,34 @@ const contacts = [
   { icon: Globe, key: "website" },
 ] as const;
 
+type FooterLinkKey = (typeof linkColumns)[number]["links"][number];
+
+function footerLinkHref(link: FooterLinkKey): string {
+  switch (link) {
+    case "col1Link1":
+      return "/about-us";
+    case "col1Link4":
+      return "/news";
+    case "col4Link1":
+      return "/brands";
+    case "col4Link2":
+      return "/designers";
+    case "col4Link4":
+      return "/catalogs";
+    case "col1Link2":
+    case "col1Link3":
+    case "col1Link5":
+    case "col2Link1":
+    case "col2Link2":
+    case "col3Link1":
+    case "col3Link2":
+    case "col3Link3":
+    case "col3Link4":
+    case "col4Link3":
+      return "#";
+  }
+}
+
 export function Footer() {
   const t = useTranslations("Footer");
   const [openShowroom, setOpenShowroom] = useState<number | null>(0);
@@ -48,12 +76,12 @@ export function Footer() {
             <ul className="flex flex-col gap-5">
               {column.links.map((link) => (
                 <li key={link}>
-                  <a
-                    href="#"
+                  <Link
+                    href={footerLinkHref(link)}
                     className="text-sm font-normal leading-[21px] text-[#F1F1F1] hover:text-white"
                   >
                     {t(link)}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

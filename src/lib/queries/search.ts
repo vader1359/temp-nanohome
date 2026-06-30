@@ -62,7 +62,6 @@ export async function searchProducts(
     .from("variants")
     .select("product_id")
     .eq("validated", true)
-    .eq("approved", true)
     .or(pgroongaOrFilter(localeVariantSearchColumns[locale], searchTerm))
     .not("product_id", "is", null);
 
@@ -78,9 +77,7 @@ export async function searchProducts(
     .from("products")
     .select(searchSelect)
     .eq("validated", true)
-    .eq("approved", true)
     .eq("variants.validated", true)
-    .eq("variants.approved", true)
     .or(productOrFilter(searchTerm, locale, variantProductIds))
     .order(localeOrderColumns[locale], { ascending: true, nullsFirst: false })
     .order("priority", { ascending: false, nullsFirst: false })

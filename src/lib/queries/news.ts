@@ -10,7 +10,6 @@ export async function getNewsList(page = 1, pageSize = 12): Promise<readonly New
     .from("news")
     .select("*")
     .eq("validated", true)
-    .eq("approved", true)
     .order("source_created_at", { ascending: false, nullsFirst: false })
     .range(from, to);
 
@@ -28,7 +27,6 @@ export async function getNewsByAirtableId(airtableId: string): Promise<News | nu
     .select("*")
     .eq("airtable_id", airtableId)
     .eq("validated", true)
-    .eq("approved", true)
     .maybeSingle();
 
   if (error !== null) {

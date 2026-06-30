@@ -58,9 +58,9 @@ describe("getProducts", () => {
     // When: the product list is fetched.
     const rows = await getProducts({ page: 1 });
 
-    // Then: visibility filters and pagination are applied and rows are returned.
+    // Then: validated-only visibility and pagination are applied and rows are returned.
     expect(state.eqCalls).toContainEqual(["validated", true]);
-    expect(state.eqCalls).toContainEqual(["approved", true]);
+    expect(state.eqCalls).not.toContainEqual(["approved", true]);
     expect(state.chain.range).toHaveBeenCalledWith(0, 23);
     expect(rows).toEqual([{}]);
   });

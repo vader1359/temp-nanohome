@@ -47,6 +47,19 @@ export function Header() {
   ] as const;
   const productsPath = `/${locale}/products`;
 
+  const topRightHref = (key: (typeof topRight)[number]): string => {
+    switch (key) {
+      case "about":
+        return `/${locale}/about-us`;
+      case "news":
+        return `/${locale}/news`;
+      case "showrooms":
+      case "contact":
+      case "signIn":
+        return "#";
+    }
+  };
+
   const navHref = (key: (typeof nav)[number]): string => {
     switch (key) {
       case "products":
@@ -119,7 +132,7 @@ export function Header() {
             {topRight.map((key) => (
               <Link
                 key={key}
-                href="#"
+                href={topRightHref(key)}
                 className="flex items-center gap-1 text-xs leading-[18px] text-[#666]"
               >
                 {t(key)}
@@ -331,7 +344,7 @@ export function Header() {
               {topRight.map((key) => (
                 <Link
                   key={key}
-                  href="#"
+                  href={topRightHref(key)}
                   onClick={() => setDrawerOpen(false)}
                   className="flex items-center gap-1 text-sm leading-[18px] text-[#666]"
                 >

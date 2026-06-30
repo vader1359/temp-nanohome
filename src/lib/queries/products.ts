@@ -73,8 +73,7 @@ export async function getProducts(options: ProductListOptions = {}): Promise<rea
   let query = supabase
     .from("products")
     .select("*, variants(price,on_sale)")
-    .eq("validated", true)
-    .eq("approved", true);
+    .eq("validated", true);
 
   if (options.category !== undefined) {
     query = query.eq("category_id", options.category);
@@ -229,8 +228,7 @@ export async function getVariantProducts(options: VariantProductQueryOptions = {
   let query = supabase
     .from("variants")
     .select(VARIANT_PRODUCT_LIST_COLUMNS)
-    .eq("validated", true)
-    .eq("approved", true);
+    .eq("validated", true);
 
   if (hasValues(options.category)) {
     query = query.in("filter_category", options.category);
@@ -318,8 +316,7 @@ export async function getVariantProductCount(options: Omit<VariantProductQueryOp
   let query = supabase
     .from("variants")
     .select("id", { count: "exact", head: true })
-    .eq("validated", true)
-    .eq("approved", true);
+    .eq("validated", true);
 
   if (hasValues(options.category)) {
     query = query.in("filter_category", options.category);
@@ -385,7 +382,6 @@ export async function getVariantProductFacets(): Promise<readonly VariantProduct
     .from("variants")
     .select("filter_brand,filter_category,filter_room_vi,filter_sub_category")
     .eq("validated", true)
-    .eq("approved", true)
     .limit(500);
 
   if (error !== null) {

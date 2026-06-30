@@ -130,13 +130,33 @@
     "clearAll": "Clear all"
   },
   "ProductDetail": {},
-  "News": {},
+  "News": {
+    "title": "News",
+    "description": "Updates on living spaces, brands, projects and design stories from nanoHome.",
+    "categoryAll": "All",
+    "categoryProducts": "Products",
+    "categoryBrands": "Brands",
+    "categoryProjects": "Projects",
+    "categoryHomes": "Homes",
+    "categoryServices": "Services",
+    "categoryEvents": "Events",
+    "categoryCulture": "Culture",
+    "metaLabel": "News",
+    "fallbackTitle": "nanoHome news",
+    "fallbackBody": "Article content is being updated.",
+    "dateUpdating": "Updating"
+  },
   "Cart": {},
   "Checkout": {},
   "Auth": {},
   "Search": {},
   "Brands": {
-    "eyebrow": "Official Authorized Distributor"
+    "eyebrow": "Official Authorized Distributor",
+    "title": "our current brands",
+    "description": "nanoHome is proud to be the exclusive partner of leading global furniture and lighting brands, from decorative lighting and architectural lighting to outdoor lighting, premium materials and accessories.",
+    "fallbackName": "Brand",
+    "detailLabel": "Brand",
+    "fallbackDescription": "Brand information is being updated."
   },
   "Newsletter": {
     "title": "Join the Priority List",
@@ -147,9 +167,23 @@
     "phonePlaceholder": "Enter your phone number",
     "cta": "Book an Appointment"
   },
-  "Designers": {},
-  "Catalogs": {},
-  "Static": {},
+  "Designers": {
+    "title": "Outstanding interior designers",
+    "fallbackName": "Designer",
+    "detailLabel": "Designer",
+    "fallbackDescription": "Designer information is being updated."
+  },
+  "Catalogs": {
+    "title": "Catalogs",
+    "description": "Explore official catalogues from furniture and lighting brands at nanoHome.",
+    "fallbackOrigin": "Official catalogue",
+    "download": "Download catalog"
+  },
+  "Static": {
+    "relatedProducts": "Related products",
+    "fallbackProduct": "Product",
+    "fallbackProductDescription": "Product information is being updated."
+  },
   "Footer": {
     "col1Heading": "About us",
     "col1Link1": "About nanoHome",

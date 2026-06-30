@@ -8,7 +8,6 @@ export async function getVariantById(id: string): Promise<Variant | null> {
     .select("*")
     .eq("id", id)
     .eq("validated", true)
-    .eq("approved", true)
     .maybeSingle();
 
   if (error !== null) {
@@ -25,7 +24,6 @@ export async function getVariantsByProductId(productId: string): Promise<readonl
     .select("*")
     .eq("product_id", productId)
     .eq("validated", true)
-    .eq("approved", true)
     .order("priority", { ascending: false, nullsFirst: false });
 
   if (error !== null) {
@@ -50,7 +48,6 @@ export async function getVariantBySlug(slug: string): Promise<Variant | null> {
     .select("*")
     .or(slugFilter)
     .eq("validated", true)
-    .eq("approved", true)
     .order("priority", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .order("id", { ascending: true })

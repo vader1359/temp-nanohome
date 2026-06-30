@@ -130,13 +130,33 @@
     "clearAll": "Xóa tất cả"
   },
   "ProductDetail": {},
-  "News": {},
+  "News": {
+    "title": "News",
+    "description": "Cập nhật không gian sống, thương hiệu, dự án và những câu chuyện thiết kế từ nanoHome.",
+    "categoryAll": "Tất cả",
+    "categoryProducts": "Sản phẩm",
+    "categoryBrands": "Thương hiệu",
+    "categoryProjects": "Dự án",
+    "categoryHomes": "Nhà đẹp",
+    "categoryServices": "Dịch vụ",
+    "categoryEvents": "Sự kiện",
+    "categoryCulture": "Văn hóa",
+    "metaLabel": "Tin tức",
+    "fallbackTitle": "Tin tức nanoHome",
+    "fallbackBody": "Nội dung bài viết đang được cập nhật.",
+    "dateUpdating": "Đang cập nhật"
+  },
   "Cart": {},
   "Checkout": {},
   "Auth": {},
   "Search": {},
   "Brands": {
-    "eyebrow": "Nhà phân phối chính hãng"
+    "eyebrow": "Nhà phân phối chính hãng",
+    "title": "thương hiệu hiện tại của chúng tôi",
+    "description": "nanoHome tự hào là đối tác độc quyền của nhiều thương hiệu nội thất và chiếu sáng hàng đầu thế giới, từ đèn trang trí, đèn kiến trúc, đèn ngoài trời đến vật liệu và phụ kiện cao cấp.",
+    "fallbackName": "Thương hiệu",
+    "detailLabel": "Thương hiệu",
+    "fallbackDescription": "Thông tin thương hiệu đang được cập nhật."
   },
   "Newsletter": {
     "title": "Tham gia danh sách ưu tiên",
@@ -147,9 +167,23 @@
     "phonePlaceholder": "nhập số điện thoại",
     "cta": "Đặt lịch hẹn"
   },
-  "Designers": {},
-  "Catalogs": {},
-  "Static": {},
+  "Designers": {
+    "title": "Các nhà thiết kế nội thất kiệt suất",
+    "fallbackName": "Nhà thiết kế",
+    "detailLabel": "Nhà thiết kế",
+    "fallbackDescription": "Thông tin nhà thiết kế đang được cập nhật."
+  },
+  "Catalogs": {
+    "title": "Catalogs",
+    "description": "Khám phá bộ sưu tập catalogue chính thức từ các thương hiệu nội thất và chiếu sáng tại nanoHome.",
+    "fallbackOrigin": "Catalogue chính thức",
+    "download": "Tải catalog"
+  },
+  "Static": {
+    "relatedProducts": "Sản phẩm liên quan",
+    "fallbackProduct": "Sản phẩm",
+    "fallbackProductDescription": "Thông tin sản phẩm đang được cập nhật."
+  },
   "Footer": {
     "col1Heading": "Về chúng tôi",
     "col1Link1": "Về nanoHome",

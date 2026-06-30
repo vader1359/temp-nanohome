@@ -156,15 +156,15 @@ describe("searchProducts", () => {
     // When: product search runs.
     const rows = await searchProducts(" đèn ", "vi", { page: 2, pageSize: 10 });
 
-    // Then: the backend contract includes visibility filters, PGroonga, variant fields, ranking order, and range.
+    // Then: the backend contract includes validated-only visibility filters, PGroonga, variant fields, ranking order, and range.
     expect(state.tableCalls).toEqual(["variants", "products"]);
     expect(state.chain.select).toHaveBeenCalledWith(
       "*, variants(name,sku,finish,finish_vi,validated,approved)"
     );
     expect(state.eqCalls).toContainEqual(["validated", true]);
-    expect(state.eqCalls).toContainEqual(["approved", true]);
+    expect(state.eqCalls).not.toContainEqual(["approved", true]);
     expect(state.eqCalls).toContainEqual(["variants.validated", true]);
-    expect(state.eqCalls).toContainEqual(["variants.approved", true]);
+    expect(state.eqCalls).not.toContainEqual(["variants.approved", true]);
     expect(state.orCalls[0]).toContain("finish_vi.&@~.đèn");
     expect(state.orCalls[0]).toContain("sku.&@~.đèn");
     expect(state.notCalls).toContainEqual(["product_id", "is", null]);

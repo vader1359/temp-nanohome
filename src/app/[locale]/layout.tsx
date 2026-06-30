@@ -8,6 +8,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/sections/footer";
 import { Providers } from "../providers";
 import Script from "next/script";
+import "react-notion-x/src/styles.css";
 import "../globals.css";
 
 const geistSans = Geist({

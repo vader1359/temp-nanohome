@@ -220,7 +220,7 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
       brandLogoUrl: brand?.logo_url ?? (variantText(variant.brand_cldr_logo) || null),
       brandSlug: variant.filter_brand ?? undefined,
       category: variant.filter_category ?? undefined,
-      name: variantText(supportedLocale === "vi" ? (variant.name_vi ?? "") : variant.name, t("defaultProductName")),
+      name: variantText(supportedLocale === "vi" ? variant.name_vi : variant.name, variantText(supportedLocale === "vi" ? variant.name : variant.name_vi, t("defaultProductName"))),
       rooms: variant.filter_room ?? [],
       subCategory: variant.filter_sub_category ?? undefined,
       subtitle: facetLabel(variant.filter_sub_category ?? "", supportedLocale, categoryBySlug),

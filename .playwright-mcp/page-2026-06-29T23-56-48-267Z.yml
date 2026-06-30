@@ -1,0 +1,209 @@
+- generic [active] [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - generic [ref=f1e3]:
+      - generic [ref=f1e4]:
+        - generic [ref=f1e5]:
+          - link "nanoHome Nội Thất" [ref=f1e6] [cursor=pointer]:
+            - /url: "#"
+          - link "nanoHome Chiếu Sáng" [ref=f1e7] [cursor=pointer]:
+            - /url: "#"
+          - link "nanoHome Pre - Love" [ref=f1e8] [cursor=pointer]:
+            - /url: "#"
+        - generic [ref=f1e9]:
+          - link "Showrooms" [ref=f1e10] [cursor=pointer]:
+            - /url: "#"
+            - text: Showrooms
+            - img [ref=f1e11]
+          - link "Về chúng tôi" [ref=f1e13] [cursor=pointer]:
+            - /url: "#"
+          - link "Tin tức" [ref=f1e14] [cursor=pointer]:
+            - /url: "#"
+          - link "Liên hệ" [ref=f1e15] [cursor=pointer]:
+            - /url: "#"
+          - link "Đăng nhập" [ref=f1e16] [cursor=pointer]:
+            - /url: "#"
+      - generic [ref=f1e17]:
+        - link "nanoHome":
+          - /url: /vi
+          - img "nanoHome"
+        - navigation [ref=f1e18]:
+          - link "Sản phẩm" [ref=f1e19] [cursor=pointer]:
+            - /url: /vi/products
+          - link "Phòng khách" [ref=f1e20] [cursor=pointer]:
+            - /url: /vi/products?room=Ph%C3%B2ng%20kh%C3%A1ch
+          - link "Phòng Ăn" [ref=f1e21] [cursor=pointer]:
+            - /url: /vi/products?room=Ph%C3%B2ng%20%C4%83n
+          - link "Phòng Ngủ" [ref=f1e22] [cursor=pointer]:
+            - /url: /vi/products?room=Ph%C3%B2ng%20ng%E1%BB%A7
+          - link "Không Gian Làm Việc" [ref=f1e23] [cursor=pointer]:
+            - /url: /vi/products?room=Kh%C3%B4ng%20gian%20l%C3%A0m%20vi%E1%BB%87c
+          - link "Ngoài Trời" [ref=f1e24] [cursor=pointer]:
+            - /url: /vi/products?category=N%E1%BB%99i%20th%E1%BA%A5t%20ngo%C3%A0i%20tr%E1%BB%9Di
+          - link "Phụ kiện & trang trí" [ref=f1e25] [cursor=pointer]:
+            - /url: /vi/products?category=Trang%20tr%C3%AD
+          - link "Theo bộ" [ref=f1e26] [cursor=pointer]:
+            - /url: /vi/products
+        - generic [ref=f1e27]:
+          - button "Search" [ref=f1e28]:
+            - img [ref=f1e29]
+          - button "Wishlist" [ref=f1e32]:
+            - img [ref=f1e33]
+          - button "Cart" [ref=f1e35]:
+            - img [ref=f1e36]
+            - generic [ref=f1e40]: "0"
+          - button "Account" [ref=f1e41]:
+            - img [ref=f1e42]
+          - generic [ref=f1e45]:
+            - generic [ref=f1e46]: VN
+            - generic [ref=f1e47]: "|"
+            - generic [ref=f1e48]: EN
+            - generic [ref=f1e49]: "|"
+            - generic [ref=f1e50]: KO
+    - generic:
+      - button
+      - dialog:
+        - generic:
+          - button:
+            - img
+          - generic:
+            - button:
+              - img
+              - text: Yêu thích
+            - button:
+              - img
+              - text: Giỏ hàng
+          - generic:
+            - heading [level=2]: Giỏ hàng
+            - generic:
+              - generic:
+                - button [disabled]: Xoá tất cả
+              - generic: Giỏ hàng của bạn đang trống
+              - button [disabled]: Hoàn tất giỏ hàng
+  - main [ref=f1e51]:
+    - generic [ref=f1e52]:
+      - generic [ref=f1e53]:
+        - paragraph [ref=f1e54]: Chào mừng đến với nanoHome
+        - heading "Điểm đến nội thất cao cấp tại Việt Nam" [level=1] [ref=f1e55]
+      - img "Không gian nội thất cao cấp nanoHome" [ref=f1e57]
+    - generic [ref=f1e62]:
+      - paragraph [ref=f1e63]: Tại nanoHome, chúng tôi tin vào “sống đẹp mỗi ngày” từ những khoảnh khắc bình dị đến những dịp đặc biệt.
+      - generic [ref=f1e64]:
+        - paragraph [ref=f1e65]: nanoHome là nhà phân phối chính thức của nhiều thương hiệu nội thất, ánh sáng và vật liệu cao cấp như Cassina, Malxato, Knoll, B&B Italia, Fritz Hansen, Vitra, USM và Flos.
+        - paragraph [ref=f1e66]: Showroom nanoHome được xây dựng như một điểm đến trải nghiệm, nơi khách hàng, kiến trúc sư và nhà thiết kế có thể chạm vào vật liệu, ánh sáng và tinh thần sống đẹp.
+    - generic [ref=f1e67]:
+      - generic [ref=f1e68]:
+        - heading "Giá trị cốt lõi của nanoHome" [level=2] [ref=f1e69]
+        - generic [ref=f1e70]:
+          - article [ref=f1e71]:
+            - heading "Tiên phong – Pioneering" [level=3] [ref=f1e72]
+            - paragraph [ref=f1e73]: "Từ ngày đầu thành lập, nanoHome đã chọn con đường tiên phong: kết nối trực tiếp với các thương hiệu nội thất châu Âu, đưa tiêu chuẩn nguyên bản vào không gian sống Việt Nam."
+            - paragraph [ref=f1e74]: “Nhà bán lẻ nội thất cao cấp đầu tiên và duy nhất tại Việt Nam hợp tác trực tiếp với nhiều thương hiệu biểu tượng của châu Âu.”
+          - article [ref=f1e75]:
+            - heading "Nguyên bản – Authentic" [level=3] [ref=f1e76]
+            - paragraph [ref=f1e77]: Mỗi sản phẩm được tuyển chọn dựa trên nguồn gốc, chất lượng, câu chuyện thiết kế và khả năng đồng hành lâu dài với người sử dụng.
+            - paragraph [ref=f1e78]: “Sự sang trọng bền vững bắt đầu từ tính nguyên bản.”
+          - article [ref=f1e79]:
+            - heading "Chăm sóc – Caring" [level=3] [ref=f1e80]
+            - paragraph [ref=f1e81]: nanoHome không chỉ bán sản phẩm. Chúng tôi tư vấn, hoàn thiện, bảo hành và chăm sóc trải nghiệm sống đẹp trong từng chi tiết.
+            - paragraph [ref=f1e82]: “Một không gian đẹp cần được chăm sóc như một mối quan hệ lâu dài.”
+      - img "Chi tiết không gian sống nanoHome" [ref=f1e84]
+  - contentinfo [ref=f1e85]:
+    - generic [ref=f1e86]:
+      - generic [ref=f1e87]:
+        - heading "Về chúng tôi" [level=4] [ref=f1e88]
+        - list [ref=f1e89]:
+          - listitem [ref=f1e90]:
+            - link "Về nanoHome" [ref=f1e91] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=f1e92]:
+            - link "Chính sách bán hàng" [ref=f1e93] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=f1e94]:
+            - link "Hướng dẫn bảo trì" [ref=f1e95] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=f1e96]:
+            - link "Tin tức / Báo chí" [ref=f1e97] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=f1e98]:
+            - link "Tuyển dụng" [ref=f1e99] [cursor=pointer]:
+              - /url: "#"
+      - generic [ref=f1e100]:
+        - heading "Dịch vụ" [level=4] [ref=f1e101]
+        - list [ref=f1e102]:
+          - listitem [ref=f1e103]:
+            - link "Trang trí nội thất" [ref=f1e104] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=f1e105]:
+            - link "Tư vấn Chiếu sáng" [ref=f1e106] [cursor=pointer]:
+              - /url: "#"
+      - generic [ref=f1e107]:
+        - heading "Sản phẩm" [level=4] [ref=f1e108]
+        - list [ref=f1e109]:
+          - listitem [ref=f1e110]:
+            - link "USM" [ref=f1e111] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=f1e112]:
+            - link "Nội thất" [ref=f1e113] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=f1e114]:
+            - link "Ánh sáng" [ref=f1e115] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=f1e116]:
+            - link "Đồ Trang Trí" [ref=f1e117] [cursor=pointer]:
+              - /url: "#"
+      - generic [ref=f1e118]:
+        - heading "Tài nguyên" [level=4] [ref=f1e119]
+        - list [ref=f1e120]:
+          - listitem [ref=f1e121]:
+            - link "Thương hiệu" [ref=f1e122] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=f1e123]:
+            - link "Nhà thiết kế" [ref=f1e124] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=f1e125]:
+            - link "#Beautifulliving" [ref=f1e126] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=f1e127]:
+            - link "Catalogs" [ref=f1e128] [cursor=pointer]:
+              - /url: "#"
+      - generic [ref=f1e129]:
+        - generic [ref=f1e130]:
+          - heading "Các Showrooms" [level=4] [ref=f1e131]
+          - list [ref=f1e132]:
+            - listitem [ref=f1e133]:
+              - button "nanoHome HCM - Gallery" [ref=f1e134]:
+                - generic [ref=f1e135]: nanoHome HCM - Gallery
+                - img [ref=f1e136]
+              - generic [ref=f1e138]:
+                - paragraph [ref=f1e139]: 675-677 Điện Biên Phủ, Phường 25, Quận Bình Thạnh, Thành phố Hồ Chí Minh
+                - paragraph [ref=f1e140]: Từ Thứ Hai đến Thứ Bảy | 9AM - 6PM
+            - listitem [ref=f1e141]:
+              - button "nanoHome HCM - Lake View" [ref=f1e142]:
+                - generic [ref=f1e143]: nanoHome HCM - Lake View
+                - img [ref=f1e144]
+            - listitem [ref=f1e146]:
+              - button "nanoHome HCM - House" [ref=f1e147]:
+                - generic [ref=f1e148]: nanoHome HCM - House
+                - img [ref=f1e149]
+            - listitem [ref=f1e151]:
+              - button "nanoHome HaNoi - Gallery" [ref=f1e152]:
+                - generic [ref=f1e153]: nanoHome HaNoi - Gallery
+                - img [ref=f1e154]
+            - listitem [ref=f1e156]:
+              - button "nanoHome HaNoi - West Lake" [ref=f1e157]:
+                - generic [ref=f1e158]: nanoHome HaNoi - West Lake
+                - img [ref=f1e159]
+        - generic [ref=f1e161]:
+          - heading "Liên hệ" [level=4] [ref=f1e162]
+          - list [ref=f1e163]:
+            - listitem [ref=f1e164]:
+              - img [ref=f1e165]
+              - generic [ref=f1e167]: (+84) 33 948 7632
+            - listitem [ref=f1e168]:
+              - img [ref=f1e169]
+              - generic [ref=f1e172]: info@nanohome.vn
+            - listitem [ref=f1e173]:
+              - img [ref=f1e174]
+              - generic [ref=f1e177]: nanohome.vn
+  - button "Open Next.js Dev Tools" [ref=f1e183] [cursor=pointer]:
+    - img [ref=f1e184]

@@ -24,7 +24,6 @@ export async function getProductByAirtableId(airtableId: string): Promise<Produc
     .select("*, variants(*), brands(*), designers(*), categories(*)")
     .eq("airtable_id", airtableId)
     .eq("validated", true)
-    .eq("approved", true)
     .maybeSingle<ProductRow>();
 
   if (error !== null) {
@@ -60,7 +59,6 @@ async function getRelatedProducts(product: Product): Promise<readonly Product[]>
     .select("*")
     .eq("category_id", product.category_id)
     .eq("validated", true)
-    .eq("approved", true)
     .neq("id", product.id)
     .order("priority", { ascending: false, nullsFirst: false })
     .limit(4);
@@ -90,7 +88,6 @@ async function getLinkedNews(productId: string): Promise<readonly News[]> {
     .select("*")
     .in("id", newsIds)
     .eq("validated", true)
-    .eq("approved", true)
     .order("source_created_at", { ascending: false, nullsFirst: false });
 
   if (error !== null) {
