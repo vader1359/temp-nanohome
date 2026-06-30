@@ -23,6 +23,8 @@ const priceFormatter = new Intl.NumberFormat("vi-VN", {
   style: "currency",
 });
 
+const FALLBACK_PRODUCT_IMAGE = "/images/p_lc2.png";
+
 function formatPrice(price: Variant["price"]): string {
   if (price === null || Number(price) === 0) {
     return "Liên hệ";
@@ -33,6 +35,35 @@ function formatPrice(price: Variant["price"]): string {
 
 function variantText(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+function getImageUrl(value: unknown): string {
+  const text = variantText(value).trim();
+  if (text.length === 0) {
+    return "";
+  }
+
+  if (text.startsWith("/")) {
+    return text;
+  }
+
+  const attachmentUrl = /\((https?:\/\/[^)\s]+)\)$/u.exec(text)?.[1];
+  const candidate = attachmentUrl ?? text;
+
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function getImageUrls(values: readonly unknown[]): string[] {
+  return values.map(getImageUrl).filter((url): url is string => url.length > 0);
+}
+
+function getGalleryUrls(value: unknown): readonly unknown[] {
+  return Array.isArray(value) ? value : [];
 }
 
 function hasValidDiscount(variant: Pick<Variant, "price" | "compare_at_price" | "discount_percent">): boolean {
@@ -54,32 +85,32 @@ function variantRawText(variant: VariantRawSource, key: string): string {
 
 function getVariantPackshotUrl(variant: Pick<Variant, "packshot_url"> & { readonly raw?: unknown }): string {
   return (
-    variantRawText(variant, "cldr_packshot_url") ||
-    variantRawText(variant, "cldr_packshot") ||
-    variantText(variant.packshot_url)
+    getImageUrl(variantRawText(variant, "cldr_packshot_url")) ||
+    getImageUrl(variantRawText(variant, "cldr_packshot")) ||
+    getImageUrl(variant.packshot_url)
   );
 }
 
 function getVariantBrandLogoUrl(variant: Pick<Variant, "brand_cldr_logo"> & { readonly raw?: unknown }): string {
-  return variantText(variant.brand_cldr_logo) || variantRawText(variant, "brand_cldr_logo") || variantRawText(variant, "brand_logo");
+  return getImageUrl(variant.brand_cldr_logo) || getImageUrl(variantRawText(variant, "brand_cldr_logo")) || getImageUrl(variantRawText(variant, "brand_logo"));
 }
 
 function getVariantLifestyleImages(
   variant: Pick<Variant, "media_lifestyle_1" | "media_lifestyle_2" | "cldr_media_lifestyle_1" | "cldr_media_lifestyle_2" | "media_long" | "media_closeup" | "gallery_urls">,
 ): string[] {
-  return [
+  return getImageUrls([
     variantText(variant.media_lifestyle_1),
     variantText(variant.media_lifestyle_2),
     variantText(variant.cldr_media_lifestyle_1),
     variantText(variant.cldr_media_lifestyle_2),
     variantText(variant.media_long),
     variantText(variant.media_closeup),
-    ...variant.gallery_urls,
-  ].filter((url): url is string => Boolean(url));
+    ...getGalleryUrls(variant.gallery_urls),
+  ]);
 }
 
 function getVariantImages(variant: Variant): string[] {
-  return [getVariantPackshotUrl(variant), ...variant.gallery_urls].filter((url): url is string => Boolean(url));
+  return getImageUrls([getVariantPackshotUrl(variant), ...getGalleryUrls(variant.gallery_urls)]);
 }
 
 type RelatedVariant = Pick<
@@ -119,7 +150,7 @@ function toRelatedProduct(variant: RelatedVariant | VariantProductListItem): Rel
     price: formatPrice(variant.price),
     oldPrice: discounted ? formatPrice(variant.compare_at_price) : null,
     discount: discounted ? `-${variant.discount_percent}%` : null,
-    image: getVariantPackshotUrl(variant) || variant.gallery_urls[0] || "/images/p_lc2.png",
+    image: getVariantPackshotUrl(variant) || getImageUrl(getGalleryUrls(variant.gallery_urls)[0]) || FALLBACK_PRODUCT_IMAGE,
     available: variant.in_stock,
     href: variantDetailHref(variant),
     tags: variant.on_sale && discounted ? ["Sale"] : undefined,
@@ -145,7 +176,7 @@ function buildHeroProduct(variant: Variant) {
     newPrice: formatPrice(variant.price),
     discount: discounted ? `-${variant.discount_percent}%` : "",
     colors: COLORS,
-    gallery: gallery.length > 0 ? gallery : ["/images/p_lc2.png"],
+    gallery: gallery.length > 0 ? gallery : [FALLBACK_PRODUCT_IMAGE],
   };
 }
 
