@@ -28,7 +28,12 @@ export default async function BrandDetailPage({ params }: Readonly<{ params: Pro
   const origin = textValue(locale === "vi" ? brand.origin_vi : brand.origin, textValue(locale === "vi" ? brand.origin : brand.origin_vi));
   const notionLink = localizedNotionLink(brand.raw, locale);
   const notionPageId = extractNotionPageId(notionLink);
-  const recordMap = notionPageId === null ? null : await getNotionRecordMap(notionPageId);
+  const recordMap = notionPageId === null
+    ? null
+    : await getNotionRecordMap(notionPageId).catch((error: unknown) => {
+      console.warn(`Unable to load brand Notion page ${notionPageId}`, error);
+      return null;
+    });
 
   return (
     <main className="bg-[#faf9f8] pb-24 text-nh-ink">

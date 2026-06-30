@@ -133,7 +133,7 @@ export function ProductGrid({ products }: ProductGridProps) {
 
         return (
             <article
-              className="group flex aspect-[40/78] min-w-0 flex-col gap-3 overflow-hidden bg-white p-2 sm:aspect-[10/13] sm:gap-4 sm:p-4"
+              className="group flex aspect-[3/6] min-w-0 flex-col gap-3 overflow-hidden bg-white p-2 sm:aspect-[3/5] sm:gap-4 sm:p-4"
               key={product.id}
               data-product-brand={product.brandSlug ?? product.brand}
               data-product-card=""
@@ -143,7 +143,7 @@ export function ProductGrid({ products }: ProductGridProps) {
               data-product-status={product.status}
               data-product-subcategory={product.subCategory ?? ""}
             >
-              <div className="relative flex min-h-0 w-full flex-1 items-end justify-center bg-white px-2 pb-3 pt-8 sm:px-4 sm:pb-5 sm:pt-10">
+              <div className="relative flex min-h-0 w-full flex-1 items-center justify-center bg-white px-2 pb-2 pt-8 sm:px-5 sm:pb-9 sm:pt-16">
                 <button
                   className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 sm:right-1.5 sm:top-1.5"
                   type="button"
@@ -173,14 +173,14 @@ export function ProductGrid({ products }: ProductGridProps) {
                 </span>
                 <Link
                   aria-label={t("viewDetailAria", { name: product.name })}
-                  className="relative flex h-full w-full items-end justify-center overflow-hidden rounded-[6px] transition-transform duration-300 group-hover:scale-[1.03]"
+                  className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[6px] transition-transform duration-300 group-hover:scale-[1.03]"
                   href={product.href}
                   prefetch={priorityImage}
                   data-product-image-frame
                 >
                   <Image
                     alt={product.name}
-                    className="object-contain object-bottom"
+                    className="object-contain"
                     fill
                     priority={priorityImage}
                     sizes="(min-width: 1280px) 360px, (min-width: 640px) 45vw, 90vw"
