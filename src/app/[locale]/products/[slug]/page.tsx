@@ -17,6 +17,8 @@ interface ProductPageProps {
   params: Promise<{ locale: string; slug: string }>;
 }
 
+export const dynamic = "force-dynamic";
+
 const priceFormatter = new Intl.NumberFormat("vi-VN", {
   currency: "VND",
   maximumFractionDigits: 0,
