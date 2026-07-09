@@ -1,7 +1,15 @@
 import { env } from "@/lib/env";
 import { runAmisSync } from "@/lib/amis/sync";
 
+export async function GET(request: Request): Promise<Response> {
+  return handleAmisSyncCron(request);
+}
+
 export async function POST(request: Request): Promise<Response> {
+  return handleAmisSyncCron(request);
+}
+
+async function handleAmisSyncCron(request: Request): Promise<Response> {
   const authorization = request.headers.get("authorization");
 
   if (authorization !== `Bearer ${env.CRON_SECRET}`) {

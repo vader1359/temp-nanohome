@@ -39,13 +39,47 @@ export const supabaseAmisSyncFetch: typeof fetch = async (input, init) => {
   return fetch(input, init);
 };
 
+const AMIS_ALLOWED_REQUESTS = new Map<string, ReadonlySet<string>>([
+  ["/api/v2/Account", new Set(["POST"])],
+  ["/api/v2/Products", new Set(["GET", "HEAD"])],
+]);
+
 export function assertAmisRequestAllowed(url: URL, method: string): void {
   const normalizedMethod = method.toUpperCase();
-  const isTokenExchange = normalizedMethod === "POST" && url.pathname === "/api/v2/Account";
+  const allowedMethods = AMIS_ALLOWED_REQUESTS.get(normalizeAmisPathname(url.pathname));
 
-  if (!READ_ONLY_HTTP_METHODS.has(normalizedMethod) && !isTokenExchange) {
+  if (allowedMethods?.has(normalizedMethod) !== true) {
     throw new RemoteWriteBlockedError("AMIS", normalizedMethod, url.toString());
   }
+}
+
+export const amisReadOnlyFetch: typeof fetch = async (input, init) => {
+  assertAmisRequestAllowed(resolveRequestUrl(input), resolveRequestMethod(input, init));
+  return fetch(input, init);
+};
+
+function resolveRequestUrl(input: RequestInfo | URL): URL {
+  if (typeof input === "string" || input instanceof URL) {
+    return new URL(String(input));
+  }
+  return new URL(input.url);
+}
+
+function resolveRequestMethod(input: RequestInfo | URL, init?: RequestInit): string {
+  if (init?.method !== undefined && init.method.length > 0) {
+    return init.method;
+  }
+  if (typeof input !== "string" && !(input instanceof URL)) {
+    return input.method;
+  }
+  return "GET";
+}
+
+function normalizeAmisPathname(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    return pathname.slice(0, -1);
+  }
+  return pathname;
 }
 
 function assertReadOnlyMethod(system: "Supabase", method: string, url: string): void {

@@ -116,14 +116,17 @@ async function syncVariants(input: SyncVariantsInput): Promise<AmisSyncResult> {
 
   for (const record of input.records) {
     const update = toVariantUpdate(record);
-    const { error } = await input.supabase.from("variants").update(update).eq("sku", record.sku);
+    const { count, error } = await input.supabase.from("variants").update(update, { count: "exact" }).eq("sku", record.sku);
 
-    if (error === null) {
-      itemsProcessed += 1;
-      watermark = record.sourceUpdatedAt ?? watermark;
-    } else {
+    if (error !== null) {
       itemsFailed += 1;
       lastError = error.message;
+    } else if (count === 0) {
+      itemsFailed += 1;
+      lastError = `No Supabase variant matched AMIS SKU ${record.sku}`;
+    } else {
+      itemsProcessed += 1;
+      watermark = record.sourceUpdatedAt ?? watermark;
     }
   }
 

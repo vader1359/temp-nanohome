@@ -278,11 +278,13 @@ function createLogTableFake() {
 
 function createVariantTableFake() {
   return {
-    update(row: VariantUpdate) {
+    update(row: VariantUpdate, options?: { readonly count?: "exact" }) {
+      expect(options).toEqual({ count: "exact" });
       state.variantUpdates.push(row);
       return {
         eq: async (_column: string, value: string) => ({
           error: value === "FAIL" ? new Error("variant update failed") : null,
+          count: value === "MISSING" ? 0 : 1,
         }),
       };
     },

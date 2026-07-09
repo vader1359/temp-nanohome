@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { Env } from "@/lib/env";
-import { assertAmisRequestAllowed } from "@/lib/remote-read-only";
+import { amisReadOnlyFetch } from "@/lib/remote-read-only";
 
 export type AmisClientConfig = {
   readonly baseUrl: string;
@@ -28,7 +28,7 @@ type AccessTokenResult =
   | { readonly kind: "http_error"; readonly status: number; readonly message: string }
   | { readonly kind: "malformed"; readonly message: string };
 
-const AMIS_PRODUCT_PAGE_SIZE = "100";
+const AMIS_PRODUCT_PAGE_SIZE = 100;
 
 export function createAmisClientConfig(env: Env): AmisClientConfig | null {
   if (
@@ -55,20 +55,50 @@ export async function fetchAmisVariants(
     return accessToken;
   }
 
+  const records: AmisVariantRecord[] = [];
+  let page = 0;
+
+  while (true) {
+    const pageResult = await fetchAmisProductsPage(config, accessToken.token, page);
+    if (pageResult.kind !== "success") {
+      return pageResult;
+    }
+
+    records.push(
+      ...pageResult.products
+        .filter((record) => isAfterWatermark(record.modified_date, watermark))
+        .map(toAmisVariantRecord),
+    );
+
+    if (pageResult.products.length < AMIS_PRODUCT_PAGE_SIZE) {
+      return { kind: "success", records };
+    }
+
+    page += 1;
+  }
+}
+
+type FetchAmisProductsPageResult =
+  | { readonly kind: "success"; readonly products: readonly ParsedAmisProduct[] }
+  | { readonly kind: "http_error"; readonly status: number; readonly message: string }
+  | { readonly kind: "malformed"; readonly message: string };
+
+async function fetchAmisProductsPage(
+  config: AmisClientConfig,
+  accessToken: string,
+  page: number,
+): Promise<FetchAmisProductsPageResult> {
   const url = new URL("/api/v2/Products", config.baseUrl);
-  url.searchParams.set("page", "0");
-  url.searchParams.set("pageSize", AMIS_PRODUCT_PAGE_SIZE);
+  url.searchParams.set("page", String(page));
+  url.searchParams.set("pageSize", String(AMIS_PRODUCT_PAGE_SIZE));
   url.searchParams.set("orderBy", "modified_date");
   url.searchParams.set("isDescending", "true");
 
-  // This is the only AMIS business-data request in this client. Its method is
-  // intentionally fixed to GET so callers cannot issue writes to CRM.
-  assertAmisRequestAllowed(url, "GET");
-  const response = await fetch(url, {
+  const response = await amisReadOnlyFetch(url, {
     method: "GET",
     headers: {
       Accept: "application/json",
-      Authorization: `Bearer ${accessToken.token}`,
+      Authorization: `Bearer ${accessToken}`,
       Clientid: config.clientId,
     },
     cache: "no-store",
@@ -92,20 +122,12 @@ export async function fetchAmisVariants(
     };
   }
 
-  return {
-    kind: "success",
-    records: parsed.data.data
-      .filter((record) => isAfterWatermark(record.modified_date, watermark))
-      .map(toAmisVariantRecord),
-  };
+  return { kind: "success", products: parsed.data.data };
 }
 
 async function requestAccessToken(config: AmisClientConfig): Promise<AccessTokenResult> {
   const url = new URL("/api/v2/Account", config.baseUrl);
-  assertAmisRequestAllowed(url, "POST");
-  const response = await fetch(url, {
-    // MISA documents this POST as the authentication/token exchange endpoint.
-    // It does not create, update, or delete CRM business data.
+  const response = await amisReadOnlyFetch(url, {
     method: "POST",
     headers: {
       Accept: "application/json",
