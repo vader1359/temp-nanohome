@@ -15,7 +15,7 @@
 -- No production data is referenced. Inserted as the `postgres` superuser
 -- (bypasses RLS); rows are visible to developers and local test clients.
 
-\i supabase/tests/fixtures.sql
+\ir tests/fixtures.sql
 
 -- Brands (2): both approved + validated so product-level filters are not masked.
 insert into public.brands (id, name, slug, origin, origin_vi, approved, validated)
