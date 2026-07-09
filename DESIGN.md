@@ -124,6 +124,16 @@ All spacing derives from a base of **4px**.
 - **Accessibility**: semantic `article`, `time` when date exists.
 - **Motion**: none.
 
+### Auth Panel
+
+- **Structure**: dimmed homepage backdrop with a right-aligned white account panel. Desktop target width is `392px`; below tablet the panel occupies the full viewport width.
+- **Spacing**: `32px` side padding on desktop, `24px` on mobile; form controls follow the 4px spacing scale with `24px` field rhythm.
+- **Typography**: `H2` title, body subtitle, uppercase `Overline` action links and primary buttons.
+- **Controls**: underline inputs use `--nh-border` by default, `--nh-red` for validation and server errors, and `--nh-accent` for secondary text actions. Primary actions reuse the black editorial CTA style.
+- **States**: login, register, forgot password, reset password, loading, validation, generic server error, sent, expired, and success.
+- **Accessibility**: modal dialog semantics, labelled close control, focus return to trigger, keyboard escape close, and no server error copy that reveals whether email or password failed.
+- **Motion**: backdrop opacity and panel transform only, `300ms ease-in-out`, with reduced-motion support.
+
 ## 6. Motion & Interaction
 
 ### Timing

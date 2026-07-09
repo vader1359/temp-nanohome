@@ -5,6 +5,7 @@ import { isSupportedLocale, routing } from "@/i18n/routing";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/sections/footer";
 import { Providers } from "../providers";
+import { AuthProvider } from "@/components/auth/auth-provider";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -29,9 +30,11 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
   return (
     <NextIntlClientProvider messages={messages} locale={locale}>
       <Providers>
-        <Header />
-        {children}
-        <Footer />
+        <AuthProvider>
+          <Header />
+          {children}
+          <Footer />
+        </AuthProvider>
       </Providers>
     </NextIntlClientProvider>
   );

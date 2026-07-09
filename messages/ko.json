@@ -148,7 +148,74 @@
   },
   "Cart": {},
   "Checkout": {},
-  "Auth": {},
+  "Auth": {
+    "common": {
+      "close": "닫기",
+      "required": "필수",
+      "loading": "처리 중...",
+      "backToLogin": "로그인으로 돌아가기",
+      "continueShopping": "쇼핑 계속하기"
+    },
+    "fields": {
+      "email": "이메일",
+      "password": "비밀번호",
+      "fullName": "이름",
+      "phone": "전화번호",
+      "confirmPassword": "비밀번호 확인",
+      "newPassword": "새 비밀번호",
+      "agreeTerms": "nanoHome의 약관 및 정책에 동의합니다"
+    },
+    "login": {
+      "title": "계정",
+      "subtitle": "로그인하여 주문을 확인하고 관심 상품과 전용 혜택을 저장하세요.",
+      "submit": "로그인",
+      "loading": "로그인 중...",
+      "forgotPassword": "비밀번호 찾기",
+      "createAccount": "계정 만들기"
+    },
+    "register": {
+      "title": "계정 만들기",
+      "subtitle": "nanoHome 계정을 만들어 정보를 저장하고 더 빠르게 쇼핑하세요.",
+      "submit": "계정 만들기",
+      "loading": "계정 생성 중...",
+      "signInLink": "로그인",
+      "successTitle": "계정이 생성되었습니다",
+      "successBody": "nanoHome 계정이 준비되었습니다. 당신을 위해 큐레이션한 인테리어 선택을 계속 둘러보세요."
+    },
+    "forgot": {
+      "title": "비밀번호 찾기",
+      "subtitle": "계정 이메일을 입력하면 비밀번호 재설정 안내를 보내드립니다.",
+      "submit": "안내 보내기",
+      "loading": "전송 중...",
+      "sentTitle": "이메일을 확인하세요",
+      "sentBody": "비밀번호 재설정 안내를 이메일로 보냈습니다."
+    },
+    "reset": {
+      "title": "비밀번호 재설정",
+      "subtitle": "nanoHome 계정의 새 비밀번호를 만드세요.",
+      "submit": "비밀번호 업데이트",
+      "loading": "업데이트 중...",
+      "successTitle": "비밀번호가 업데이트되었습니다",
+      "successBody": "새 비밀번호로 다시 로그인할 수 있습니다.",
+      "expiredTitle": "링크가 만료되었습니다",
+      "expiredBody": "새 비밀번호 재설정 이메일을 요청해 주세요.",
+      "resend": "이메일 다시 보내기"
+    },
+    "errors": {
+      "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다.",
+      "signInError": "지금 로그인할 수 없습니다. 다시 시도해 주세요.",
+      "signUpError": "지금 계정을 만들 수 없습니다. 다시 시도해 주세요.",
+      "forgotError": "비밀번호 재설정 이메일을 보낼 수 없습니다. 다시 시도해 주세요.",
+      "resetError": "비밀번호를 업데이트할 수 없습니다. 다시 시도해 주세요.",
+      "validationEmail": "유효한 이메일 주소를 입력하세요.",
+      "validationPassword": "비밀번호를 입력하세요.",
+      "validationRequired": "이 정보를 입력하세요.",
+      "passwordMismatch": "확인 비밀번호가 일치하지 않습니다.",
+      "termsRequired": "계속하려면 약관에 동의하세요.",
+      "missingCode": "인증 링크가 유효하지 않습니다.",
+      "callbackError": "인증을 완료할 수 없습니다. 다시 시도해 주세요."
+    }
+  },
   "Search": {},
   "Brands": {
     "eyebrow": "공식 공인 유통사",

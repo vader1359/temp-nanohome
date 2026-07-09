@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getSafeRedirectPath } from "./redirect";
+import { getRedirectLocale, getSafeRedirectPath } from "./redirect";
 
 describe("getSafeRedirectPath", () => {
   it("returns the default locale path when the redirect value is missing", () => {
@@ -37,5 +37,25 @@ describe("getSafeRedirectPath", () => {
 
     // Then: the flow falls back to the default locale path.
     expect(path).toBe("/vi");
+  });
+});
+
+describe("getRedirectLocale", () => {
+  it("returns the first supported path segment", () => {
+    // Given: a localized redirect path.
+    // When: the locale is extracted.
+    const locale = getRedirectLocale("/ko/reset-password?status=success");
+
+    // Then: the supported locale segment is returned.
+    expect(locale).toBe("ko");
+  });
+
+  it("falls back to the default locale when the path is not localized", () => {
+    // Given: an unlocalized redirect path.
+    // When: the locale is extracted.
+    const locale = getRedirectLocale("/products");
+
+    // Then: the default locale is returned.
+    expect(locale).toBe("vi");
   });
 });
