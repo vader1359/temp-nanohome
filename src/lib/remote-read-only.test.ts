@@ -5,6 +5,7 @@ import {
   assertAmisRequestAllowed,
   RemoteWriteBlockedError,
   supabaseAmisSyncFetch,
+  supabaseCheckoutFetch,
   supabaseReadOnlyFetch,
 } from "@/lib/remote-read-only";
 
@@ -55,6 +56,50 @@ describe("remote read-only safeguard", () => {
 
     await expect(supabaseAmisSyncFetch(`https://example.supabase.co/rest/v1/${table}`, { method }))
       .rejects.toBeInstanceOf(RemoteWriteBlockedError);
+    expect(networkFetch).not.toHaveBeenCalled();
+  });
+
+  it("allows only the checkout RPC POST before network I/O", async () => {
+    // Given: a checkout-scoped Supabase fetch adapter.
+    const networkFetch = vi.fn(async () => new Response("[]"));
+    vi.stubGlobal("fetch", networkFetch);
+
+    // When: it posts to the exact checkout RPC path.
+    await expect(
+      supabaseCheckoutFetch("https://example.supabase.co/rest/v1/rpc/capture_order_from_cart", { method: "POST" }),
+    ).resolves.toBeInstanceOf(Response);
+
+    // Then: the request is allowed to reach the network.
+    expect(networkFetch).toHaveBeenCalledOnce();
+  });
+
+  it("allows checkout-session GET requests", async () => {
+    // Given: a checkout-scoped Supabase fetch adapter.
+    const networkFetch = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", networkFetch);
+
+    // When: session authentication requests the current user.
+    await expect(supabaseCheckoutFetch("https://example.supabase.co/auth/v1/user", { method: "GET" }))
+      .resolves.toBeInstanceOf(Response);
+
+    // Then: read-only authentication reaches the network.
+    expect(networkFetch).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["POST", "/rest/v1/orders"],
+    ["PATCH", "/rest/v1/rpc/capture_order_from_cart"],
+    ["POST", "/rest/v1/rpc/other_function"],
+  ])("blocks checkout-scoped Supabase %s on %s", async (method, path) => {
+    // Given: a checkout-scoped Supabase fetch adapter.
+    const networkFetch = vi.fn();
+    vi.stubGlobal("fetch", networkFetch);
+
+    // When: it attempts an unapproved write.
+    const request = supabaseCheckoutFetch(`https://example.supabase.co${path}`, { method });
+
+    // Then: the write is rejected before network I/O.
+    await expect(request).rejects.toBeInstanceOf(RemoteWriteBlockedError);
     expect(networkFetch).not.toHaveBeenCalled();
   });
 

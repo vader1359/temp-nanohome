@@ -20,6 +20,23 @@ export const supabaseReadOnlyFetch: typeof fetch = async (input, init) => {
   return fetch(input, init);
 };
 
+const SUPABASE_CHECKOUT_RPC_PATH = "/rest/v1/rpc/capture_order_from_cart";
+
+export const supabaseCheckoutFetch: typeof fetch = async (input, init) => {
+  const request = new Request(input, init);
+  const method = request.method.toUpperCase();
+
+  if (READ_ONLY_HTTP_METHODS.has(method)) {
+    return fetch(input, init);
+  }
+
+  if (method !== "POST" || new URL(request.url).pathname !== SUPABASE_CHECKOUT_RPC_PATH) {
+    throw new RemoteWriteBlockedError("Supabase", method, request.url);
+  }
+
+  return fetch(input, init);
+};
+
 const AMIS_SYNC_SUPABASE_WRITES = new Map<string, ReadonlySet<string>>([
   ["/rest/v1/amis_sync_log", new Set(["POST", "PATCH"])],
   ["/rest/v1/variants", new Set(["PATCH"])],
