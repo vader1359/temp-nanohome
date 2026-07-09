@@ -1,0 +1,58 @@
+T20 backend-only checkout capture evidence
+
+Scope
+- Implemented the server/data checkout capture boundary only.
+- Did not create or edit checkout pages, forms, components, confirmation UI, payment, email, inventory decrement, or admin workflow.
+- Kept the legacy Fillout cart submit route unchanged.
+- Restricted this backend slice to authenticated persisted carts. Guest checkout remains deferred because it requires a separate secure guest-cart ownership contract.
+
+Changed files
+- supabase/migrations/20260710000000_capture_order_from_cart.sql
+  - Added public.capture_order_from_cart(...) as an atomic SECURITY DEFINER RPC with `search_path = pg_catalog, public`.
+  - Requires auth.uid(), locks the caller-owned cart and source rows, validates delivery input in the database boundary, derives price/subtotal/snapshots from persisted data, inserts pending order/items/history, then clears the cart.
+  - Revokes public/anon execution and grants only authenticated execution.
+- src/lib/checkout/delivery.ts
+  - Defines strict Zod delivery-only request input.
+- src/lib/checkout/capture-order.ts
+  - Maps the validated delivery payload to the typed RPC and returns a typed result variant.
+- src/lib/supabase/checkout.ts
+  - Adds a server-only cookie-bound checkout client.
+- src/app/api/checkout/route.ts
+  - Adds authenticated POST handling with minimal order confirmation output.
+- src/lib/remote-read-only.ts
+  - Adds a checkout transport that allows reads and only POST /rest/v1/rpc/capture_order_from_cart.
+- src/types/database.types.ts
+  - Adds the RPC signature.
+- src/lib/queries/orders.ts
+  - Removes unused direct client order insertion so the RPC is the only supported order-write boundary.
+- Tests
+  - src/app/api/checkout/route.test.ts
+  - src/lib/checkout/capture-order.test.ts
+  - src/lib/remote-read-only.test.ts
+  - src/lib/queries/orders.test.ts
+
+Security review
+- Independent Oracle review found and confirmed remediation for:
+  - Delivery validation was originally route-only; the RPC now validates required fields, trimmed limits, optional limits, and email format before database writes.
+  - Availability/price validation originally preceded catalog locks; the RPC now locks cart item, variant, and product rows before validation and subtotal computation.
+- Final Oracle verdict: no remaining blocking security or correctness defects in the requested scope.
+
+Verification
+- npx vitest run src/lib/queries/orders.test.ts src/app/api/checkout/route.test.ts src/lib/checkout/capture-order.test.ts src/lib/remote-read-only.test.ts
+  - PASS: 4 files, 41 tests.
+- npx tsc --noEmit
+  - PASS.
+- npx eslint src/lib/queries/orders.ts src/lib/queries/orders.test.ts src/app/api/checkout/route.ts src/app/api/checkout/route.test.ts src/lib/checkout/delivery.ts src/lib/checkout/capture-order.ts src/lib/checkout/capture-order.test.ts src/lib/supabase/checkout.ts src/lib/remote-read-only.ts src/lib/remote-read-only.test.ts src/types/database.types.ts
+  - PASS.
+- npm test
+  - PASS: 24 files, 108 tests.
+- npm run build
+  - TypeScript and compilation passed, then static generation failed because `.env.local` uses unresolved `your-project.supabase.co` (ENOTFOUND). This is environment configuration, not a T20 failure.
+
+Manual/integration QA limitation
+- Local Supabase integration could not run: Docker is unavailable and the repository Supabase config is stale for the installed CLI (`[db].enabled` and `[inbucket]`). No remote database mutation was performed.
+- Route handler behavior was exercised through direct Vitest route tests; the exact RPC write allowance is tested before network I/O.
+
+Residual risks
+- Real PostgreSQL migration/RPC integration remains unexecuted until a Docker-backed local Supabase environment is available.
+- Guest checkout is intentionally deferred; no unauthenticated order capture path exists.

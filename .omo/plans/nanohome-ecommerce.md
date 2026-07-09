@@ -431,7 +431,7 @@ User clarified T9, T16, and T19 are needed, but only backend work should happen 
   QA scenarios: Playwright — add guest item, login, assert merged cart in Supabase with correct qty. Login twice → no duplicates. Logout → guest cart empty (cleared). Evidence: .omo/evidence/task-19-nanohome-ecommerce.txt
   Commit: Y | feat(cart): hybrid guest localStorage + authed Supabase cart with login merge
 
-- [ ] 20. C7b — Checkout form: order capture (no payment), react-hook-form + zod
+- [x] 20. C7b — Checkout form: order capture (no payment), react-hook-form + zod
   What to do:
   - `src/app/[locale]/checkout/page.tsx`: server component shell + client checkout form. Protected route (redirect to login if no session — but allow guest checkout with email).
   - `src/components/checkout/checkout-form.tsx` ('use client'): react-hook-form + zod. Fields: email (citext), full_name, phone, address, city, district, ward, note. Zod schema: email valid, phone Vietnamese format, required fields.
