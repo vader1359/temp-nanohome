@@ -1,0 +1,51 @@
+T18 pgTAP RLS evidence
+
+Scope
+- Added local-only RLS coverage for carts, cart_items, orders, order_items,
+  order_status_history, profiles, AMIS sync logs, and the checkout RPC grant.
+- Kept every database test within BEGIN/ROLLBACK. No remote database action was performed.
+- Did not change UI, application routes, payment, or inventory behavior.
+
+Security repair
+- Added 20260710000001_remove_direct_order_insert_policy.sql.
+- Drops the direct public.orders insert policy so capture_order_from_cart is the
+  sole supported order-write boundary. This prevents clients from forging order
+  status, subtotal, and order numbers outside the SECURITY DEFINER RPC.
+
+Test harness
+- supabase/tests/rls_test.sql defines 48 pgTAP assertions.
+- It seeds deterministic local catalog and user fixtures through a single
+  relative include chain, switches anon/authenticated roles, and validates
+  allowed and denied access paths.
+- The authenticated checkout RPC scenario verifies one returned order, a
+  server-derived subtotal of 30, two item snapshots, initial history, and cart
+  clearing using two in-stock variants.
+- supabase/config.toml now parses with Supabase CLI 2.109.1: removed the
+  unsupported db.enabled key and renamed inbucket to local_smtp.
+
+Review
+- Independent Oracle review found direct order insertion could bypass trusted
+  checkout capture; the narrow policy-removal migration addresses it.
+- Final Oracle review found a duplicate cwd-sensitive seed include. The suite
+  now retains only the robust relative include and has 48 planned assertions.
+
+Verification
+- npm test
+  - PASS: 24 files, 108 tests.
+- npx tsc --noEmit
+  - PASS.
+- GIT_MASTER=1 git diff --check
+  - PASS.
+- npx supabase status
+  - Config parses, then fails because Docker is unavailable.
+- npx supabase db test --local supabase/tests/rls_test.sql
+  - BLOCKED before pgTAP execution: local PostgreSQL at 127.0.0.1:54322
+    refused the connection because the Docker-backed local Supabase stack is
+    not running.
+- npm run lint
+  - BLOCKED by 195 pre-existing/generated-report errors outside T18 scope.
+
+Residual blocker
+- T18 acceptance requires supabase db test to exit 0 against a local Supabase
+  stack. Docker and local PostgreSQL are unavailable in this worktree, and the
+  plan forbids running destructive RLS tests against a remote database.
