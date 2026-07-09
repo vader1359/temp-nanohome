@@ -1120,6 +1120,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      capture_order_from_cart: {
+        Args: {
+          p_address: string
+          p_city?: string | null
+          p_district?: string | null
+          p_email: string
+          p_full_name: string
+          p_note?: string | null
+          p_phone: string
+          p_ward?: string | null
+        }
+        Returns: {
+          order_id: string
+          order_number: string
+        }[]
+      }
       pgroonga_command:
         | { Args: { groongacommand: string }; Returns: string }
         | {
