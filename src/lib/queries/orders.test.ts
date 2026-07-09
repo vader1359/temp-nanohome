@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { createOrder, getOrdersByUserId } from "./orders";
+import { getOrdersByUserId } from "./orders";
 
-describe("orders exports", () => {
-  it("imports every order query export", () => {
-    expect(createOrder).toBeTypeOf("function");
+describe("getOrdersByUserId", () => {
+  it("remains available as the supported order query", () => {
     expect(getOrdersByUserId).toBeTypeOf("function");
   });
 });
