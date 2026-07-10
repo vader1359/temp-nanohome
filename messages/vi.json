@@ -34,6 +34,7 @@
     "wishlist": "Yêu thích",
     "cart": "Giỏ hàng",
     "account": "Tài khoản",
+    "signOut": "Đăng xuất",
     "openMenu": "Mở menu",
     "closeMenu": "Đóng menu",
     "cartItemsCount": "Số lượng trong giỏ hàng"
@@ -148,7 +149,74 @@
   },
   "Cart": {},
   "Checkout": {},
-  "Auth": {},
+  "Auth": {
+    "common": {
+      "close": "Đóng",
+      "required": "Bắt buộc",
+      "loading": "Đang xử lý...",
+      "backToLogin": "Quay lại đăng nhập",
+      "continueShopping": "Tiếp tục mua sắm"
+    },
+    "fields": {
+      "email": "Email",
+      "password": "Mật khẩu",
+      "fullName": "Họ và tên",
+      "phone": "Số điện thoại",
+      "confirmPassword": "Xác nhận mật khẩu",
+      "newPassword": "Mật khẩu mới",
+      "agreeTerms": "Tôi đồng ý với điều khoản và chính sách của nanoHome"
+    },
+    "login": {
+      "title": "Tài khoản",
+      "subtitle": "Đăng nhập để theo dõi đơn hàng, lưu sản phẩm yêu thích và nhận ưu đãi riêng.",
+      "submit": "Đăng nhập",
+      "loading": "Đang đăng nhập...",
+      "forgotPassword": "Quên mật khẩu",
+      "createAccount": "Tạo tài khoản"
+    },
+    "register": {
+      "title": "Tạo tài khoản",
+      "subtitle": "Tạo tài khoản nanoHome để lưu thông tin và mua sắm nhanh hơn.",
+      "submit": "Tạo tài khoản",
+      "loading": "Đang tạo tài khoản...",
+      "signInLink": "Đăng nhập",
+      "successTitle": "Tạo tài khoản thành công",
+      "successBody": "Tài khoản nanoHome của bạn đã sẵn sàng. Hãy tiếp tục khám phá những lựa chọn nội thất dành riêng cho bạn."
+    },
+    "forgot": {
+      "title": "Quên mật khẩu",
+      "subtitle": "Nhập email tài khoản để nhận hướng dẫn đặt lại mật khẩu.",
+      "submit": "Gửi hướng dẫn",
+      "loading": "Đang gửi...",
+      "sentTitle": "Kiểm tra email của bạn",
+      "sentBody": "Chúng tôi đã gửi hướng dẫn đặt lại mật khẩu đến email của bạn."
+    },
+    "reset": {
+      "title": "Đặt lại mật khẩu",
+      "subtitle": "Tạo mật khẩu mới cho tài khoản nanoHome của bạn.",
+      "submit": "Cập nhật mật khẩu",
+      "loading": "Đang cập nhật...",
+      "successTitle": "Mật khẩu đã được cập nhật",
+      "successBody": "Bạn có thể đăng nhập lại bằng mật khẩu mới.",
+      "expiredTitle": "Liên kết đã hết hạn",
+      "expiredBody": "Vui lòng yêu cầu email đặt lại mật khẩu mới.",
+      "resend": "Gửi lại email"
+    },
+    "errors": {
+      "invalidCredentials": "Email hoặc mật khẩu không đúng.",
+      "signInError": "Không thể đăng nhập lúc này. Vui lòng thử lại.",
+      "signUpError": "Không thể tạo tài khoản lúc này. Vui lòng thử lại.",
+      "forgotError": "Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại.",
+      "resetError": "Không thể cập nhật mật khẩu. Vui lòng thử lại.",
+      "validationEmail": "Vui lòng nhập email hợp lệ.",
+      "validationPassword": "Vui lòng nhập mật khẩu.",
+      "validationRequired": "Vui lòng nhập thông tin này.",
+      "passwordMismatch": "Mật khẩu xác nhận không khớp.",
+      "termsRequired": "Vui lòng đồng ý với điều khoản trước khi tiếp tục.",
+      "missingCode": "Liên kết xác thực không hợp lệ.",
+      "callbackError": "Không thể hoàn tất xác thực. Vui lòng thử lại."
+    }
+  },
   "Search": {},
   "Brands": {
     "eyebrow": "Nhà phân phối chính hãng",

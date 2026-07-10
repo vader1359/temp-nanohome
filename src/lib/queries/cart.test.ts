@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createSupabaseFake, resetCartTestState, seedCart, seedCartItem, state } from "./cart.test-support";
 
@@ -118,7 +119,7 @@ describe("cart merge idempotency", () => {
 describe("cart service-role exposure guard", () => {
   it("marks the cart query module as server-only when it imports the admin client", () => {
     // Given: the cart query module uses the admin client for mergeGuestCart.
-    const source = readFileSync(new URL("./cart.ts", import.meta.url), "utf8");
+    const source = readFileSync(path.join(process.cwd(), "src/lib/queries/cart.ts"), "utf8");
 
     // When: the module source is inspected as an import-boundary contract.
     const firstStatement = source.split("\n")[0];

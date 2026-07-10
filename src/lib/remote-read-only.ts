@@ -14,6 +14,18 @@ const SUPABASE_READ_RPC_PATHS = new Set([
   "/rest/v1/rpc/search_variant_products_fuzzy_count",
 ]);
 
+const SUPABASE_AUTH_WRITE_PATHS = new Map<string, ReadonlySet<string>>([
+  ["/auth/v1/token", new Set(["POST"])],
+  ["/auth/v1/signup", new Set(["POST"])],
+  ["/auth/v1/logout", new Set(["POST"])],
+  ["/auth/v1/recover", new Set(["POST"])],
+  ["/auth/v1/verify", new Set(["POST"])],
+  ["/auth/v1/otp", new Set(["POST"])],
+  ["/auth/v1/reauthenticate", new Set(["POST"])],
+  ["/auth/v1/resend", new Set(["POST"])],
+  ["/auth/v1/user", new Set(["PUT", "PATCH"])],
+]);
+
 export const supabaseReadOnlyFetch: typeof fetch = async (input, init) => {
   const request = new Request(input, init);
   assertReadOnlyMethod("Supabase", request.method, request.url);
@@ -102,7 +114,12 @@ function normalizeAmisPathname(pathname: string): string {
 
 function assertReadOnlyMethod(system: "Supabase", method: string, url: string): void {
   const normalizedMethod = method.toUpperCase();
-  if (normalizedMethod === "POST" && SUPABASE_READ_RPC_PATHS.has(new URL(url).pathname)) {
+  const pathname = new URL(url).pathname;
+  if (normalizedMethod === "POST" && SUPABASE_READ_RPC_PATHS.has(pathname)) {
+    return;
+  }
+
+  if (SUPABASE_AUTH_WRITE_PATHS.get(pathname)?.has(normalizedMethod) === true) {
     return;
   }
 

@@ -39,6 +39,10 @@ const state = vi.hoisted(() => {
   return { chain, eqCalls, from: vi.fn(() => chain), inCalls, overlapCalls };
 });
 
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: vi.fn(() => ({ from: state.from })),
+}));
+
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({ from: state.from })),
 }));

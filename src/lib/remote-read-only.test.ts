@@ -33,6 +33,39 @@ describe("remote read-only safeguard", () => {
   });
 
   it.each([
+    ["POST", "token"],
+    ["POST", "signup"],
+    ["POST", "logout"],
+    ["POST", "recover"],
+    ["POST", "verify"],
+    ["POST", "otp"],
+    ["POST", "reauthenticate"],
+    ["POST", "resend"],
+    ["PUT", "user"],
+    ["PATCH", "user"],
+  ])("allows Supabase Auth %s on %s", async (method, endpoint) => {
+    const networkFetch = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", networkFetch);
+
+    await expect(supabaseReadOnlyFetch(`https://example.supabase.co/auth/v1/${endpoint}`, { method }))
+      .resolves.toBeInstanceOf(Response);
+    expect(networkFetch).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["DELETE", "user"],
+    ["PATCH", "signup"],
+    ["POST", "admin/users"],
+  ])("blocks non-allowlisted Supabase Auth %s on %s", async (method, endpoint) => {
+    const networkFetch = vi.fn();
+    vi.stubGlobal("fetch", networkFetch);
+
+    await expect(supabaseReadOnlyFetch(`https://example.supabase.co/auth/v1/${endpoint}`, { method }))
+      .rejects.toBeInstanceOf(RemoteWriteBlockedError);
+    expect(networkFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ["POST", "amis_sync_log"],
     ["PATCH", "amis_sync_log"],
     ["PATCH", "variants"],

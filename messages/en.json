@@ -34,6 +34,7 @@
     "wishlist": "Wishlist",
     "cart": "Cart",
     "account": "Account",
+    "signOut": "Sign out",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "cartItemsCount": "Items in cart"
@@ -148,7 +149,74 @@
   },
   "Cart": {},
   "Checkout": {},
-  "Auth": {},
+  "Auth": {
+    "common": {
+      "close": "Close",
+      "required": "Required",
+      "loading": "Processing...",
+      "backToLogin": "Back to sign in",
+      "continueShopping": "Continue shopping"
+    },
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "fullName": "Full name",
+      "phone": "Phone number",
+      "confirmPassword": "Confirm password",
+      "newPassword": "New password",
+      "agreeTerms": "I agree to nanoHome's terms and policy"
+    },
+    "login": {
+      "title": "Account",
+      "subtitle": "Sign in to track orders, save favorites, and receive private offers.",
+      "submit": "Sign in",
+      "loading": "Signing in...",
+      "forgotPassword": "Forgot password",
+      "createAccount": "Create account"
+    },
+    "register": {
+      "title": "Create account",
+      "subtitle": "Create a nanoHome account to save your details and shop faster.",
+      "submit": "Create account",
+      "loading": "Creating account...",
+      "signInLink": "Sign in",
+      "successTitle": "Account created successfully",
+      "successBody": "Your nanoHome account is ready. Continue exploring interior selections curated for you."
+    },
+    "forgot": {
+      "title": "Forgot password",
+      "subtitle": "Enter your account email to receive password reset instructions.",
+      "submit": "Send instructions",
+      "loading": "Sending...",
+      "sentTitle": "Check your email",
+      "sentBody": "We sent password reset instructions to your email address."
+    },
+    "reset": {
+      "title": "Reset password",
+      "subtitle": "Create a new password for your nanoHome account.",
+      "submit": "Update password",
+      "loading": "Updating...",
+      "successTitle": "Password updated",
+      "successBody": "You can sign in again with your new password.",
+      "expiredTitle": "Link expired",
+      "expiredBody": "Please request a new password reset email.",
+      "resend": "Send email again"
+    },
+    "errors": {
+      "invalidCredentials": "Email or password is incorrect.",
+      "signInError": "We could not sign you in right now. Please try again.",
+      "signUpError": "We could not create your account right now. Please try again.",
+      "forgotError": "We could not send the password reset email. Please try again.",
+      "resetError": "We could not update your password. Please try again.",
+      "validationEmail": "Enter a valid email address.",
+      "validationPassword": "Enter your password.",
+      "validationRequired": "Enter this information.",
+      "passwordMismatch": "The confirmation password does not match.",
+      "termsRequired": "Agree to the terms before continuing.",
+      "missingCode": "The verification link is invalid.",
+      "callbackError": "We could not complete authentication. Please try again."
+    }
+  },
   "Search": {},
   "Brands": {
     "eyebrow": "Official Authorized Distributor",
