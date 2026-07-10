@@ -33,48 +33,66 @@ type SyncVariantsInput = {
 
 const AMIS_CREDENTIALS_MISSING_MESSAGE =
   "Missing AMIS credentials. Configure AMIS_API_BASE_URL, AMIS_CLIENT_ID, and AMIS_CLIENT_SECRET.";
+const VARIANT_WRITE_CONCURRENCY = 10;
 
 export async function runAmisSync(): Promise<AmisSyncResult> {
   const supabase = createAmisSyncAdminClient();
   const logId = await createSyncLog(supabase);
   const watermark = await readWatermark(supabase);
-  const config = createAmisClientConfig(env);
 
-  if (config === null) {
-    return finishSyncLog(supabase, logId, {
-      status: "failed",
-      items_processed: 0,
-      items_failed: 0,
-      error: AMIS_CREDENTIALS_MISSING_MESSAGE,
-      watermark,
-      finished_at: new Date().toISOString(),
-    });
-  }
+  try {
+    const config = createAmisClientConfig(env);
 
-  const fetchResult = await fetchAmisVariants(config, watermark);
-  switch (fetchResult.kind) {
-    case "http_error":
-      return finishSyncLog(supabase, logId, {
-        status: "partial",
-        items_processed: 0,
-        items_failed: 1,
-        error: `AMIS HTTP ${fetchResult.status}: ${fetchResult.message}`,
-        watermark,
-        finished_at: new Date().toISOString(),
-      });
-    case "malformed":
+    if (config === null) {
       return finishSyncLog(supabase, logId, {
         status: "failed",
         items_processed: 0,
-        items_failed: 1,
-        error: `Malformed AMIS payload: ${fetchResult.message}`,
+        items_failed: 0,
+        error: AMIS_CREDENTIALS_MISSING_MESSAGE,
         watermark,
         finished_at: new Date().toISOString(),
       });
-    case "success":
-      return syncVariants({ supabase, logId, records: fetchResult.records, previousWatermark: watermark });
-    default:
-      return assertNever(fetchResult);
+    }
+
+    const fetchResult = await fetchAmisVariants(config, watermark);
+    switch (fetchResult.kind) {
+      case "http_error":
+        return finishSyncLog(supabase, logId, {
+          status: "partial",
+          items_processed: 0,
+          items_failed: 1,
+          error: `AMIS HTTP ${fetchResult.status}: ${fetchResult.message}`,
+          watermark,
+          finished_at: new Date().toISOString(),
+        });
+      case "malformed":
+        return finishSyncLog(supabase, logId, {
+          status: "failed",
+          items_processed: 0,
+          items_failed: 1,
+          error: `Malformed AMIS payload: ${fetchResult.message}`,
+          watermark,
+          finished_at: new Date().toISOString(),
+        });
+      case "success":
+        return syncVariants({
+          supabase,
+          logId,
+          records: fetchResult.records,
+          previousWatermark: watermark,
+        });
+      default:
+        return assertNever(fetchResult);
+    }
+  } catch (error) {
+    return finishSyncLog(supabase, logId, {
+      status: "failed",
+      items_processed: 0,
+      items_failed: 1,
+      error: errorMessage(error),
+      watermark,
+      finished_at: new Date().toISOString(),
+    });
   }
 }
 
@@ -95,7 +113,7 @@ async function createSyncLog(supabase: TypedSupabaseClient): Promise<string> {
 async function readWatermark(supabase: TypedSupabaseClient): Promise<string | null> {
   const { data, error } = await supabase
     .from("amis_sync_log")
-    .select("watermark,started_at")
+    .select("watermark")
     .in("status", ["success", "partial"])
     .order("started_at", { ascending: false })
     .limit(1);
@@ -105,28 +123,38 @@ async function readWatermark(supabase: TypedSupabaseClient): Promise<string | nu
   }
 
   const [latest] = data ?? [];
-  return latest?.watermark ?? latest?.started_at ?? null;
+  return latest?.watermark ?? null;
 }
 
 async function syncVariants(input: SyncVariantsInput): Promise<AmisSyncResult> {
   let itemsProcessed = 0;
   let itemsFailed = 0;
   let lastError: string | null = null;
-  let watermark = input.previousWatermark;
+  let completedWatermark = input.previousWatermark;
 
-  for (const record of input.records) {
-    const update = toVariantUpdate(record);
-    const { count, error } = await input.supabase.from("variants").update(update, { count: "exact" }).eq("sku", record.sku);
+  for (let start = 0; start < input.records.length; start += VARIANT_WRITE_CONCURRENCY) {
+    const records = input.records.slice(start, start + VARIANT_WRITE_CONCURRENCY);
+    const results = await Promise.all(
+      records.map(async (record) => ({
+        record,
+        result: await input.supabase
+          .from("variants")
+          .update(toVariantUpdate(record), { count: "exact" })
+          .eq("sku", record.sku),
+      })),
+    );
 
-    if (error !== null) {
-      itemsFailed += 1;
-      lastError = error.message;
-    } else if (count === 0) {
-      itemsFailed += 1;
-      lastError = `No Supabase variant matched AMIS SKU ${record.sku}`;
-    } else {
-      itemsProcessed += 1;
-      watermark = record.sourceUpdatedAt ?? watermark;
+    for (const { record, result } of results) {
+      if (result.error !== null) {
+        itemsFailed += 1;
+        lastError = result.error.message;
+      } else if (result.count === 0) {
+        itemsFailed += 1;
+        lastError = `No Supabase variant matched AMIS SKU ${record.sku}`;
+      } else {
+        itemsProcessed += 1;
+        completedWatermark = latestWatermark(completedWatermark, record.sourceUpdatedAt);
+      }
     }
   }
 
@@ -135,9 +163,15 @@ async function syncVariants(input: SyncVariantsInput): Promise<AmisSyncResult> {
     items_processed: itemsProcessed,
     items_failed: itemsFailed,
     error: lastError,
-    watermark,
+    watermark: itemsFailed === 0 ? completedWatermark : input.previousWatermark,
     finished_at: new Date().toISOString(),
   });
+}
+
+function latestWatermark(current: string | null, candidate: string | null | undefined): string | null {
+  if (candidate === null || candidate === undefined) return current;
+  if (current === null || Date.parse(candidate) > Date.parse(current)) return candidate;
+  return current;
 }
 
 function toVariantUpdate(record: AmisVariantRecord): TablesUpdate<"variants"> {
@@ -155,6 +189,13 @@ function toVariantUpdate(record: AmisVariantRecord): TablesUpdate<"variants"> {
 function statusFromCounts(itemsFailed: number): AmisSyncStatus {
   if (itemsFailed > 0) return "partial";
   return "success";
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.length > 0) {
+    return error.message;
+  }
+  return "Unexpected AMIS sync failure";
 }
 
 async function finishSyncLog(

@@ -1,42 +1,30 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-type LogInsert = {
-  readonly status?: string | null;
-  readonly items_processed?: number | null;
-  readonly items_failed?: number | null;
-  readonly error?: string | null;
-};
+import {
+  createAmisFetchMock,
+  createAmisProduct,
+  createSupabaseFake,
+  productsFetchPages,
+  resetState,
+  setRouteEnv,
+  type SupabaseState,
+} from "./amis-sync.test-support";
 
-type VariantUpdate = {
-  readonly price?: number | null;
-  readonly source_updated_at?: string | null;
-};
-
-type AmisProductFixture = {
-  readonly product_code: string;
-  readonly unit_price: number | string | null;
-  readonly modified_date: string;
-};
-
-type SupabaseState = {
-  readonly logs: LogInsert[];
-  readonly variantUpdates: VariantUpdate[];
-};
-
-const state = vi.hoisted<SupabaseState>(() => ({ logs: [], variantUpdates: [] }));
+const { state } = vi.hoisted(() => ({
+  state: createSupabaseState(),
+}));
 
 vi.mock("server-only", () => ({}));
 
 vi.mock("@/lib/supabase/admin", () => ({
-  createAmisSyncAdminClient: vi.fn(() => createSupabaseFake()),
+  createAmisSyncAdminClient: vi.fn(() => createSupabaseFake(state)),
 }));
 
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.resetModules();
-  state.logs.length = 0;
-  state.variantUpdates.length = 0;
+  resetState(state);
 });
 
 describe("GET /api/cron/amis-sync", () => {
@@ -117,6 +105,125 @@ describe("POST /api/cron/amis-sync hardening", () => {
     });
     expect(state.logs.at(-1)).toMatchObject({ status: "partial", items_processed: 0, items_failed: 1 });
   });
+
+  it("does not advance the watermark when any AMIS SKU is unmatched", async () => {
+    // Given: an existing cursor, a successful newer SKU, and a later unmatched SKU.
+    setRouteEnv();
+    state.watermark = "2026-06-27T17:02:53.000+07:00";
+    vi.stubGlobal("fetch", createAmisFetchMock([[
+      createAmisProduct("SKU-1", "2026-06-29T17:02:53.000+07:00"),
+      createAmisProduct("MISSING", "2026-06-28T17:02:53.000+07:00"),
+    ]]));
+    const { POST } = await import("./route");
+
+    // When: the newer SKU succeeds but the later one does not exist locally.
+    const response = await POST(authorizedPostRequest());
+    const body = await response.json();
+
+    // Then: the cursor stays at its safe prior value so the failed SKU can be retried.
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ status: "partial", itemsProcessed: 1, itemsFailed: 1 });
+    expect(state.logs.at(-1)).toMatchObject({ watermark: "2026-06-27T17:02:53.000+07:00" });
+  });
+
+  it("keeps a null watermark after a first-run partial result", async () => {
+    // Given: the initial sync has no prior cursor and its only SKU is unmatched.
+    setRouteEnv();
+    vi.stubGlobal("fetch", createAmisFetchMock([[createAmisProduct("MISSING")]]));
+    const { POST } = await import("./route");
+
+    // When: the first run completes partially.
+    const response = await POST(authorizedPostRequest());
+
+    // Then: its log does not invent a timestamp cursor that would skip history.
+    expect(response.status).toBe(200);
+    expect(state.logs.at(-1)).toMatchObject({ status: "partial", watermark: null });
+  });
+
+  it("keeps the newest timestamp from the contiguous successful prefix", async () => {
+    // Given: descending successful AMIS records newer than an existing cursor.
+    setRouteEnv();
+    state.watermark = "2026-06-27T17:02:53.000+07:00";
+    vi.stubGlobal("fetch", createAmisFetchMock([[
+      createAmisProduct("SKU-NEWEST", "2026-06-29T17:02:53.000+07:00"),
+      createAmisProduct("SKU-OLDER", "2026-06-28T17:02:53.000+07:00"),
+    ]]));
+    const { POST } = await import("./route");
+
+    // When: every record in the prefix updates successfully.
+    const response = await POST(authorizedPostRequest());
+
+    // Then: the next delta starts at the newest persisted source timestamp.
+    expect(response.status).toBe(200);
+    expect(state.logs.at(-1)).toMatchObject({ watermark: "2026-06-29T17:02:53.000+07:00" });
+  });
+
+  it("stops fetching once a full AMIS page is at or before the stored watermark", async () => {
+    // Given: descending AMIS pages that move from newer records to an entirely old page.
+    setRouteEnv();
+    state.watermark = "2026-06-28T17:02:53.000+07:00";
+    const newerPage = Array.from({ length: 100 }, (_value, index) =>
+      createAmisProduct(`NEW-${index}`, "2026-06-29T17:02:53.000+07:00"),
+    );
+    const oldPage = Array.from({ length: 100 }, (_value, index) =>
+      createAmisProduct(`OLD-${index}`, "2026-06-27T17:02:53.000+07:00"),
+    );
+    const amisFetch = createAmisFetchMock([newerPage, oldPage]);
+    vi.stubGlobal("fetch", amisFetch);
+    const { POST } = await import("./route");
+
+    // When: the sync reaches the first page with no newer records.
+    const response = await POST(authorizedPostRequest());
+    const body = await response.json();
+
+    // Then: it applies only newer records and does not scan older pages.
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ status: "success", itemsProcessed: 100, itemsFailed: 0 });
+    expect(productsFetchPages(amisFetch)).toEqual(["0", "1"]);
+  });
+
+  it("limits AMIS variant updates to ten concurrent requests", async () => {
+    // Given: a full AMIS page and deliberately slow Supabase updates.
+    setRouteEnv();
+    state.variantUpdateDelayMs = 10;
+    vi.stubGlobal("fetch", createAmisFetchMock([Array.from({ length: 100 }, (_value, index) => createAmisProduct(`SKU-${index}`))]));
+    const { POST } = await import("./route");
+
+    // When: the sync applies the page.
+    const response = await POST(authorizedPostRequest());
+
+    // Then: it completes with bounded parallelism instead of serial requests.
+    expect(response.status).toBe(200);
+    expect(state.maxConcurrentVariantUpdates).toBe(10);
+  });
+
+  it("finalizes the sync log when an unexpected AMIS client error escapes", async () => {
+    // Given: AMIS token exchange throws after the running log row is created.
+    setRouteEnv();
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new Error("network reset");
+    }));
+    const { POST } = await import("./route");
+
+    // When: the route runs.
+    const response = await POST(authorizedPostRequest());
+    const body = await response.json();
+
+    // Then: the running log is closed as failed instead of remaining open.
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      status: "failed",
+      itemsProcessed: 0,
+      itemsFailed: 1,
+      error: "network reset",
+    });
+    expect(state.logs.at(-1)).toMatchObject({
+      status: "failed",
+      items_processed: 0,
+      items_failed: 1,
+      error: "network reset",
+    });
+  });
 });
 
 function authorizedPostRequest(): Request {
@@ -126,85 +233,13 @@ function authorizedPostRequest(): Request {
   });
 }
 
-function setRouteEnv(): void {
-  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
-  vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test");
-  vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-test");
-  vi.stubEnv("CRON_SECRET", "cron-test");
-  vi.stubEnv("AMIS_API_BASE_URL", "https://amis.example.test");
-  vi.stubEnv("AMIS_CLIENT_ID", "nanohome");
-  vi.stubEnv("AMIS_CLIENT_SECRET", "amis-secret");
-}
-
-function createAmisFetchMock(pages: readonly (readonly AmisProductFixture[])[]) {
-  return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-    const url = String(input);
-
-    if (url.endsWith("/api/v2/Account")) {
-      expect(init?.method).toBe("POST");
-      return Response.json({ success: true, code: 0, data: "amis-access-token" });
-    }
-
-    expect(url).toContain("/api/v2/Products?");
-    expect(init?.method).toBe("GET");
-    expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer amis-access-token");
-    expect(new Headers(init?.headers).get("Clientid")).toBe("nanohome");
-
-    const page = Number(new URL(url).searchParams.get("page"));
-    return Response.json({ success: true, code: 200, data: pages[page] ?? [] });
-  });
-}
-
-function createAmisProduct(sku: string): AmisProductFixture {
+function createSupabaseState(): SupabaseState {
   return {
-    product_code: sku,
-    unit_price: 1200000,
-    modified_date: "2026-06-28T17:02:53.000+07:00",
-  };
-}
-
-function productsFetchPages(fetchMock: ReturnType<typeof createAmisFetchMock>): readonly string[] {
-  return fetchMock.mock.calls
-    .map(([input]) => String(input))
-    .filter((url) => url.includes("/api/v2/Products?"))
-    .map((url) => new URL(url).searchParams.get("page") ?? "");
-}
-
-function createSupabaseFake() {
-  return {
-    from(table: string) {
-      if (table === "amis_sync_log") return createLogTableFake();
-      if (table === "variants") return createVariantTableFake();
-      throw new RangeError(`unexpected table ${table}`);
-    },
-  };
-}
-
-function createLogTableFake() {
-  return {
-    insert(rows: readonly LogInsert[]) {
-      state.logs.push(...rows);
-      return { select: () => ({ single: async () => ({ data: { id: "log-1" }, error: null }) }) };
-    },
-    update(row: LogInsert) {
-      state.logs.push(row);
-      return { eq: async () => ({ error: null }) };
-    },
-    select: () => ({ in: () => ({ order: () => ({ limit: async () => ({ data: [], error: null }) }) }) }),
-  };
-}
-
-function createVariantTableFake() {
-  return {
-    update(row: VariantUpdate, options?: { readonly count?: "exact" }) {
-      expect(options).toEqual({ count: "exact" });
-      state.variantUpdates.push(row);
-      return {
-        eq: async (_column: string, value: string) => ({
-          error: null,
-          count: value === "MISSING" ? 0 : 1,
-        }),
-      };
-    },
+    logs: [],
+    variantUpdates: [],
+    watermark: null,
+    variantUpdateDelayMs: 0,
+    activeVariantUpdates: 0,
+    maxConcurrentVariantUpdates: 0,
   };
 }

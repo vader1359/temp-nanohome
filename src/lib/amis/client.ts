@@ -70,6 +70,13 @@ export async function fetchAmisVariants(
         .map(toAmisVariantRecord),
     );
 
+    if (
+      watermark !== null
+      && pageResult.products.every((record) => !isAfterWatermark(record.modified_date, watermark))
+    ) {
+      return { kind: "success", records };
+    }
+
     if (pageResult.products.length < AMIS_PRODUCT_PAGE_SIZE) {
       return { kind: "success", records };
     }
