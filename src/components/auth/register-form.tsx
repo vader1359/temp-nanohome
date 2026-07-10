@@ -111,10 +111,10 @@ export function RegisterForm({ onSwitchView, redirectTo, authError }: AuthFormPr
 
           <label className="flex items-start gap-3 mt-2 cursor-pointer group">
             <div className="relative flex items-center justify-center mt-1">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 name="agreeTerms"
-                required 
+                required
                 className="peer appearance-none w-4 h-4 border border-nh-border checked:bg-nh-ink checked:border-nh-ink transition-colors cursor-pointer"
               />
               <svg className="absolute w-3 h-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
