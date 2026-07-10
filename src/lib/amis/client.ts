@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 import type { Env } from "@/lib/env";
+import { numericValueSchema } from "@/lib/amis/schemas";
 import { amisReadOnlyFetch } from "@/lib/remote-read-only";
+
+export { fetchAmisStockLedger, type AmisStockLedgerRecord, type FetchAmisStockLedgerResult } from "@/lib/amis/stock-client";
 
 export type AmisClientConfig = {
   readonly baseUrl: string;
@@ -23,7 +26,7 @@ export type FetchAmisVariantsResult =
   | { readonly kind: "http_error"; readonly status: number; readonly message: string }
   | { readonly kind: "malformed"; readonly message: string };
 
-type AccessTokenResult =
+export type AccessTokenResult =
   | { readonly kind: "success"; readonly token: string }
   | { readonly kind: "http_error"; readonly status: number; readonly message: string }
   | { readonly kind: "malformed"; readonly message: string };
@@ -132,7 +135,7 @@ async function fetchAmisProductsPage(
   return { kind: "success", products: parsed.data.data };
 }
 
-async function requestAccessToken(config: AmisClientConfig): Promise<AccessTokenResult> {
+export async function requestAccessToken(config: AmisClientConfig): Promise<AccessTokenResult> {
   const url = new URL("/api/v2/Account", config.baseUrl);
   const response = await amisReadOnlyFetch(url, {
     method: "POST",
@@ -177,15 +180,6 @@ const amisTokenResponseSchema = z.object({
   code: z.number().int(),
   data: z.string().min(1),
   error_message: z.string().nullable().optional(),
-});
-
-const numericValueSchema = z.union([z.number(), z.string()]).transform((value, context) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    context.addIssue({ code: "custom", message: "Expected a finite numeric value" });
-    return z.NEVER;
-  }
-  return parsed;
 });
 
 const amisProductSchema = z.object({

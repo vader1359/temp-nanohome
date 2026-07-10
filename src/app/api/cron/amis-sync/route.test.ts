@@ -117,9 +117,10 @@ describe("POST /api/cron/amis-sync", () => {
       price: 1200000,
       source_updated_at: "2026-06-28T17:02:53.000+07:00",
     }]);
-    expect(amisFetch).toHaveBeenCalledTimes(2);
-    expect(amisFetch.mock.calls.map(([, init]) => init?.method)).toEqual(["POST", "GET"]);
+    expect(amisFetch).toHaveBeenCalledTimes(4);
+    expect(amisFetch.mock.calls.map(([, init]) => init?.method)).toEqual(["POST", "GET", "POST", "GET"]);
     expect(String(amisFetch.mock.calls[1]?.[0])).toContain("/api/v2/Products?");
+    expect(String(amisFetch.mock.calls[3]?.[0])).toContain("/api/v2/Stocks/product_ledger?");
   });
 
   it("returns 200 failed when AMIS returns a malformed payload", async () => {
@@ -218,6 +219,11 @@ function createAmisFetchMock(productsResponse: Response) {
       return Response.json({ success: true, code: 0, data: "amis-access-token" });
     }
 
+    if (url.includes("/api/v2/Stocks/product_ledger?")) {
+      expect(init?.method).toBe("GET");
+      return Response.json({ success: false, code: 0, total_pages: 1, data: [] });
+    }
+
     expect(url).toContain("/api/v2/Products?");
     expect(init?.method).toBe("GET");
     expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer amis-access-token");
@@ -278,6 +284,7 @@ function createLogTableFake() {
 
 function createVariantTableFake() {
   return {
+    select: async () => ({ data: [], error: null }),
     update(row: VariantUpdate, options?: { readonly count?: "exact" }) {
       expect(options).toEqual({ count: "exact" });
       state.variantUpdates.push(row);

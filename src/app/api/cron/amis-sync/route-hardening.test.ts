@@ -81,7 +81,7 @@ describe("POST /api/cron/amis-sync hardening", () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({ status: "success", itemsProcessed: 101, itemsFailed: 0 });
     expect(state.variantUpdates).toHaveLength(101);
-    expect(amisFetch).toHaveBeenCalledTimes(3);
+    expect(amisFetch).toHaveBeenCalledTimes(5);
     expect(productsFetchPages(amisFetch)).toEqual(["0", "1"]);
   });
 
@@ -197,6 +197,89 @@ describe("POST /api/cron/amis-sync hardening", () => {
     expect(state.maxConcurrentVariantUpdates).toBe(10);
   });
 
+  it("updates only changed stock for uniquely matched local variants", async () => {
+    // Given: AMIS stock matches one changed variant and one already-current variant.
+    setRouteEnv();
+    state.localVariants.push(
+      { id: "variant-changed", sku: "SKU-CHANGED", stock: 1 },
+      { id: "variant-current", sku: "SKU-CURRENT", stock: 4 },
+    );
+    vi.stubGlobal("fetch", createAmisFetchMock([[]], [[
+      { product_code: "SKU-CHANGED", amount_summary: "2" },
+      { product_code: "SKU-CURRENT", amount_summary: 4 },
+    ]]));
+    const { POST } = await import("./route");
+
+    // When: the AMIS sync completes its full stock snapshot.
+    const response = await POST(authorizedPostRequest());
+    const body = await response.json();
+
+    // Then: it targets the changed unique local ID, never the SKU predicate.
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ status: "success", itemsProcessed: 1, itemsFailed: 0 });
+    expect(state.stockUpdates).toEqual([{ id: "variant-changed", stock: 2 }]);
+  });
+
+  it("ignores remote-only stock ledger records", async () => {
+    // Given: AMIS returns stock for a SKU that has no local variant.
+    setRouteEnv();
+    vi.stubGlobal("fetch", createAmisFetchMock([[]], [[
+      { product_code: "REMOTE-ONLY", amount_summary: 9 },
+    ]]));
+    const { POST } = await import("./route");
+
+    // When: the AMIS sync reconciles the snapshot.
+    const response = await POST(authorizedPostRequest());
+    const body = await response.json();
+
+    // Then: reconciliation skips are not failed writes.
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ status: "success", itemsProcessed: 0, itemsFailed: 0 });
+    expect(state.stockUpdates).toEqual([]);
+  });
+
+  it("skips duplicate local SKU codes during stock reconciliation", async () => {
+    // Given: two local variants share an AMIS SKU.
+    setRouteEnv();
+    state.localVariants.push(
+      { id: "variant-1", sku: "DUPLICATE", stock: 1 },
+      { id: "variant-2", sku: "DUPLICATE", stock: 1 },
+    );
+    vi.stubGlobal("fetch", createAmisFetchMock([[]], [[
+      { product_code: "DUPLICATE", amount_summary: 2 },
+    ]]));
+    const { POST } = await import("./route");
+
+    // When: the AMIS sync reconciles the snapshot.
+    const response = await POST(authorizedPostRequest());
+    const body = await response.json();
+
+    // Then: ambiguous local mappings are skipped without a failed result.
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ status: "success", itemsProcessed: 0, itemsFailed: 0 });
+    expect(state.stockUpdates).toEqual([]);
+  });
+
+  it("does not write stock when a later ledger page fails", async () => {
+    // Given: page one has a changed match but page two fails to load.
+    setRouteEnv();
+    state.localVariants.push({ id: "variant-1", sku: "SKU-1", stock: 1 });
+    vi.stubGlobal("fetch", createAmisFetchMock([[]], [
+      [{ product_code: "SKU-1", amount_summary: 2 }],
+      null,
+    ]));
+    const { POST } = await import("./route");
+
+    // When: the stock ledger snapshot cannot finish paging.
+    const response = await POST(authorizedPostRequest());
+    const body = await response.json();
+
+    // Then: no page-one record reaches Supabase and the run is partial.
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ status: "partial", itemsProcessed: 0, itemsFailed: 1 });
+    expect(state.stockUpdates).toEqual([]);
+  });
+
   it("finalizes the sync log when an unexpected AMIS client error escapes", async () => {
     // Given: AMIS token exchange throws after the running log row is created.
     setRouteEnv();
@@ -237,6 +320,8 @@ function createSupabaseState(): SupabaseState {
   return {
     logs: [],
     variantUpdates: [],
+    stockUpdates: [],
+    localVariants: [],
     watermark: null,
     variantUpdateDelayMs: 0,
     activeVariantUpdates: 0,

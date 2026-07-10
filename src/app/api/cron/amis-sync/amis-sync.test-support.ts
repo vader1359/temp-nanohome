@@ -11,6 +11,18 @@ type LogInsert = {
 type VariantUpdate = {
   readonly price?: number | null;
   readonly source_updated_at?: string | null;
+  readonly stock?: number | null;
+};
+
+type StockUpdate = {
+  readonly stock: number | null;
+  readonly id: string;
+};
+
+export type LocalVariantFixture = {
+  readonly id: string;
+  readonly sku: string | null;
+  readonly stock: number | null;
 };
 
 export type AmisProductFixture = {
@@ -19,9 +31,18 @@ export type AmisProductFixture = {
   readonly modified_date: string;
 };
 
+export type AmisLedgerFixture = {
+  readonly product_code: string;
+  readonly amount_summary: number | string;
+};
+
+type AmisLedgerPage = readonly AmisLedgerFixture[] | null;
+
 export type SupabaseState = {
   readonly logs: LogInsert[];
   readonly variantUpdates: VariantUpdate[];
+  readonly stockUpdates: StockUpdate[];
+  readonly localVariants: LocalVariantFixture[];
   watermark: string | null;
   variantUpdateDelayMs: number;
   activeVariantUpdates: number;
@@ -41,6 +62,8 @@ export function createSupabaseFake(state: SupabaseState) {
 export function resetState(state: SupabaseState): void {
   state.logs.length = 0;
   state.variantUpdates.length = 0;
+  state.stockUpdates.length = 0;
+  state.localVariants.length = 0;
   state.watermark = null;
   state.variantUpdateDelayMs = 0;
   state.activeVariantUpdates = 0;
@@ -57,13 +80,31 @@ export function setRouteEnv(): void {
   vi.stubEnv("AMIS_CLIENT_SECRET", "amis-secret");
 }
 
-export function createAmisFetchMock(pages: readonly (readonly AmisProductFixture[])[]) {
+export function createAmisFetchMock(
+  pages: readonly (readonly AmisProductFixture[])[],
+  ledgerPages: readonly AmisLedgerPage[] = [[]],
+) {
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
 
     if (url.endsWith("/api/v2/Account")) {
       expect(init?.method).toBe("POST");
       return Response.json({ success: true, code: 0, data: "amis-access-token" });
+    }
+
+    if (url.includes("/api/v2/Stocks/product_ledger?")) {
+      expect(init?.method).toBe("GET");
+      expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer amis-access-token");
+      expect(new Headers(init?.headers).get("Clientid")).toBe("nanohome");
+      const page = Number(new URL(url).searchParams.get("page"));
+      const ledgerPage = ledgerPages[page - 1];
+      if (ledgerPage === null) return new Response("stock ledger failed", { status: 500 });
+      return Response.json({
+        success: false,
+        code: 0,
+        total_pages: ledgerPages.length,
+        data: ledgerPage ?? [],
+      });
     }
 
     expect(url).toContain("/api/v2/Products?");
@@ -112,11 +153,16 @@ function createLogTableFake(state: SupabaseState) {
 
 function createVariantTableFake(state: SupabaseState) {
   return {
+    select: async () => ({ data: state.localVariants, error: null }),
     update(row: VariantUpdate, options?: { readonly count?: "exact" }) {
       expect(options).toEqual({ count: "exact" });
-      state.variantUpdates.push(row);
       return {
-        eq: async (_column: string, value: string) => {
+        eq: async (column: string, value: string) => {
+          if (column === "id" && "stock" in row) {
+            state.stockUpdates.push({ id: value, stock: row.stock ?? null });
+            return { error: null, count: 1 };
+          }
+          state.variantUpdates.push(row);
           state.activeVariantUpdates += 1;
           state.maxConcurrentVariantUpdates = Math.max(state.maxConcurrentVariantUpdates, state.activeVariantUpdates);
           await delay(state.variantUpdateDelayMs);

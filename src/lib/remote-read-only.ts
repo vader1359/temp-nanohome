@@ -59,6 +59,7 @@ export const supabaseAmisSyncFetch: typeof fetch = async (input, init) => {
 const AMIS_ALLOWED_REQUESTS = new Map<string, ReadonlySet<string>>([
   ["/api/v2/Account", new Set(["POST"])],
   ["/api/v2/Products", new Set(["GET", "HEAD"])],
+  ["/api/v2/Stocks/product_ledger", new Set(["GET", "HEAD"])],
 ]);
 
 export function assertAmisRequestAllowed(url: URL, method: string): void {

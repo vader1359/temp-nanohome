@@ -1,9 +1,16 @@
 import "server-only";
 
-import { createAmisClientConfig, fetchAmisVariants, type AmisVariantRecord } from "@/lib/amis/client";
+import {
+  createAmisClientConfig,
+  fetchAmisStockLedger,
+  fetchAmisVariants,
+  type AmisClientConfig,
+} from "@/lib/amis/client";
 import { env } from "@/lib/env";
+import { syncAmisPrices, type PriceSyncResult } from "@/lib/amis/price-sync";
+import { syncAmisStockSnapshot, type StockSyncResult } from "@/lib/amis/stock-sync";
 import { createAmisSyncAdminClient } from "@/lib/supabase/admin";
-import type { TablesUpdate, TypedSupabaseClient } from "@/types/db";
+import type { TypedSupabaseClient } from "@/types/db";
 
 export type AmisSyncStatus = "success" | "partial" | "failed";
 
@@ -24,16 +31,8 @@ type SyncLogUpdate = {
   readonly finished_at: string;
 };
 
-type SyncVariantsInput = {
-  readonly supabase: TypedSupabaseClient;
-  readonly logId: string;
-  readonly records: readonly AmisVariantRecord[];
-  readonly previousWatermark: string | null;
-};
-
 const AMIS_CREDENTIALS_MISSING_MESSAGE =
   "Missing AMIS credentials. Configure AMIS_API_BASE_URL, AMIS_CLIENT_ID, and AMIS_CLIENT_SECRET.";
-const VARIANT_WRITE_CONCURRENCY = 10;
 
 export async function runAmisSync(): Promise<AmisSyncResult> {
   const supabase = createAmisSyncAdminClient();
@@ -42,186 +41,101 @@ export async function runAmisSync(): Promise<AmisSyncResult> {
 
   try {
     const config = createAmisClientConfig(env);
+    if (config === null) return finishSyncLog(supabase, logId, failedUpdate(AMIS_CREDENTIALS_MISSING_MESSAGE, watermark, 0));
 
-    if (config === null) {
-      return finishSyncLog(supabase, logId, {
-        status: "failed",
-        items_processed: 0,
-        items_failed: 0,
-        error: AMIS_CREDENTIALS_MISSING_MESSAGE,
-        watermark,
-        finished_at: new Date().toISOString(),
-      });
-    }
-
-    const fetchResult = await fetchAmisVariants(config, watermark);
-    switch (fetchResult.kind) {
-      case "http_error":
-        return finishSyncLog(supabase, logId, {
-          status: "partial",
-          items_processed: 0,
-          items_failed: 1,
-          error: `AMIS HTTP ${fetchResult.status}: ${fetchResult.message}`,
-          watermark,
-          finished_at: new Date().toISOString(),
-        });
-      case "malformed":
-        return finishSyncLog(supabase, logId, {
-          status: "failed",
-          items_processed: 0,
-          items_failed: 1,
-          error: `Malformed AMIS payload: ${fetchResult.message}`,
-          watermark,
-          finished_at: new Date().toISOString(),
-        });
-      case "success":
-        return syncVariants({
-          supabase,
-          logId,
-          records: fetchResult.records,
-          previousWatermark: watermark,
-        });
-      default:
-        return assertNever(fetchResult);
-    }
+    const priceResult = await syncPriceDelta(supabase, config, watermark);
+    const stockResult = await syncStockSnapshot(supabase, config);
+    return finishSyncLog(supabase, logId, combinedUpdate(priceResult, stockResult));
   } catch (error) {
-    return finishSyncLog(supabase, logId, {
-      status: "failed",
-      items_processed: 0,
-      items_failed: 1,
-      error: errorMessage(error),
-      watermark,
-      finished_at: new Date().toISOString(),
-    });
+    return finishSyncLog(supabase, logId, failedUpdate(errorMessage(error), watermark, 1));
+  }
+}
+
+async function syncPriceDelta(
+  supabase: TypedSupabaseClient,
+  config: AmisClientConfig,
+  watermark: string | null,
+): Promise<PriceSyncResult> {
+  const fetchResult = await fetchAmisVariants(config, watermark);
+  switch (fetchResult.kind) {
+    case "success":
+      return syncAmisPrices({ supabase, records: fetchResult.records, previousWatermark: watermark });
+    case "http_error":
+      return failedPriceResult("partial", `AMIS HTTP ${fetchResult.status}: ${fetchResult.message}`, watermark);
+    case "malformed":
+      return failedPriceResult("failed", `Malformed AMIS payload: ${fetchResult.message}`, watermark);
+    default:
+      return assertNever(fetchResult);
+  }
+}
+
+function failedPriceResult(
+  status: "partial" | "failed",
+  error: string,
+  watermark: string | null,
+): PriceSyncResult {
+  return { status, itemsProcessed: 0, itemsFailed: 1, error, watermark };
+}
+
+async function syncStockSnapshot(supabase: TypedSupabaseClient, config: AmisClientConfig): Promise<StockSyncResult> {
+  const fetchResult = await fetchAmisStockLedger(config);
+  switch (fetchResult.kind) {
+    case "success":
+      return syncAmisStockSnapshot({ supabase, records: fetchResult.records });
+    case "http_error":
+      return { itemsProcessed: 0, itemsFailed: 1, error: `AMIS stock HTTP ${fetchResult.status}: ${fetchResult.message}` };
+    case "malformed":
+      return { itemsProcessed: 0, itemsFailed: 1, error: `Malformed AMIS stock payload: ${fetchResult.message}` };
+    default:
+      return assertNever(fetchResult);
   }
 }
 
 async function createSyncLog(supabase: TypedSupabaseClient): Promise<string> {
-  const { data, error } = await supabase
-    .from("amis_sync_log")
+  const { data, error } = await supabase.from("amis_sync_log")
     .insert([{ status: "running", items_processed: 0, items_failed: 0, started_at: new Date().toISOString() }])
-    .select("id")
-    .single();
-
-  if (error !== null) {
-    throw error;
-  }
-
+    .select("id").single();
+  if (error !== null) throw error;
   return data.id;
 }
 
 async function readWatermark(supabase: TypedSupabaseClient): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("amis_sync_log")
-    .select("watermark")
-    .in("status", ["success", "partial"])
-    .order("started_at", { ascending: false })
-    .limit(1);
-
-  if (error !== null) {
-    throw error;
-  }
-
-  const [latest] = data ?? [];
-  return latest?.watermark ?? null;
+  const { data, error } = await supabase.from("amis_sync_log").select("watermark")
+    .in("status", ["success", "partial"]).order("started_at", { ascending: false }).limit(1);
+  if (error !== null) throw error;
+  return data?.[0]?.watermark ?? null;
 }
 
-async function syncVariants(input: SyncVariantsInput): Promise<AmisSyncResult> {
-  let itemsProcessed = 0;
-  let itemsFailed = 0;
-  let lastError: string | null = null;
-  let completedWatermark = input.previousWatermark;
-
-  for (let start = 0; start < input.records.length; start += VARIANT_WRITE_CONCURRENCY) {
-    const records = input.records.slice(start, start + VARIANT_WRITE_CONCURRENCY);
-    const results = await Promise.all(
-      records.map(async (record) => ({
-        record,
-        result: await input.supabase
-          .from("variants")
-          .update(toVariantUpdate(record), { count: "exact" })
-          .eq("sku", record.sku),
-      })),
-    );
-
-    for (const { record, result } of results) {
-      if (result.error !== null) {
-        itemsFailed += 1;
-        lastError = result.error.message;
-      } else if (result.count === 0) {
-        itemsFailed += 1;
-        lastError = `No Supabase variant matched AMIS SKU ${record.sku}`;
-      } else {
-        itemsProcessed += 1;
-        completedWatermark = latestWatermark(completedWatermark, record.sourceUpdatedAt);
-      }
-    }
-  }
-
-  return finishSyncLog(input.supabase, input.logId, {
-    status: statusFromCounts(itemsFailed),
-    items_processed: itemsProcessed,
+function combinedUpdate(price: PriceSyncResult, stock: StockSyncResult): SyncLogUpdate {
+  const itemsFailed = price.itemsFailed + stock.itemsFailed;
+  return {
+    status: price.status === "failed" ? "failed" : statusFromCounts(itemsFailed),
+    items_processed: price.itemsProcessed + stock.itemsProcessed,
     items_failed: itemsFailed,
-    error: lastError,
-    watermark: itemsFailed === 0 ? completedWatermark : input.previousWatermark,
+    error: stock.error ?? price.error,
+    watermark: price.watermark,
     finished_at: new Date().toISOString(),
-  });
+  };
 }
 
-function latestWatermark(current: string | null, candidate: string | null | undefined): string | null {
-  if (candidate === null || candidate === undefined) return current;
-  if (current === null || Date.parse(candidate) > Date.parse(current)) return candidate;
-  return current;
-}
-
-function toVariantUpdate(record: AmisVariantRecord): TablesUpdate<"variants"> {
-  const update: TablesUpdate<"variants"> = {};
-
-  if (record.price !== undefined) update.price = record.price;
-  if (record.compareAtPrice !== undefined) update.compare_at_price = record.compareAtPrice;
-  if (record.discountPercent !== undefined) update.discount_percent = record.discountPercent;
-  if (record.inStock !== undefined) update.in_stock = record.inStock;
-  if (record.sourceUpdatedAt !== undefined) update.source_updated_at = record.sourceUpdatedAt;
-
-  return update;
+function failedUpdate(error: string, watermark: string | null, itemsFailed = 1): SyncLogUpdate {
+  return { status: "failed", items_processed: 0, items_failed: itemsFailed, error, watermark, finished_at: new Date().toISOString() };
 }
 
 function statusFromCounts(itemsFailed: number): AmisSyncStatus {
-  if (itemsFailed > 0) return "partial";
-  return "success";
+  return itemsFailed > 0 ? "partial" : "success";
 }
 
 function errorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.length > 0) {
-    return error.message;
-  }
-  return "Unexpected AMIS sync failure";
+  return error instanceof Error && error.message.length > 0 ? error.message : "Unexpected AMIS sync failure";
 }
 
-async function finishSyncLog(
-  supabase: TypedSupabaseClient,
-  logId: string,
-  update: SyncLogUpdate,
-): Promise<AmisSyncResult> {
+async function finishSyncLog(supabase: TypedSupabaseClient, logId: string, update: SyncLogUpdate): Promise<AmisSyncResult> {
   const { error } = await supabase.from("amis_sync_log").update(update).eq("id", logId);
-
   if (error !== null) {
-    return {
-      status: "partial",
-      itemsProcessed: update.items_processed,
-      itemsFailed: update.items_failed + 1,
-      error: error.message,
-      watermark: update.watermark,
-    };
+    return { status: "partial", itemsProcessed: update.items_processed, itemsFailed: update.items_failed + 1, error: error.message, watermark: update.watermark };
   }
-
-  return {
-    status: update.status,
-    itemsProcessed: update.items_processed,
-    itemsFailed: update.items_failed,
-    error: update.error,
-    watermark: update.watermark,
-  };
+  return { status: update.status, itemsProcessed: update.items_processed, itemsFailed: update.items_failed, error: update.error, watermark: update.watermark };
 }
 
 function assertNever(value: never): never {

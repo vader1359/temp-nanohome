@@ -127,6 +127,20 @@ describe("remote read-only safeguard", () => {
     )).not.toThrow();
   });
 
+  it.each(["GET", "HEAD"])("allows %s on the AMIS stock ledger", (method) => {
+    expect(() => assertAmisRequestAllowed(
+      new URL("https://crmconnect.misa.vn/api/v2/Stocks/product_ledger?page=1&pageSize=50"),
+      method,
+    )).not.toThrow();
+  });
+
+  it.each(["POST", "PUT", "PATCH", "DELETE"])("blocks %s on the AMIS stock ledger", (method) => {
+    expect(() => assertAmisRequestAllowed(
+      new URL("https://crmconnect.misa.vn/api/v2/Stocks/product_ledger"),
+      method,
+    )).toThrow(RemoteWriteBlockedError);
+  });
+
   it.each([
     "/api/v2/Products/123",
     "/api/v2/Orders",
