@@ -1,13 +1,20 @@
 "use client";
 
 import { createContext, useCallback, useContext, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { AuthPanel } from "./auth-panel";
+import { getAuthRedirectPath } from "@/lib/auth/redirect";
+
+const AuthPanel = dynamic(
+  () => import("./auth-panel").then((module) => module.AuthPanel),
+  { ssr: false },
+);
 
 export type AuthView = "login" | "register" | "forgot" | "register_success" | "forgot_sent";
 
 interface AuthContextValue {
   isOpen: boolean;
+  isAuthenticated: boolean;
   view: AuthView;
   authError: string | null;
   openAuth: (view?: AuthView) => void;
@@ -17,20 +24,20 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children, isAuthenticated }: { children: ReactNode; isAuthenticated: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const authParam = searchParams.get("auth");
   const isOpen = authParam !== null;
-  const view: AuthView = authParam === "register" || authParam === "sign_up_error" ? "register" 
+  const view: AuthView = authParam === "register" || authParam === "sign_up_error" || authParam === "password_mismatch" || authParam === "terms_required" ? "register"
     : authParam === "forgot" || authParam === "forgot_error" ? "forgot"
     : authParam === "register_success" ? "register_success"
     : authParam === "forgot_sent" ? "forgot_sent"
     : "login";
-  const authError = authParam === "sign_in_error" || authParam === "sign_up_error" || authParam === "forgot_error" || authParam === "invalid_credentials" ? authParam : null;
-  const redirectTo = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+  const authError = authParam === "sign_in_error" || authParam === "sign_up_error" || authParam === "forgot_error" || authParam === "invalid_credentials" || authParam === "password_mismatch" || authParam === "terms_required" ? authParam : null;
+  const redirectTo = getAuthRedirectPath(`${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`);
 
   const removeAuthParams = useCallback(() => {
     const newSearchParams = new URLSearchParams(searchParams.toString());
@@ -59,9 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [updateAuthParam]);
 
   return (
-    <AuthContext.Provider value={{ isOpen, view, authError, openAuth, closeAuth, switchAuthView }}>
+    <AuthContext.Provider value={{ isOpen, isAuthenticated, view, authError, openAuth, closeAuth, switchAuthView }}>
       {children}
-      <AuthPanel redirectTo={redirectTo} />
+      {isOpen ? <AuthPanel redirectTo={redirectTo} /> : null}
     </AuthContext.Provider>
   );
 }
