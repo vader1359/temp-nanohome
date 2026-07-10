@@ -11,10 +11,16 @@ const credentialsSchema = z.object({
   locale: z.string().nullable(),
 });
 
-const signUpSchema = credentialsSchema.extend({
+const signUpSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  confirmPassword: z.string().min(1),
+  agreeTerms: z.literal("on"),
+  redirectTo: z.string().nullable(),
+  locale: z.string().nullable(),
   fullName: z.string().min(1),
   phone: z.string().min(1),
-});
+}).refine((value) => value.password === value.confirmPassword);
 
 const forgotPasswordSchema = z.object({
   email: z.string().email(),
@@ -57,7 +63,7 @@ type ParseEmailPasswordFormResult =
 
 type ParseSignUpFormResult =
   | { readonly ok: true; readonly value: SignUpCredentials }
-  | { readonly ok: false };
+  | { readonly ok: false; readonly error: "password_mismatch" | "terms_required" | "invalid" };
 
 type ParseForgotPasswordFormResult =
   | { readonly ok: true; readonly value: ForgotPasswordCredentials }
@@ -93,6 +99,17 @@ export function parseEmailPasswordForm(formData: FormData): ParseEmailPasswordFo
 }
 
 export function parseSignUpForm(formData: FormData): ParseSignUpFormResult {
+  const password = formData.get("password");
+  const confirmPassword = formData.get("confirmPassword");
+
+  if (typeof password === "string" && typeof confirmPassword === "string" && password !== confirmPassword) {
+    return { ok: false, error: "password_mismatch" };
+  }
+
+  if (formData.get("agreeTerms") !== "on") {
+    return { ok: false, error: "terms_required" };
+  }
+
   const parsed = signUpSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -100,10 +117,12 @@ export function parseSignUpForm(formData: FormData): ParseSignUpFormResult {
     locale: formData.get("locale"),
     fullName: formData.get("fullName"),
     phone: formData.get("phone"),
+    confirmPassword: formData.get("confirmPassword"),
+    agreeTerms: formData.get("agreeTerms"),
   });
 
   if (!parsed.success) {
-    return { ok: false };
+    return { ok: false, error: "invalid" };
   }
 
   const locale = getSupportedLocale(parsed.data.locale);

@@ -8,7 +8,14 @@ export function getSafeRedirectPath(value: string | null, fallbackLocale?: Local
     return fallbackPath;
   }
 
-  return value;
+  return getAuthRedirectPath(value);
+}
+
+export function getAuthRedirectPath(path: string): string {
+  const url = new URL(path, "http://localhost");
+  url.searchParams.delete("auth");
+
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 export function getSupportedLocale(value: string | null): Locale {

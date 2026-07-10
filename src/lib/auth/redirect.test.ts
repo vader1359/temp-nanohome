@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getRedirectLocale, getSafeRedirectPath } from "./redirect";
+import { getAuthRedirectPath, getRedirectLocale, getSafeRedirectPath } from "./redirect";
 
 describe("getSafeRedirectPath", () => {
   it("returns the default locale path when the redirect value is missing", () => {
@@ -18,6 +18,15 @@ describe("getSafeRedirectPath", () => {
     const path = getSafeRedirectPath("/en/products?q=chair#details");
 
     // Then: the complete local path is preserved.
+    expect(path).toBe("/en/products?q=chair#details");
+  });
+
+  it("removes transient auth state while preserving local query and hash", () => {
+    // Given: a post-auth redirect from an auth panel on a filtered page.
+    // When: the redirect target is parsed at the server boundary.
+    const path = getSafeRedirectPath("/en/products?q=chair&auth=register#details");
+
+    // Then: the panel cannot reopen while the destination stays intact.
     expect(path).toBe("/en/products?q=chair#details");
   });
 
@@ -57,5 +66,16 @@ describe("getRedirectLocale", () => {
 
     // Then: the default locale is returned.
     expect(locale).toBe("vi");
+  });
+});
+
+describe("getAuthRedirectPath", () => {
+  it("removes the transient auth state while preserving the current route query and hash", () => {
+    // Given: an auth panel URL that contains a catalog filter.
+    // When: the post-auth redirect target is derived.
+    const path = getAuthRedirectPath("/vi/products?category=lighting&auth=login#details");
+
+    // Then: authentication state cannot reopen the panel after completion.
+    expect(path).toBe("/vi/products?category=lighting#details");
   });
 });

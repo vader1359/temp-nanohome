@@ -48,6 +48,8 @@ describe("parseEmailPasswordForm", () => {
     const formData = new FormData();
     formData.set("email", "ian@example.com");
     formData.set("password", "correct-password");
+    formData.set("confirmPassword", "correct-password");
+    formData.set("agreeTerms", "on");
     formData.set("redirectTo", "https://evil.example/steal");
 
     // When: the form is parsed at the route boundary.
@@ -74,6 +76,8 @@ describe("parseSignUpForm", () => {
     formData.set("password", "correct-password");
     formData.set("fullName", "Ian Nguyen");
     formData.set("phone", "0900000000");
+    formData.set("confirmPassword", "correct-password");
+    formData.set("agreeTerms", "on");
     formData.set("locale", "en");
     formData.set("redirectTo", "/en/products");
 
@@ -99,12 +103,47 @@ describe("parseSignUpForm", () => {
     const formData = new FormData();
     formData.set("email", "ian@example.com");
     formData.set("password", "correct-password");
+    formData.set("confirmPassword", "correct-password");
+    formData.set("agreeTerms", "on");
 
     // When: the form is parsed at the route boundary.
     const result = parseSignUpForm(formData);
 
     // Then: validation fails before Supabase is called.
-    expect(result).toEqual({ ok: false });
+    expect(result).toEqual({ ok: false, error: "invalid" });
+  });
+
+  it("returns invalid when the signup password confirmation differs", () => {
+    // Given: a complete signup form with a mismatched confirmation password.
+    const formData = new FormData();
+    formData.set("email", "ian@example.com");
+    formData.set("password", "correct-password");
+    formData.set("confirmPassword", "different-password");
+    formData.set("fullName", "Ian Nguyen");
+    formData.set("phone", "0900000000");
+    formData.set("agreeTerms", "on");
+
+    // When: the form is parsed at the route boundary.
+    const result = parseSignUpForm(formData);
+
+    // Then: Supabase cannot receive the inconsistent registration.
+    expect(result).toEqual({ ok: false, error: "password_mismatch" });
+  });
+
+  it("returns invalid when the signup terms are not accepted", () => {
+    // Given: a complete signup form without terms acceptance.
+    const formData = new FormData();
+    formData.set("email", "ian@example.com");
+    formData.set("password", "correct-password");
+    formData.set("confirmPassword", "correct-password");
+    formData.set("fullName", "Ian Nguyen");
+    formData.set("phone", "0900000000");
+
+    // When: the form is parsed at the route boundary.
+    const result = parseSignUpForm(formData);
+
+    // Then: Supabase cannot receive an unaccepted terms agreement.
+    expect(result).toEqual({ ok: false, error: "terms_required" });
   });
 });
 
