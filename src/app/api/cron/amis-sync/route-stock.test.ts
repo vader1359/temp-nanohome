@@ -42,6 +42,35 @@ describe("POST /api/cron/amis-sync stock independence", () => {
     expect(body).toMatchObject({ status: "partial", itemsProcessed: 1, itemsFailed: 1 });
     expect(state.stockUpdates).toEqual([{ id: "variant-1", stock: 2 }]);
   });
+
+  it("reconciles a uniquely matched variant beyond the first Supabase page", async () => {
+    // Given: the only ledger match is after one thousand local variants.
+    setRouteEnv();
+    state.localVariants.push(
+      ...Array.from({ length: 1_000 }, (_value, index) => ({ id: `variant-${index}`, sku: `SKU-${index}`, stock: null })),
+      { id: "variant-late", sku: "SKU-LATE", stock: null },
+    );
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/api/v2/Account")) return Response.json({ success: true, code: 0, data: "token" });
+      if (url.includes("/api/v2/Products?")) return Response.json({ success: true, code: 200, data: [] });
+      if (url.includes("/api/v2/Stocks/product_ledger?")) {
+        return Response.json({ success: false, code: 0, total_pages: 1, data: [{ product_code: "SKU-LATE", amount_summary: 7 }] });
+      }
+      throw new RangeError(`unexpected AMIS request ${url}`);
+    }));
+    const { POST } = await import("./route");
+
+    // When: the cron reconciles the full local variant set.
+    const response = await POST(new Request("https://app.test/api/cron/amis-sync", {
+      method: "POST",
+      headers: { Authorization: "Bearer cron-test" },
+    }));
+
+    // Then: the second page match is updated by its unique ID.
+    expect(response.status).toBe(200);
+    expect(state.stockUpdates).toEqual([{ id: "variant-late", stock: 7 }]);
+  });
 });
 
 function createSupabaseState(): SupabaseState {

@@ -2,6 +2,7 @@ import type { AmisStockLedgerRecord } from "@/lib/amis/client";
 import type { Tables, TablesUpdate, TypedSupabaseClient } from "@/types/db";
 
 const VARIANT_WRITE_CONCURRENCY = 10;
+const VARIANT_READ_PAGE_SIZE = 1_000;
 
 type StockSyncInput = {
   readonly supabase: TypedSupabaseClient;
@@ -17,12 +18,12 @@ export type StockSyncResult = {
 type LocalVariant = Pick<Tables<"variants">, "id" | "sku" | "stock">;
 
 export async function syncAmisStockSnapshot(input: StockSyncInput): Promise<StockSyncResult> {
-  const { data, error } = await input.supabase.from("variants").select("id, sku, stock");
-  if (error !== null) {
-    return { itemsProcessed: 0, itemsFailed: 1, error: error.message };
+  const variants = await readLocalVariants(input.supabase);
+  if (variants.kind === "failure") {
+    return { itemsProcessed: 0, itemsFailed: 1, error: variants.error };
   }
 
-  const updates = stockUpdates(input.records, data ?? []);
+  const updates = stockUpdates(input.records, variants.data);
   let itemsProcessed = 0;
   let itemsFailed = 0;
   let lastError: string | null = null;
@@ -46,6 +47,27 @@ export async function syncAmisStockSnapshot(input: StockSyncInput): Promise<Stoc
   }
 
   return { itemsProcessed, itemsFailed, error: lastError };
+}
+
+type LocalVariantRead =
+  | { readonly kind: "success"; readonly data: readonly LocalVariant[] }
+  | { readonly kind: "failure"; readonly error: string };
+
+async function readLocalVariants(supabase: TypedSupabaseClient): Promise<LocalVariantRead> {
+  const variants: LocalVariant[] = [];
+
+  for (let from = 0; ; from += VARIANT_READ_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("variants")
+      .select("id, sku, stock")
+      .range(from, from + VARIANT_READ_PAGE_SIZE - 1);
+
+    if (error !== null) return { kind: "failure", error: error.message };
+
+    const page = data ?? [];
+    variants.push(...page);
+    if (page.length < VARIANT_READ_PAGE_SIZE) return { kind: "success", data: variants };
+  }
 }
 
 type StockUpdate = { readonly id: string; readonly stock: number };

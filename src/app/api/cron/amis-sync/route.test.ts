@@ -284,7 +284,7 @@ function createLogTableFake() {
 
 function createVariantTableFake() {
   return {
-    select: async () => ({ data: [], error: null }),
+    select: () => ({ range: async () => ({ data: [], error: null }) }),
     update(row: VariantUpdate, options?: { readonly count?: "exact" }) {
       expect(options).toEqual({ count: "exact" });
       state.variantUpdates.push(row);

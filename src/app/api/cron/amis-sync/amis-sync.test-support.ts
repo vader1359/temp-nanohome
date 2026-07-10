@@ -153,7 +153,9 @@ function createLogTableFake(state: SupabaseState) {
 
 function createVariantTableFake(state: SupabaseState) {
   return {
-    select: async () => ({ data: state.localVariants, error: null }),
+    select: () => ({
+      range: async (from: number, to: number) => ({ data: state.localVariants.slice(from, to + 1), error: null }),
+    }),
     update(row: VariantUpdate, options?: { readonly count?: "exact" }) {
       expect(options).toEqual({ count: "exact" });
       return {
