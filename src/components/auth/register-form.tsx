@@ -23,9 +23,13 @@ export function RegisterForm({ onSwitchView, redirectTo, authError }: AuthFormPr
           {t("register.subtitle")}
         </p>
 
-        {authError === "sign_up_error" && (
+        {(authError === "sign_up_error" || authError === "password_mismatch" || authError === "terms_required") && (
           <p className="text-sm text-nh-red mb-6">
-            {t("errors.signUpError")}
+            {authError === "password_mismatch"
+              ? t("errors.passwordMismatch")
+              : authError === "terms_required"
+                ? t("errors.termsRequired")
+                : t("errors.signUpError")}
           </p>
         )}
 
@@ -86,6 +90,21 @@ export function RegisterForm({ onSwitchView, redirectTo, authError }: AuthFormPr
               required
               minLength={8}
               placeholder={t("fields.password")}
+              className="w-full border-b border-nh-border bg-transparent pb-2 text-base text-nh-ink placeholder:text-nh-muted focus:border-nh-ink focus:outline-none transition-colors"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="register-confirm-password" className="text-xs uppercase tracking-wider text-nh-ink sr-only">
+              {t("fields.confirmPassword")}
+            </label>
+            <input
+              id="register-confirm-password"
+              name="confirmPassword"
+              type="password"
+              required
+              minLength={8}
+              placeholder={t("fields.confirmPassword")}
               className="w-full border-b border-nh-border bg-transparent pb-2 text-base text-nh-ink placeholder:text-nh-muted focus:border-nh-ink focus:outline-none transition-colors"
             />
           </div>
