@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { AuthApiError, AuthSessionMissingError } from "@supabase/supabase-js";
 
 type AuthState = {
   readonly signInWithPassword: ReturnType<typeof vi.fn>;
@@ -42,9 +43,11 @@ afterEach(() => {
 });
 
 describe("auth route handlers", () => {
-  it("redirects sign-in errors to the submitted locale", async () => {
-    // Given: a valid English login form and a Supabase auth failure.
-    authState.signInWithPassword.mockResolvedValue({ error: new Error("invalid") });
+  it("redirects invalid credentials to the actionable localized login state", async () => {
+    // Given: a valid English login form and Supabase's invalid-credentials response.
+    authState.signInWithPassword.mockResolvedValue({
+      error: new AuthApiError("Invalid login credentials", 400, "invalid_credentials"),
+    });
     const { POST } = await import("./sign-in/route");
 
     // When: the route handles the login form.
@@ -55,8 +58,8 @@ describe("auth route handlers", () => {
       redirectTo: "/en/products",
     }));
 
-    // Then: the failure returns to the matching localized home route.
-    expect(response.headers.get("location")).toBe("https://app.test/en?auth=sign_in_error");
+    // Then: the failure returns to the matching localized actionable error state.
+    expect(response.headers.get("location")).toBe("https://app.test/en?auth=invalid_credentials");
   });
 
   it("passes signup metadata to the auth trigger contract", async () => {
@@ -67,8 +70,10 @@ describe("auth route handlers", () => {
     const response = await POST(formRequest("/auth/sign-up", {
       email: "ian@example.com",
       password: "correct-password",
+      confirmPassword: "correct-password",
       fullName: "Ian Nguyen",
       phone: "0900000000",
+      agreeTerms: "on",
       locale: "ko",
       redirectTo: "/ko/products",
     }));
@@ -85,7 +90,28 @@ describe("auth route handlers", () => {
         emailRedirectTo: "https://app.test/auth/callback?next=%2Fko%2Fproducts",
       },
     });
-    expect(response.headers.get("location")).toBe("https://app.test/ko/products");
+    expect(response.headers.get("location")).toBe("https://app.test/ko?auth=register_success");
+  });
+
+  it("returns mismatched signup passwords to the actionable registration state", async () => {
+    // Given: a signup form with different password fields.
+    const { POST } = await import("./sign-up/route");
+
+    // When: the route validates the signup before calling Supabase.
+    const response = await POST(formRequest("/auth/sign-up", {
+      email: "ian@example.com",
+      password: "correct-password",
+      confirmPassword: "different-password",
+      fullName: "Ian Nguyen",
+      phone: "0900000000",
+      agreeTerms: "on",
+      locale: "vi",
+      redirectTo: "/vi",
+    }));
+
+    // Then: the registration drawer receives the specific confirmation error.
+    expect(authState.signUp).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toBe("https://app.test/vi?auth=password_mismatch");
   });
 
   it("sends password recovery email with localized callback target", async () => {
@@ -121,7 +147,39 @@ describe("auth route handlers", () => {
     expect(response.headers.get("location")).toBe("https://app.test/en/reset-password?status=success");
   });
 
-  it("redirects callback errors to the next path locale", async () => {
+  it("returns malformed reset passwords to the editable validation state", async () => {
+    // Given: a reset form has mismatched passwords.
+    const { POST } = await import("./reset-password/route");
+
+    // When: the route validates the submission before contacting Supabase.
+    const response = await POST(formRequest("/auth/reset-password", {
+      password: "new-password",
+      confirmPassword: "different-password",
+      locale: "en",
+    }));
+
+    // Then: the user is returned to a form-specific validation state.
+    expect(authState.updateUser).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toBe("https://app.test/en/reset-password?status=validation");
+  });
+
+  it("returns an expired recovery session to the resend state", async () => {
+    // Given: the recovery session expires after the user opens the form.
+    authState.updateUser.mockResolvedValue({ error: new AuthSessionMissingError() });
+    const { POST } = await import("./reset-password/route");
+
+    // When: the route submits an otherwise valid replacement password.
+    const response = await POST(formRequest("/auth/reset-password", {
+      password: "new-password",
+      confirmPassword: "new-password",
+      locale: "en",
+    }));
+
+    // Then: the user reaches the resend state instead of a generic update error.
+    expect(response.headers.get("location")).toBe("https://app.test/en/reset-password?status=invalid");
+  });
+
+  it("redirects expired recovery callbacks to the localized reset state", async () => {
     // Given: an auth callback for an English destination with an expired code.
     authState.exchangeCodeForSession.mockResolvedValue({ error: new Error("expired") });
     const { GET } = await import("./callback/route");
@@ -131,8 +189,8 @@ describe("auth route handlers", () => {
       "https://app.test/auth/callback?code=expired&next=%2Fen%2Freset-password",
     ) as unknown as NextRequest);
 
-    // Then: the user returns to the localized auth error state.
-    expect(response.headers.get("location")).toBe("https://app.test/en?auth=callback_error");
+    // Then: the user sees the expired-link recovery state with a resend action.
+    expect(response.headers.get("location")).toBe("https://app.test/en/reset-password?status=invalid");
   });
 
   it("signs out to the submitted locale fallback", async () => {

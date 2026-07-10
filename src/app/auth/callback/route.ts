@@ -17,6 +17,10 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error !== null) {
+    if (redirectTo.endsWith("/reset-password")) {
+      return NextResponse.redirect(new URL(`${redirectTo}?status=invalid`, request.url));
+    }
+
     return NextResponse.redirect(new URL(`/${locale}?auth=callback_error`, request.url));
   }
 

@@ -20,6 +20,10 @@ export async function POST(request: NextRequest) {
   });
 
   if (error !== null) {
+    if (error.code === "invalid_credentials") {
+      return NextResponse.redirect(new URL(`/${credentials.value.locale}?auth=invalid_credentials`, request.url));
+    }
+
     return NextResponse.redirect(new URL(`/${credentials.value.locale}?auth=sign_in_error`, request.url));
   }
 

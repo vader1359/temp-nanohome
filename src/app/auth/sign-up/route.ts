@@ -10,7 +10,10 @@ export async function POST(request: NextRequest) {
   const credentials = parseSignUpForm(formData);
 
   if (!credentials.ok) {
-    return NextResponse.redirect(new URL(`/${locale}?auth=invalid_credentials`, request.url));
+    const error = credentials.error === "password_mismatch" || credentials.error === "terms_required"
+      ? credentials.error
+      : "sign_up_error";
+    return NextResponse.redirect(new URL(`/${locale}?auth=${error}`, request.url));
   }
 
   const supabase = await createClient();
@@ -33,5 +36,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${credentials.value.locale}?auth=sign_up_error`, request.url));
   }
 
-  return NextResponse.redirect(new URL(credentials.value.redirectTo, request.url));
+  return NextResponse.redirect(new URL(`/${credentials.value.locale}?auth=register_success`, request.url));
 }
