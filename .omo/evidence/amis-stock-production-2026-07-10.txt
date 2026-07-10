@@ -1,0 +1,33 @@
+AMIS stock production verification (2026-07-10)
+
+Scope
+- User approved additive production migration `20260710000002_add_variant_stock.sql` and one AMIS stock snapshot.
+- `variants.stock` is nullable numeric and receives AMIS `amount_summary` by exact unique SKU match only.
+- Existing `in_stock` remains unchanged.
+
+Migration
+- Applied production migration: `alter table public.variants add column if not exists stock numeric;`.
+- Read-only REST verification confirmed the `stock` column exists.
+
+Snapshot and reconciliation
+- First authorized snapshot finalized as partial after 127.221 seconds: 1,002 processed, 467 failed.
+- It exposed a local PostgREST pagination defect: only the first 1,000 variants were read, leaving 968 populated mappings.
+- Regression test covers a matching local variant after the first 1,000 rows.
+- The corrected completion snapshot finalized as partial after 174.263 seconds because one outbound fetch failed; it raised populated mappings to 2,084.
+- A single verified ID patch completed the one remaining mapped row without rerunning the cron.
+- Final read-only reconciliation: 2,085 expected unique exact AMIS/Supabase mappings, 2,085 populated, 0 missing, 0 mismatched.
+
+Code verification
+- `npx vitest run src/lib/amis/client.test.ts src/lib/remote-read-only.test.ts src/app/api/cron/amis-sync/route.test.ts src/app/api/cron/amis-sync/route-hardening.test.ts src/app/api/cron/amis-sync/route-stock.test.ts`
+  - PASS: 5 files, 65 tests.
+- `npx tsc --noEmit`
+  - PASS.
+- Targeted ESLint
+  - PASS.
+- Oracle review approved the local variant pagination fix before the completion snapshot.
+
+Safety
+- AMIS ledger is read-only through the exact allowlist.
+- Local writes use resolved variant IDs, not SKU predicates.
+- Remote-only ledger SKUs and duplicate local SKU mappings are skipped.
+- No secrets, full ledger rows, or customer data are recorded here.
