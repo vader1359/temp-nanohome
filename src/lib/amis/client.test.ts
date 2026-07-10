@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { fetchAmisStockLedger, type AmisClientConfig } from "@/lib/amis/client";
+import { numericValueSchema } from "@/lib/amis/schemas";
 
 const config: AmisClientConfig = {
   baseUrl: "https://amis.example.test",
@@ -10,6 +11,25 @@ const config: AmisClientConfig = {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("numericValueSchema", () => {
+  it("coerces finite numeric values and rejects non-finite values", () => {
+    // Given: AMIS sends numeric values as numbers or strings, including invalid values.
+    const validValues = [4, "9.5"];
+    const invalidValues = ["not-a-number", Number.NaN, Number.POSITIVE_INFINITY];
+
+    // When: the AMIS numeric boundary parser processes the values.
+    const parsedValues = validValues.map((value) => numericValueSchema.safeParse(value));
+    const rejectedValues = invalidValues.map((value) => numericValueSchema.safeParse(value));
+
+    // Then: finite inputs become numbers and invalid inputs fail validation.
+    expect(parsedValues).toEqual([
+      { success: true, data: 4 },
+      { success: true, data: 9.5 },
+    ]);
+    expect(rejectedValues.every((result) => !result.success)).toBe(true);
+  });
 });
 
 describe("fetchAmisStockLedger", () => {
