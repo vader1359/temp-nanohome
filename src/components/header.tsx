@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import {
   ChevronDown,
   Heart,
+  LogOut,
   Menu,
   Minus,
   Plus,
   ShoppingCart,
+  User,
   X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -16,6 +18,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCart, type CartItem } from "@/components/cart/cart-context";
 import { useWishlist, type WishlistItem } from "@/components/wishlist/wishlist-context";
+import { useAuthContext } from "@/components/auth/auth-provider";
 import { cn } from "@/lib/utils";
 
 export function Header() {
@@ -28,6 +31,7 @@ export function Header() {
   const [cartTab, setCartTab] = useState<CartSidebarTab>("cart");
   const { items, addItem, clearCart, getItemCount, removeItem, updateQuantity } = useCart();
   const { items: wishlistItems, clearWishlist, getItemCount: getWishlistCount, removeItem: removeWishlistItem } = useWishlist();
+  const { isAuthenticated, openAuth } = useAuthContext();
   const cartCount = getItemCount();
   const wishlistCount = getWishlistCount();
   const topLeft = ["brandFurniture", "brandLighting"] as const;
@@ -128,6 +132,11 @@ export function Header() {
   const openCart = () => {
     setCartTab("cart");
     setCartOpen(true);
+  };
+
+  const openLogin = () => {
+    setDrawerOpen(false);
+    openAuth("login");
   };
 
   useEffect(() => {
@@ -250,6 +259,19 @@ export function Header() {
                 {cartCount}
               </span>
             </button>
+            {isAuthenticated ? (
+              <form action="/auth/sign-out" method="POST">
+                <input type="hidden" name="locale" value={locale} />
+                <input type="hidden" name="redirectTo" value={`/${locale}`} />
+                <button aria-label={t("signOut")} type="submit">
+                  <LogOut className="size-5 stroke-[1.4]" />
+                </button>
+              </form>
+            ) : (
+              <button aria-label={t("account")} type="button" onClick={openLogin} data-auth-trigger>
+                <User className="size-5 stroke-[1.4]" />
+              </button>
+            )}
             {localeSwitcher}
           </div>
         </div>
@@ -262,6 +284,19 @@ export function Header() {
             {/* Icon bar + locale */}
             <div className="flex items-center justify-between border-b border-[#cfc9c0] pb-4">
               <div className="flex items-center gap-5 text-[#111]">
+                {isAuthenticated ? (
+                  <form action="/auth/sign-out" method="POST">
+                    <input type="hidden" name="locale" value={locale} />
+                    <input type="hidden" name="redirectTo" value={`/${locale}`} />
+                    <button aria-label={t("signOut")} type="submit">
+                      <LogOut className="size-5 stroke-[1.4]" />
+                    </button>
+                  </form>
+                ) : (
+                  <button aria-label={t("account")} type="button" onClick={openLogin} data-auth-trigger>
+                    <User className="size-5 stroke-[1.4]" />
+                  </button>
+                )}
                 <button aria-label="Wishlist" type="button" onClick={openWishlist} className="relative" data-wishlist-target>
                   <Heart className="size-5 stroke-[1.4]" />
                   {wishlistCount > 0 ? (
@@ -313,20 +348,21 @@ export function Header() {
           </div>
         </div>
       </div>
-      <CartSidebar
-        activeTab={cartTab}
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
-        onTabChange={setCartTab}
-        items={items}
-        onAddCartItem={addItem}
-        onClear={clearCart}
-        onRemove={removeItem}
-        onUpdateQuantity={updateQuantity}
-        wishlistItems={wishlistItems}
-        onClearWishlist={clearWishlist}
-        onRemoveWishlist={removeWishlistItem}
-      />
+      {cartOpen ? (
+        <CartSidebar
+          activeTab={cartTab}
+          onClose={() => setCartOpen(false)}
+          onTabChange={setCartTab}
+          items={items}
+          onAddCartItem={addItem}
+          onClear={clearCart}
+          onRemove={removeItem}
+          onUpdateQuantity={updateQuantity}
+          wishlistItems={wishlistItems}
+          onClearWishlist={clearWishlist}
+          onRemoveWishlist={removeWishlistItem}
+        />
+      ) : null}
     </header>
   );
 }
@@ -335,7 +371,6 @@ type CartSidebarTab = "wishlist" | "cart";
 
 function CartSidebar({
   activeTab,
-  open,
   onClose,
   onTabChange,
   items,
@@ -348,7 +383,6 @@ function CartSidebar({
   onRemoveWishlist,
 }: {
   activeTab: CartSidebarTab;
-  open: boolean;
   onClose: () => void;
   onTabChange: (tab: CartSidebarTab) => void;
   items: CartItem[];
@@ -415,9 +449,9 @@ function CartSidebar({
   };
 
   return (
-    <div className={cn("fixed inset-0 z-[9999] transition", open ? "pointer-events-auto" : "pointer-events-none")} aria-hidden={!open}>
-      <button type="button" aria-label="Đóng giỏ hàng" onClick={onClose} className={cn("absolute inset-0 bg-black/25 transition-opacity duration-300", open ? "opacity-100" : "opacity-0")} />
-      <aside role="dialog" aria-modal="true" aria-label="Giỏ hàng" className={cn("absolute right-0 top-0 flex h-dvh w-full max-w-[466px] flex-col overflow-hidden bg-white px-4 py-6 text-nh-ink shadow-[-18px_0_40px_rgba(0,0,0,0.12)] transition-transform duration-300 sm:px-6", open ? "translate-x-0" : "translate-x-full")}>
+    <div className="fixed inset-0 z-[9999] transition pointer-events-auto">
+      <button type="button" aria-label="Đóng giỏ hàng" onClick={onClose} className="absolute inset-0 bg-black/25 transition-opacity duration-300 opacity-100" />
+      <aside role="dialog" aria-modal="true" aria-label="Giỏ hàng" className="absolute right-0 top-0 flex h-dvh w-full max-w-[466px] flex-col overflow-hidden bg-white px-4 py-6 text-nh-ink shadow-[-18px_0_40px_rgba(0,0,0,0.12)] transition-transform duration-300 sm:px-6 translate-x-0">
         <div className="flex h-full min-h-0 flex-col">
           <button type="button" aria-label="Đóng giỏ hàng" onClick={onClose} className="ml-auto flex size-6 items-center justify-center text-nh-ink transition-opacity hover:opacity-70">
             <X className="size-6 stroke-[1.4]" />
