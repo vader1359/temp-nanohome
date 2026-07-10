@@ -65,7 +65,7 @@ export function LoginForm({ onSwitchView, redirectTo, authError }: AuthFormProps
             <button
               type="button"
               onClick={() => onSwitchView("forgot")}
-              className="text-xs uppercase tracking-wider text-nh-accent hover:text-nh-ink transition-colors"
+              className="flex min-h-11 items-center px-3 text-xs uppercase tracking-wider text-nh-accent hover:text-nh-ink transition-colors"
             >
               {t("login.forgotPassword")}
             </button>
