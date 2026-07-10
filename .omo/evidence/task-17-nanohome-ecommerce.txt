@@ -106,3 +106,11 @@ Verifier blocker LOC audit
 - eslint.config.mjs: 39 pure LOC.
 - src/lib/amis/sync.ts: 174 pure LOC.
 - .omo/evidence/task-17-nanohome-ecommerce.txt: 64 pure LOC before this append.
+
+AMIS hang remediation and live verification (2026-07-10)
+- Root cause: AMIS returns fixed 100-record pages and the catalog has more than 20,000 products. The original client scanned until a short page and applied all variant PATCH requests serially, exceeding the cron response budget and leaving an in-progress sync log.
+- Fix: client stops after the first full page with no product newer than the stored watermark; sync applies updates in sequential batches of 10 concurrent requests; an unexpected exception finalizes the running log as failed.
+- Cursor safety: a partial run keeps its prior watermark, including null on first run, so unmatched/failed rows and equal-timestamp peers are retried. An all-success run records the newest applied source timestamp.
+- Regression coverage: route hardening now covers full-old-page early stop, bounded ten-way update concurrency, exception log finalization, partial watermark retention, first-run null watermark retention, and successful high-watermark selection.
+- Commands: `npx vitest run src/app/api/cron/amis-sync/route.test.ts src/app/api/cron/amis-sync/route-hardening.test.ts src/lib/remote-read-only.test.ts` PASS (3 files, 52 tests); `npx tsc --noEmit` PASS; targeted ESLint PASS.
+- Live QA: after final Oracle approval, one authorized POST to the existing local cron route returned HTTP 200 in 11.076 seconds with `{status:"partial",itemsProcessed:34,itemsFailed:463,watermark:"2026-06-22T22:07:23+00:00"}`. The partial state identifies unmatched AMIS SKUs; the sync finalized rather than remaining `running`. No credentials were logged.
