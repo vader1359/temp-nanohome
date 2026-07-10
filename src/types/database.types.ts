@@ -856,6 +856,7 @@ export type Database = {
           slug_vi: string | null
           source_created_at: string | null
           source_updated_at: string | null
+          stock: number | null
           test_sku: string | null
           updated_at: string
           validated: boolean
@@ -968,6 +969,7 @@ export type Database = {
           slug_vi?: string | null
           source_created_at?: string | null
           source_updated_at?: string | null
+          stock?: number | null
           test_sku?: string | null
           updated_at?: string
           validated?: boolean
@@ -1080,6 +1082,7 @@ export type Database = {
           slug_vi?: string | null
           source_created_at?: string | null
           source_updated_at?: string | null
+          stock?: number | null
           test_sku?: string | null
           updated_at?: string
           validated?: boolean
