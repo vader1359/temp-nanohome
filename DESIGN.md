@@ -134,6 +134,33 @@ All spacing derives from a base of **4px**.
 - **Accessibility**: modal dialog semantics, labelled close control, focus return to trigger, keyboard escape close, and no server error copy that reveals whether email or password failed.
 - **Motion**: backdrop opacity and panel transform only, `300ms ease-in-out`, with reduced-motion support.
 
+### Global Navigation
+
+- **Reference contract**: a crisp white editorial surface with low-contrast `rgba(17, 17, 17, 0.14)` separators, `#111111` primary ink, `#444444` secondary ink, and restrained warm-brown active states near `#5F5954`.
+- **Structure**: desktop uses a compact meta row above the primary category row; the wordmark remains centered while utility controls sit at the outer edge. The desktop header remains within the existing `150px` site allocation, with a `~79px` visual primary navigation band. Mobile keeps a centered wordmark, menu and search controls on the left, and cart/account utilities on the right.
+- **Typography**: meta links use `12px` tracked labels; primary navigation uses `14px` tracked labels. Preserve locale-provided labels; do not import reference-site copy or replace Korean content.
+- **Search**: use the installed Lucide `Search` icon at `18px`, `strokeWidth={1.5}`. It is an accessible link labelled with the translated `Header.search` value and routes to `/{locale}/products`, where the existing catalog search input handles queries. Do not create a second inline search surface.
+- **States**: navigation and utility links use `150ms ease-out` color transitions plus a visible `:focus-visible` outline. Icons do not receive decorative animation.
+- **Accessibility**: utility controls must retain translated accessible names; desktop and mobile affordances are both keyboard reachable.
+
+### Global Footer
+
+- **Reference contract**: use a charcoal `#1F1F1F` surface, low-contrast dividers, and soft neutral copy. The footer is editorial rather than card-based: no shadows, no boxed link lists.
+- **Structure**: desktop presents four navigation columns alongside showroom and contact information; a full-width divider separates the lower contact row. Mobile stacks the same translated columns and preserves the showroom disclosure behavior.
+- **Typography**: headings are small, tracked labels; links and contact details use readable body-small text with muted default color and brighter hover/focus state.
+- **Spacing**: use the base 4px scale with `48px` mobile and `64px` desktop vertical padding; use `24px` or larger grid gaps so Korean labels remain legible without collision.
+- **Accessibility**: preserve semantic footer navigation, visible focus styling, existing translated labels, showroom buttons, and disclosure semantics across all locales.
+
+### Checkout
+
+- **Reference contract**: local-cart checkout uses a calm, two-column editorial composition on desktop: shipping/payment details in the primary column and the order summary in a bordered secondary column. It stacks into one reading order on mobile, placing the sticky order CTA after the agreement controls.
+- **Structure**: include a shipping form, ZaloPay and VNPAY radio choices, coupon field, order summary, agreement controls, and a clear primary submission action. The checkout must use the current locale’s cart and preserve its Korean, Vietnamese, and English labels.
+- **Spacing & surfaces**: use `--nh-surface-warm` for the page, white content panels, `--nh-border` dividers, and `24px` desktop / `16px` mobile internal gaps. Do not introduce shadows or reference-site assets.
+- **States**: support hydrated cart, empty cart, validation error, submission pending, server failure, and successful order. Cart lines and completed form values remain visible after an error; clear the local cart only after a confirmed success.
+- **Responsive**: validate at 375px, 768px, and 1280px. The summary remains in normal document flow below `lg`; the desktop CTA may remain sticky within its summary column without obscuring the footer or agreement controls.
+- **Accessibility**: use labelled fields, required-field error text, native radio/checkbox controls, an `aria-live` status for submission feedback, visible focus states, and a disabled duplicate-submit state. Reduced motion uses no non-essential animation.
+- **Integration constraint**: submit only through the existing legacy `/api/cart/submit` contract. Payment, coupon, and agreement UI do not silently expand that API payload unless the endpoint already supports them.
+
 ## 6. Motion & Interaction
 
 ### Timing
