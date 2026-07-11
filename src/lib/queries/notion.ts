@@ -21,7 +21,13 @@ export function localizedRawString(raw: Json, englishKey: string, vietnameseKey:
 
   const englishValue = rawString(record, englishKey);
   const vietnameseValue = rawString(record, vietnameseKey);
-  return locale === "vi" ? vietnameseValue ?? englishValue : englishValue ?? vietnameseValue;
+  const koreanValue = rawString(record, `${englishKey}__ko`) ?? rawString(record, `${englishKey}_ko`);
+
+  if (locale === "ko") {
+    return koreanValue ?? vietnameseValue ?? englishValue;
+  }
+
+  return locale === "vi" ? vietnameseValue ?? englishValue ?? koreanValue : englishValue ?? vietnameseValue ?? koreanValue;
 }
 
 export function localizedNewsDescription(raw: Json, fallback: string | null, locale: string): string | null {

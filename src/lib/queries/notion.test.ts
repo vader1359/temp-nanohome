@@ -23,10 +23,28 @@ describe("localizedRawString", () => {
     expect(value).toBe("Tiếng Việt");
   });
 
-  it("returns English raw text for non-Vietnamese routes", () => {
+  it("returns English raw text for English routes", () => {
     const value = localizedRawString({ description: "English", description__vi: "Tiếng Việt" }, "description", "description__vi", "en");
 
     expect(value).toBe("English");
+  });
+
+  it("prefers Korean raw text then falls back to Vietnamese for Korean routes", () => {
+    const koreanValue = localizedRawString(
+      { description: "English", description__ko: "한국어", description__vi: "Tiếng Việt" },
+      "description",
+      "description__vi",
+      "ko",
+    );
+    const fallbackValue = localizedRawString(
+      { description: "English", description__vi: "Tiếng Việt" },
+      "description",
+      "description__vi",
+      "ko",
+    );
+
+    expect(koreanValue).toBe("한국어");
+    expect(fallbackValue).toBe("Tiếng Việt");
   });
 
   it("supports meta description i18n keys", () => {
