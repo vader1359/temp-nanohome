@@ -159,7 +159,7 @@ describe("searchProducts", () => {
     // Then: the backend contract includes validated-only visibility filters, PGroonga, variant fields, ranking order, and range.
     expect(state.tableCalls).toEqual(["variants", "products"]);
     expect(state.chain.select).toHaveBeenCalledWith(
-      "*, variants(name,sku,finish,finish_vi,validated,approved)"
+      "*, variants(name,name_ko,sku,finish,finish_vi,finish_ko,validated,approved)"
     );
     expect(state.eqCalls).toContainEqual(["validated", true]);
     expect(state.eqCalls).not.toContainEqual(["approved", true]);
@@ -179,6 +179,21 @@ describe("searchProducts", () => {
     ]);
     expect(state.rangeCalls).toContainEqual([10, 19]);
     expect(rows).toEqual([{ id: "product" }]);
+  });
+
+  it("prioritizes Korean fields without PGroonga Korean operands", async () => {
+    // Given: a Korean search term.
+    state.queryResults.push({ data: [], error: null }, { data: [{ id: "product" }], error: null });
+
+    // When: Korean product search runs.
+    await searchProducts("의자", "ko");
+
+    // Then: Korean search remains safe until Korean PGroonga indexes exist.
+    expect(state.orCalls.join(",")).not.toContain("_ko.&@~");
+    expect(state.orCalls[0]).toContain("name_ko.ilike.*의자*");
+    expect(state.orCalls[0]).toContain("finish_ko.ilike.*의자*");
+    expect(state.orCalls[1]).toContain("description_ko.ilike.*의자*");
+    expect(state.orderCalls[0]).toEqual(["name", { ascending: true, nullsFirst: false }]);
   });
 
   it("prioritizes English fields while allowing cross-locale matches", async () => {

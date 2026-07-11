@@ -3,23 +3,26 @@ import type { Product } from "@/types/db";
 
 import { productRange, type ProductListOptions } from "./products";
 
-export type ProductSearchLocale = "en" | "vi";
+export type ProductSearchLocale = "en" | "vi" | "ko";
 
-const searchSelect = "*, variants(name,sku,finish,finish_vi,validated,approved)";
+const searchSelect = "*, variants(name,name_ko,sku,finish,finish_vi,finish_ko,validated,approved)";
 
 const localeProductSearchColumns = {
   vi: ["name_vi", "description_vi", "name", "description"],
   en: ["name", "description", "name_vi", "description_vi"],
+  ko: ["name_ko", "description_ko", "name", "description", "name_vi", "description_vi"],
 } satisfies Record<ProductSearchLocale, readonly string[]>;
 
 const localeVariantSearchColumns = {
   vi: ["finish_vi", "name", "sku", "finish"],
   en: ["name", "sku", "finish", "finish_vi"],
+  ko: ["name_ko", "finish_ko", "name", "sku", "finish", "finish_vi"],
 } satisfies Record<ProductSearchLocale, readonly string[]>;
 
 const localeOrderColumns = {
   vi: "name_vi",
   en: "name",
+  ko: "name",
 } satisfies Record<ProductSearchLocale, "name" | "name_vi">;
 
 const postgrestReservedValueCharacters = /[",.:*()\\]/u;
@@ -37,8 +40,15 @@ function pgroongaOrFilter(columns: readonly string[], searchTerm: string): strin
   return columns.map((column) => `${column}.&@~.${filterValue}`).join(",");
 }
 
+function ilikeOrFilter(columns: readonly string[], searchTerm: string): string {
+  const filterValue = postgrestFilterValue(searchTerm);
+  return columns.map((column) => `${column}.ilike.*${filterValue}*`).join(",");
+}
+
 function productOrFilter(searchTerm: string, locale: ProductSearchLocale, variantProductIds: readonly string[]): string {
-  const productFilter = pgroongaOrFilter(localeProductSearchColumns[locale], searchTerm);
+  const productFilter = locale === "ko"
+    ? ilikeOrFilter(localeProductSearchColumns.ko, searchTerm)
+    : pgroongaOrFilter(localeProductSearchColumns[locale], searchTerm);
   if (variantProductIds.length === 0) {
     return productFilter;
   }
@@ -62,7 +72,7 @@ export async function searchProducts(
     .from("variants")
     .select("product_id")
     .eq("validated", true)
-    .or(pgroongaOrFilter(localeVariantSearchColumns[locale], searchTerm))
+    .or(locale === "ko" ? ilikeOrFilter(localeVariantSearchColumns.ko, searchTerm) : pgroongaOrFilter(localeVariantSearchColumns[locale], searchTerm))
     .not("product_id", "is", null);
 
   if (variantError !== null) {
