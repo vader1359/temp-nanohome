@@ -64,10 +64,10 @@ const cardPositionClasses: Record<Hotspot["cardPlacement"], string> = {
 };
 
 const heroImages = [
-  "/images/home/hero/hero-1.jpg",
-  "/images/home/hero/hero-2.jpg",
-  "/images/home/hero/hero-3.jpg",
-];
+  "/images/home/hero/hero-1.webp",
+  "/images/home/hero/hero-2.webp",
+  "/images/home/hero/hero-3.webp",
+] as const;
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -107,11 +107,15 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
 
   return (
     <section className="relative min-h-[280px] aspect-[3/2] w-full overflow-hidden lg:aspect-auto lg:h-[665px]">
-      {/* Background layers */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${heroImages[activeIndex]})` }}
+      {/* The active slide remains the only decoded hero image. */}
+      <Image
+        src={heroImages[activeIndex]}
+        alt=""
         aria-hidden="true"
+        fill
+        preload={activeIndex === 0}
+        sizes="100vw"
+        className="object-cover object-center"
       />
       <div className="absolute inset-0 bg-linear-to-r from-black/55 via-black/25 to-black/20" />
       <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/35" />
