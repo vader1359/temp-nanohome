@@ -50,6 +50,7 @@ export const supabaseCheckoutFetch: typeof fetch = async (input, init) => {
 };
 
 const AMIS_SYNC_SUPABASE_WRITES = new Map<string, ReadonlySet<string>>([
+  ["/rest/v1/rpc/apply_amis_inventory_sync", new Set(["POST"])],
   ["/rest/v1/amis_sync_log", new Set(["POST", "PATCH"])],
   ["/rest/v1/variants", new Set(["PATCH"])],
 ]);
@@ -68,17 +69,25 @@ export const supabaseAmisSyncFetch: typeof fetch = async (input, init) => {
   return fetch(input, init);
 };
 
+const AMIS_CRM_ORIGIN = "https://crmconnect.misa.vn";
+
 const AMIS_ALLOWED_REQUESTS = new Map<string, ReadonlySet<string>>([
   ["/api/v2/Account", new Set(["POST"])],
   ["/api/v2/Products", new Set(["GET", "HEAD"])],
   ["/api/v2/Stocks/product_ledger", new Set(["GET", "HEAD"])],
+  ["/api/v2/SaleOrders", new Set(["GET", "HEAD"])],
 ]);
 
 export function assertAmisRequestAllowed(url: URL, method: string): void {
   const normalizedMethod = method.toUpperCase();
   const allowedMethods = AMIS_ALLOWED_REQUESTS.get(normalizeAmisPathname(url.pathname));
 
-  if (allowedMethods?.has(normalizedMethod) !== true) {
+  if (
+    url.origin !== AMIS_CRM_ORIGIN
+    || url.username.length > 0
+    || url.password.length > 0
+    || allowedMethods?.has(normalizedMethod) !== true
+  ) {
     throw new RemoteWriteBlockedError("AMIS", normalizedMethod, url.toString());
   }
 }
