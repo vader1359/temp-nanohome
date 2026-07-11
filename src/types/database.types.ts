@@ -53,6 +53,7 @@ export type Database = {
           approved: boolean
           created_at: string
           description: string | null
+          description_ko: string | null
           description_vi: string | null
           id: string
           logo_url: string | null
@@ -60,6 +61,7 @@ export type Database = {
           meta_title: string | null
           name: string
           origin: string | null
+          origin_ko: string | null
           origin_vi: string | null
           raw: Json
           slug: string | null
@@ -71,6 +73,7 @@ export type Database = {
           approved?: boolean
           created_at?: string
           description?: string | null
+          description_ko?: string | null
           description_vi?: string | null
           id?: string
           logo_url?: string | null
@@ -78,6 +81,7 @@ export type Database = {
           meta_title?: string | null
           name: string
           origin?: string | null
+          origin_ko?: string | null
           origin_vi?: string | null
           raw?: Json
           slug?: string | null
@@ -89,6 +93,7 @@ export type Database = {
           approved?: boolean
           created_at?: string
           description?: string | null
+          description_ko?: string | null
           description_vi?: string | null
           id?: string
           logo_url?: string | null
@@ -96,6 +101,7 @@ export type Database = {
           meta_title?: string | null
           name?: string
           origin?: string | null
+          origin_ko?: string | null
           origin_vi?: string | null
           raw?: Json
           slug?: string | null
@@ -183,6 +189,7 @@ export type Database = {
           file_urls: string[]
           id: string
           origin: string | null
+          origin_ko: string | null
           origin_vi: string | null
           raw: Json
           updated_at: string
@@ -196,6 +203,7 @@ export type Database = {
           file_urls?: string[]
           id?: string
           origin?: string | null
+          origin_ko?: string | null
           origin_vi?: string | null
           raw?: Json
           updated_at?: string
@@ -209,6 +217,7 @@ export type Database = {
           file_urls?: string[]
           id?: string
           origin?: string | null
+          origin_ko?: string | null
           origin_vi?: string | null
           raw?: Json
           updated_at?: string
@@ -232,6 +241,7 @@ export type Database = {
           meta_description: string | null
           meta_title: string | null
           name: string
+          name_ko: string | null
           name_vi: string | null
           parent_category: string | null
           parent_id: string | null
@@ -248,6 +258,7 @@ export type Database = {
           meta_description?: string | null
           meta_title?: string | null
           name: string
+          name_ko?: string | null
           name_vi?: string | null
           parent_category?: string | null
           parent_id?: string | null
@@ -264,6 +275,7 @@ export type Database = {
           meta_description?: string | null
           meta_title?: string | null
           name?: string
+          name_ko?: string | null
           name_vi?: string | null
           parent_category?: string | null
           parent_id?: string | null
@@ -343,6 +355,7 @@ export type Database = {
           slug: string | null
           source_created_at: string | null
           title: string
+          title_ko: string | null
           title_vi: string | null
           updated_at: string
           validated: boolean
@@ -362,6 +375,7 @@ export type Database = {
           slug?: string | null
           source_created_at?: string | null
           title: string
+          title_ko?: string | null
           title_vi?: string | null
           updated_at?: string
           validated?: boolean
@@ -381,6 +395,7 @@ export type Database = {
           slug?: string | null
           source_created_at?: string | null
           title?: string
+          title_ko?: string | null
           title_vi?: string | null
           updated_at?: string
           validated?: boolean
@@ -625,18 +640,21 @@ export type Database = {
           category_id: string | null
           created_at: string
           description: string | null
+          description_ko: string | null
           description_vi: string | null
           designer_id: string | null
           id: string
           media_image_url: string | null
           media_video_url: string | null
           name: string
+          name_ko: string | null
           name_vi: string | null
           priority: number | null
           product_line: string | null
           raw: Json
           size: string | null
           slug: string | null
+          slug_ko: string | null
           slug_vi: string | null
           source_created_at: string | null
           updated_at: string
@@ -649,18 +667,21 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           description?: string | null
+          description_ko?: string | null
           description_vi?: string | null
           designer_id?: string | null
           id?: string
           media_image_url?: string | null
           media_video_url?: string | null
           name: string
+          name_ko?: string | null
           name_vi?: string | null
           priority?: number | null
           product_line?: string | null
           raw?: Json
           size?: string | null
           slug?: string | null
+          slug_ko?: string | null
           slug_vi?: string | null
           source_created_at?: string | null
           updated_at?: string
@@ -673,18 +694,21 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           description?: string | null
+          description_ko?: string | null
           description_vi?: string | null
           designer_id?: string | null
           id?: string
           media_image_url?: string | null
           media_video_url?: string | null
           name?: string
+          name_ko?: string | null
           name_vi?: string | null
           priority?: number | null
           product_line?: string | null
           raw?: Json
           size?: string | null
           slug?: string | null
+          slug_ko?: string | null
           slug_vi?: string | null
           source_created_at?: string | null
           updated_at?: string
@@ -757,6 +781,7 @@ export type Database = {
           brand_logo_size: number | null
           brand_name_denorm: string | null
           brand_origin: string | null
+          brand_origin_ko: string | null
           brand_origin_vi: string | null
           category_id: string | null
           cldr_id_media_closeup: string | null
@@ -768,27 +793,34 @@ export type Database = {
           cldr_id_packshot: string | null
           cldr_media_closeup: string | null
           cldr_media_closeup_alt: string | null
+          cldr_media_closeup_alt_ko: string | null
           cldr_media_closeup_alt_vi: string | null
           cldr_media_illustration: string | null
           cldr_media_info_as_image: string | null
           cldr_media_lifestyle_1: string | null
           cldr_media_lifestyle_1_alt: string | null
+          cldr_media_lifestyle_1_alt_ko: string | null
           cldr_media_lifestyle_1_alt_vi: string | null
           cldr_media_lifestyle_2: string | null
           cldr_media_lifestyle_2_alt: string | null
+          cldr_media_lifestyle_2_alt_ko: string | null
           cldr_media_lifestyle_2_alt_vi: string | null
           cldr_media_long: string | null
           cldr_media_long_alt: string | null
+          cldr_media_long_alt_ko: string | null
           cldr_media_long_alt_vi: string | null
           cldr_packshot_alt: string | null
+          cldr_packshot_alt_ko: string | null
           cldr_packshot_alt_vi: string | null
           cloudinary_ids: string[]
           compare_at_price: number | null
           created_at: string
           description: string | null
+          description_ko: string | null
           description_vi: string | null
           designer_cldr_id_portrait: string | null
           designer_description: string | null
+          designer_description_ko: string | null
           designer_description_vi: string | null
           designer_id: string | null
           designer_name: string | null
@@ -807,9 +839,11 @@ export type Database = {
           filter_price_gift: string | null
           filter_product_line: string | null
           filter_room: string[] | null
+          filter_room_ko: string[] | null
           filter_room_vi: string[] | null
           filter_sub_category: string | null
           finish: string | null
+          finish_ko: string | null
           finish_vi: string | null
           gallery_urls: string[]
           id: string
@@ -829,11 +863,14 @@ export type Database = {
           media_lifestyle_2: string | null
           media_long: string | null
           meta_description: string | null
+          meta_description_ko: string | null
           meta_description_vi: string | null
           meta_title: string | null
+          meta_title_ko: string | null
           meta_title_vi: string | null
           missed_sku: boolean | null
           name: string
+          name_ko: string | null
           name_vi: string | null
           news_id: string | null
           on_sale: boolean
@@ -849,10 +886,12 @@ export type Database = {
           same_designer_variant_ids: string[] | null
           same_sub_category_variant_ids: string[] | null
           short_name: string | null
+          short_name_ko: string | null
           short_name_vi: string | null
           size: string | null
           sku: string | null
           slug: string | null
+          slug_ko: string | null
           slug_vi: string | null
           source_created_at: string | null
           source_updated_at: string | null
@@ -870,6 +909,7 @@ export type Database = {
           brand_logo_size?: number | null
           brand_name_denorm?: string | null
           brand_origin?: string | null
+          brand_origin_ko?: string | null
           brand_origin_vi?: string | null
           category_id?: string | null
           cldr_id_media_closeup?: string | null
@@ -881,27 +921,34 @@ export type Database = {
           cldr_id_packshot?: string | null
           cldr_media_closeup?: string | null
           cldr_media_closeup_alt?: string | null
+          cldr_media_closeup_alt_ko?: string | null
           cldr_media_closeup_alt_vi?: string | null
           cldr_media_illustration?: string | null
           cldr_media_info_as_image?: string | null
           cldr_media_lifestyle_1?: string | null
           cldr_media_lifestyle_1_alt?: string | null
+          cldr_media_lifestyle_1_alt_ko?: string | null
           cldr_media_lifestyle_1_alt_vi?: string | null
           cldr_media_lifestyle_2?: string | null
           cldr_media_lifestyle_2_alt?: string | null
+          cldr_media_lifestyle_2_alt_ko?: string | null
           cldr_media_lifestyle_2_alt_vi?: string | null
           cldr_media_long?: string | null
           cldr_media_long_alt?: string | null
+          cldr_media_long_alt_ko?: string | null
           cldr_media_long_alt_vi?: string | null
           cldr_packshot_alt?: string | null
+          cldr_packshot_alt_ko?: string | null
           cldr_packshot_alt_vi?: string | null
           cloudinary_ids?: string[]
           compare_at_price?: number | null
           created_at?: string
           description?: string | null
+          description_ko?: string | null
           description_vi?: string | null
           designer_cldr_id_portrait?: string | null
           designer_description?: string | null
+          designer_description_ko?: string | null
           designer_description_vi?: string | null
           designer_id?: string | null
           designer_name?: string | null
@@ -920,9 +967,11 @@ export type Database = {
           filter_price_gift?: string | null
           filter_product_line?: string | null
           filter_room?: string[] | null
+          filter_room_ko?: string[] | null
           filter_room_vi?: string[] | null
           filter_sub_category?: string | null
           finish?: string | null
+          finish_ko?: string | null
           finish_vi?: string | null
           gallery_urls?: string[]
           id?: string
@@ -942,11 +991,14 @@ export type Database = {
           media_lifestyle_2?: string | null
           media_long?: string | null
           meta_description?: string | null
+          meta_description_ko?: string | null
           meta_description_vi?: string | null
           meta_title?: string | null
+          meta_title_ko?: string | null
           meta_title_vi?: string | null
           missed_sku?: boolean | null
           name: string
+          name_ko?: string | null
           name_vi?: string | null
           news_id?: string | null
           on_sale?: boolean
@@ -962,10 +1014,12 @@ export type Database = {
           same_designer_variant_ids?: string[] | null
           same_sub_category_variant_ids?: string[] | null
           short_name?: string | null
+          short_name_ko?: string | null
           short_name_vi?: string | null
           size?: string | null
           sku?: string | null
           slug?: string | null
+          slug_ko?: string | null
           slug_vi?: string | null
           source_created_at?: string | null
           source_updated_at?: string | null
@@ -983,6 +1037,7 @@ export type Database = {
           brand_logo_size?: number | null
           brand_name_denorm?: string | null
           brand_origin?: string | null
+          brand_origin_ko?: string | null
           brand_origin_vi?: string | null
           category_id?: string | null
           cldr_id_media_closeup?: string | null
@@ -994,27 +1049,34 @@ export type Database = {
           cldr_id_packshot?: string | null
           cldr_media_closeup?: string | null
           cldr_media_closeup_alt?: string | null
+          cldr_media_closeup_alt_ko?: string | null
           cldr_media_closeup_alt_vi?: string | null
           cldr_media_illustration?: string | null
           cldr_media_info_as_image?: string | null
           cldr_media_lifestyle_1?: string | null
           cldr_media_lifestyle_1_alt?: string | null
+          cldr_media_lifestyle_1_alt_ko?: string | null
           cldr_media_lifestyle_1_alt_vi?: string | null
           cldr_media_lifestyle_2?: string | null
           cldr_media_lifestyle_2_alt?: string | null
+          cldr_media_lifestyle_2_alt_ko?: string | null
           cldr_media_lifestyle_2_alt_vi?: string | null
           cldr_media_long?: string | null
           cldr_media_long_alt?: string | null
+          cldr_media_long_alt_ko?: string | null
           cldr_media_long_alt_vi?: string | null
           cldr_packshot_alt?: string | null
+          cldr_packshot_alt_ko?: string | null
           cldr_packshot_alt_vi?: string | null
           cloudinary_ids?: string[]
           compare_at_price?: number | null
           created_at?: string
           description?: string | null
+          description_ko?: string | null
           description_vi?: string | null
           designer_cldr_id_portrait?: string | null
           designer_description?: string | null
+          designer_description_ko?: string | null
           designer_description_vi?: string | null
           designer_id?: string | null
           designer_name?: string | null
@@ -1033,9 +1095,11 @@ export type Database = {
           filter_price_gift?: string | null
           filter_product_line?: string | null
           filter_room?: string[] | null
+          filter_room_ko?: string[] | null
           filter_room_vi?: string[] | null
           filter_sub_category?: string | null
           finish?: string | null
+          finish_ko?: string | null
           finish_vi?: string | null
           gallery_urls?: string[]
           id?: string
@@ -1055,11 +1119,14 @@ export type Database = {
           media_lifestyle_2?: string | null
           media_long?: string | null
           meta_description?: string | null
+          meta_description_ko?: string | null
           meta_description_vi?: string | null
           meta_title?: string | null
+          meta_title_ko?: string | null
           meta_title_vi?: string | null
           missed_sku?: boolean | null
           name?: string
+          name_ko?: string | null
           name_vi?: string | null
           news_id?: string | null
           on_sale?: boolean
@@ -1075,10 +1142,12 @@ export type Database = {
           same_designer_variant_ids?: string[] | null
           same_sub_category_variant_ids?: string[] | null
           short_name?: string | null
+          short_name_ko?: string | null
           short_name_vi?: string | null
           size?: string | null
           sku?: string | null
           slug?: string | null
+          slug_ko?: string | null
           slug_vi?: string | null
           source_created_at?: string | null
           source_updated_at?: string | null
@@ -1138,6 +1207,25 @@ export type Database = {
           order_id: string
           order_number: string
         }[]
+      }
+      apply_korean_backfill_chunk: {
+        Args: { p_run_id: string; p_updates: Json }
+        Returns: {
+          input_ordinal: number
+          outcome: string
+          target_column: string
+          target_id: string
+          target_table: string
+        }[]
+      }
+      finish_korean_backfill_run: {
+        Args: {
+          p_applied_count: number
+          p_missing_count: number
+          p_run_id: string
+          p_skipped_count: number
+        }
+        Returns: undefined
       }
       pgroonga_command:
         | { Args: { groongacommand: string }; Returns: string }
@@ -1564,6 +1652,174 @@ export type Database = {
       pgroonga_wal_truncate:
         | { Args: never; Returns: number }
         | { Args: { indexname: unknown }; Returns: number }
+      search_variant_products_fuzzy: {
+        Args: {
+          brand_filters?: string[]
+          category_filters?: string[]
+          category_id_filter?: string
+          exclude_variant_id?: string
+          result_limit?: number
+          result_offset?: number
+          room_filters?: string[]
+          search_query: string
+          sort_key?: string
+          status_filter?: string
+          sub_category_filters?: string[]
+        }
+        Returns: {
+          airtable_id: string | null
+          approved: boolean
+          brand_cldr_id_logo: string | null
+          brand_cldr_logo: string | null
+          brand_id: string | null
+          brand_logo_size: number | null
+          brand_name_denorm: string | null
+          brand_origin: string | null
+          brand_origin_ko: string | null
+          brand_origin_vi: string | null
+          category_id: string | null
+          cldr_id_media_closeup: string | null
+          cldr_id_media_illustration: string | null
+          cldr_id_media_info_as_image: string | null
+          cldr_id_media_lifestyle_1: string | null
+          cldr_id_media_lifestyle_2: string | null
+          cldr_id_media_long: string | null
+          cldr_id_packshot: string | null
+          cldr_media_closeup: string | null
+          cldr_media_closeup_alt: string | null
+          cldr_media_closeup_alt_ko: string | null
+          cldr_media_closeup_alt_vi: string | null
+          cldr_media_illustration: string | null
+          cldr_media_info_as_image: string | null
+          cldr_media_lifestyle_1: string | null
+          cldr_media_lifestyle_1_alt: string | null
+          cldr_media_lifestyle_1_alt_ko: string | null
+          cldr_media_lifestyle_1_alt_vi: string | null
+          cldr_media_lifestyle_2: string | null
+          cldr_media_lifestyle_2_alt: string | null
+          cldr_media_lifestyle_2_alt_ko: string | null
+          cldr_media_lifestyle_2_alt_vi: string | null
+          cldr_media_long: string | null
+          cldr_media_long_alt: string | null
+          cldr_media_long_alt_ko: string | null
+          cldr_media_long_alt_vi: string | null
+          cldr_packshot_alt: string | null
+          cldr_packshot_alt_ko: string | null
+          cldr_packshot_alt_vi: string | null
+          cloudinary_ids: string[]
+          compare_at_price: number | null
+          created_at: string
+          description: string | null
+          description_ko: string | null
+          description_vi: string | null
+          designer_cldr_id_portrait: string | null
+          designer_description: string | null
+          designer_description_ko: string | null
+          designer_description_vi: string | null
+          designer_id: string | null
+          designer_name: string | null
+          discount_percent: number | null
+          feature_text: string | null
+          filter_brand: string | null
+          filter_category: string | null
+          filter_collection_art: boolean | null
+          filter_collection_balcony: boolean | null
+          filter_collection_jaime: boolean | null
+          filter_collection_ph: boolean | null
+          filter_collection_pk: boolean | null
+          filter_is_gifting_ideas: boolean | null
+          filter_is_new_arrival: boolean | null
+          filter_price: string | null
+          filter_price_gift: string | null
+          filter_product_line: string | null
+          filter_room: string[] | null
+          filter_room_ko: string[] | null
+          filter_room_vi: string[] | null
+          filter_sub_category: string | null
+          finish: string | null
+          finish_ko: string | null
+          finish_vi: string | null
+          gallery_urls: string[]
+          id: string
+          in_stock: boolean
+          is_children_day_sale: boolean | null
+          is_clearance_sale: boolean | null
+          is_clearance_sale_bak: boolean | null
+          is_knoll_preorder: boolean | null
+          is_new: boolean | null
+          is_stylist_pick: boolean | null
+          is_usm_sale: boolean | null
+          is_weird: boolean | null
+          is_yes26_left: boolean | null
+          media_closeup: string | null
+          media_info_as_image: string | null
+          media_lifestyle_1: string | null
+          media_lifestyle_2: string | null
+          media_long: string | null
+          meta_description: string | null
+          meta_description_ko: string | null
+          meta_description_vi: string | null
+          meta_title: string | null
+          meta_title_ko: string | null
+          meta_title_vi: string | null
+          missed_sku: boolean | null
+          name: string
+          name_ko: string | null
+          name_vi: string | null
+          news_id: string | null
+          on_sale: boolean
+          packshot_size: number | null
+          packshot_url: string | null
+          price: number | null
+          priority: number | null
+          product_id: string | null
+          product_line: string | null
+          product_name_denorm: string | null
+          raw: Json
+          same_brand_variant_ids: string[] | null
+          same_designer_variant_ids: string[] | null
+          same_sub_category_variant_ids: string[] | null
+          short_name: string | null
+          short_name_ko: string | null
+          short_name_vi: string | null
+          size: string | null
+          sku: string | null
+          slug: string | null
+          slug_ko: string | null
+          slug_vi: string | null
+          source_created_at: string | null
+          source_updated_at: string | null
+          stock: number | null
+          test_sku: string | null
+          updated_at: string
+          validated: boolean
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "variants"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      search_variant_products_fuzzy_count: {
+        Args: {
+          brand_filters?: string[]
+          category_filters?: string[]
+          category_id_filter?: string
+          exclude_variant_id?: string
+          room_filters?: string[]
+          search_query: string
+          status_filter?: string
+          sub_category_filters?: string[]
+        }
+        Returns: number
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
+      start_korean_backfill_run: {
+        Args: { p_artifact_sha256: string; p_planned_count: number }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
