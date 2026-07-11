@@ -1,5 +1,6 @@
 BEGIN;
 
+\ir fixtures.sql
 \ir ../seed.sql
 
 SET LOCAL ROLE postgres;
@@ -38,15 +39,24 @@ values
 insert into public.amis_sync_log (status, items_processed)
 values ('success', 1);
 
-SELECT plan(48);
+SELECT plan(55);
 
 SET LOCAL ROLE anon;
 SELECT set_config('request.jwt.claims', '{"role":"anon"}', true);
 SELECT set_config('request.jwt.claim.sub', '', true);
+SELECT is((SELECT origin_ko FROM public.brands WHERE id = :'brand_id_1'), '이탈리아', 'seeded brand exposes Korean origin');
+SELECT is((SELECT name_ko FROM public.categories WHERE id = :'cat_id_2'), '의자', 'seeded category exposes Korean name');
+SELECT is((SELECT name_ko FROM public.products WHERE id = :'prod_id_1'), '테스트 제품 1', 'seeded product exposes Korean name');
+SELECT is((SELECT slug_ko FROM public.variants WHERE id = :'variant_id_1'), '테스트-옵션-1', 'seeded variant exposes Korean slug');
+SELECT is((SELECT finish_ko FROM public.variants WHERE id = :'variant_id_1'), '무광 검정', 'seeded variant exposes Korean finish');
+SELECT is((SELECT title_ko FROM public.news WHERE id = :'news_id_1'), '테스트 뉴스 1', 'seeded news exposes Korean title');
+SELECT is((SELECT origin_ko FROM public.catalogs WHERE id = :'catalog_id_1'), '이탈리아', 'seeded catalog exposes Korean origin');
 SELECT is((SELECT count(*) FROM public.carts), 0::bigint, 'anon cannot read carts');
 SELECT throws_ok($$ insert into public.carts (guest_id) values ('forged-guest') $$, '42501', NULL, 'anon cannot insert carts');
-SELECT is((with updated as (update public.carts set guest_id = 'forged-guest' returning 1) select count(*) from updated), 0::bigint, 'anon cannot update carts');
-SELECT is((with deleted as (delete from public.carts returning 1) select count(*) from deleted), 0::bigint, 'anon cannot delete carts');
+with updated as (update public.carts set guest_id = 'forged-guest' returning 1)
+select is((select count(*) from updated), 0::bigint, 'anon cannot update carts');
+with deleted as (delete from public.carts returning 1)
+select is((select count(*) from deleted), 0::bigint, 'anon cannot delete carts');
 SELECT throws_ok($$ insert into public.cart_items (cart_id, variant_id, quantity) values ('00000000-0000-4000-8000-000000000071', '00000000-0000-4000-8000-000000000032', 1) $$, '42501', NULL, 'anon cannot insert cart items');
 
 SET LOCAL ROLE authenticated;
