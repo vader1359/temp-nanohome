@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { EditorialHeader } from "@/components/editorial/shared";
 
@@ -29,7 +30,7 @@ export default async function AboutUsPage({ params }: Readonly<{ params: Promise
       <section className="mx-auto flex max-w-[1344px] flex-col gap-12 px-4 py-[60px] sm:px-6 lg:px-12">
         <EditorialHeader eyebrow={t("eyebrow")} title={t("heading")} />
         <div className="group relative aspect-[1360/615] overflow-hidden bg-[#e1e1e1]">
-          <img src="/images/space.jpg" alt="Không gian nội thất cao cấp nanoHome" className="h-full w-full object-cover" />
+          <Image src="/images/space.jpg" alt="Không gian nội thất cao cấp nanoHome" fill sizes="(min-width: 1344px) 1344px, 100vw" className="object-cover" />
           <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2" aria-hidden="true">
             <span className="size-2 rounded-full bg-white" />
             <span className="size-2 rounded-full border border-white" />
@@ -59,8 +60,8 @@ export default async function AboutUsPage({ params }: Readonly<{ params: Promise
             ))}
           </div>
         </div>
-        <div className="aspect-[456/620] overflow-hidden bg-[#e1e1e1]">
-          <img src="/images/featured-living-room.png" alt="Chi tiết không gian sống nanoHome" className="h-full w-full object-cover" />
+        <div className="relative aspect-[456/620] overflow-hidden bg-[#e1e1e1]">
+          <Image src="/images/featured-living-room.png" alt="Chi tiết không gian sống nanoHome" fill sizes="(min-width: 1024px) 456px, 100vw" className="object-cover" />
         </div>
       </section>
     </main>
