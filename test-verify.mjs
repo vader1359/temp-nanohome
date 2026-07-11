@@ -1,4 +1,4 @@
-const { chromium } = require("playwright");
+import { chromium } from "playwright";
 
 const BASE = "http://localhost:3001";
 const viewports = [
@@ -37,7 +37,7 @@ const pages = [
 
       try {
         await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
-      } catch (e) {
+      } catch {
         try {
           await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
           await page.waitForTimeout(2000);

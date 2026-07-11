@@ -28,7 +28,6 @@ for (const vp of viewports) {
     for (let y = 0; y <= total; y += step) {
       window.scrollTo(0, y);
       // allow IntersectionObserver + image requests to kick off
-      // eslint-disable-next-line no-await-in-loop
       await new Promise((r) => setTimeout(r, 120));
     }
     window.scrollTo(0, 0);

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:ui-merge-guard": "node scripts/ui-merge-guard.cjs"
+    "test:ui-merge-guard": "node scripts/ui-merge-guard.mjs"
   },
   "dependencies": {
     "@axiomhq/js": "^1.0.0",
@@ -45,6 +45,7 @@
   "devDependencies": {
     "@playwright/test": "^1.49.1",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^20",
