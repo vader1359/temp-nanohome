@@ -1,6 +1,9 @@
+import { notFound } from "next/navigation";
 import { Download } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { EditorialHeader, SectionTitleLink, textValue } from "@/components/editorial/shared";
+import { isSupportedLocale } from "@/i18n/routing";
+import { localizedText } from "@/lib/i18n/content";
 import { catalogFileUrl } from "@/lib/queries/catalog-url";
 import { getCatalogs } from "@/lib/queries/catalogs";
 
@@ -23,6 +26,11 @@ function groupCatalogs(catalogs: Awaited<ReturnType<typeof getCatalogs>>): reado
 
 export default async function CatalogsPage({ params }: Readonly<{ params: Promise<{ locale: string }> }>) {
   const { locale } = await params;
+
+  if (!isSupportedLocale(locale)) {
+    notFound();
+  }
+
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "Catalogs" });
   const catalogs = await getCatalogs();
@@ -45,7 +53,7 @@ export default async function CatalogsPage({ params }: Readonly<{ params: Promis
                         <span className="text-center text-[24px] font-medium leading-8 text-nh-ink">{group.brandName}</span>
                       </div>
                       <h2 className="mt-5 text-[18px] font-medium leading-7 text-nh-ink">{group.brandName} Catalog</h2>
-                       <p className="mt-2 text-[14px] leading-[22px] text-nh-muted">{textValue(catalog.origin_vi, textValue(catalog.origin, t("fallbackOrigin")))}</p>
+                       <p className="mt-2 text-[14px] leading-[22px] text-nh-muted">{localizedText({ ko: catalog.origin_ko, vi: catalog.origin_vi, en: catalog.origin }, locale, t("fallbackOrigin"))}</p>
                       {primaryFile ? (
                         <a href={primaryFile} target="_blank" rel="noreferrer" className="mt-5 inline-flex items-center gap-2 text-[14px] font-medium leading-[22px] text-nh-accent hover:text-nh-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-nh-accent">
                           {t("download")}

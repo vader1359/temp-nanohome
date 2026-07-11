@@ -1,5 +1,8 @@
+import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { EditorialHeader, ListingCard, SectionTitleLink, detailSlug, formatDate, textValue, type ListingCardItem } from "@/components/editorial/shared";
+import { isSupportedLocale, type Locale } from "@/i18n/routing";
+import { localizedText } from "@/lib/i18n/content";
 import { getNewsList } from "@/lib/queries/news";
 import { localizedNewsDescription } from "@/lib/queries/notion";
 import type { News } from "@/types/db";
@@ -7,15 +10,15 @@ import type { News } from "@/types/db";
 const categoryKeys = ["categoryAll", "categoryProducts", "categoryBrands", "categoryProjects", "categoryHomes", "categoryServices", "categoryEvents", "categoryCulture"] as const;
 const sectionTitleKeys = ["categoryProducts", "categoryBrands", "categoryProjects", "categoryHomes", "categoryServices", "categoryEvents", "categoryCulture"] as const;
 
-function newsTitle(news: News, locale: string, fallbackTitle: string): string {
-  return textValue(locale === "vi" ? news.title_vi : news.title, textValue(locale === "vi" ? news.title : news.title_vi, fallbackTitle));
+function newsTitle(news: News, locale: Locale, fallbackTitle: string): string {
+  return localizedText({ ko: news.title_ko, vi: news.title_vi, en: news.title }, locale, fallbackTitle);
 }
 
 function newsDescription(news: News, locale: string): string | null {
   return localizedNewsDescription(news.raw, news.description, locale);
 }
 
-function newsCard(news: News, locale: string, metaLabel: string, fallbackTitle: string): ListingCardItem {
+function newsCard(news: News, locale: Locale, metaLabel: string, fallbackTitle: string): ListingCardItem {
   return {
     href: `/news/${encodeURIComponent(textValue(news.airtable_id, news.id))}/${detailSlug(news.slug, news.id)}`,
     imageUrl: news.cover_url,
@@ -27,6 +30,11 @@ function newsCard(news: News, locale: string, metaLabel: string, fallbackTitle: 
 
 export default async function NewsPage({ params }: Readonly<{ params: Promise<{ locale: string }> }>) {
   const { locale } = await params;
+
+  if (!isSupportedLocale(locale)) {
+    notFound();
+  }
+
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "News" });
   const news = await getNewsList(1, 24);

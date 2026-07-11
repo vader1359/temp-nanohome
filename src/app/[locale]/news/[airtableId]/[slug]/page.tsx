@@ -1,12 +1,19 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ImageFrame, formatDate, safeDecodeURIComponent, textValue } from "@/components/editorial/shared";
+import { isSupportedLocale } from "@/i18n/routing";
+import { localizedText } from "@/lib/i18n/content";
 import { NotionArticle } from "@/components/editorial/notion-article";
 import { getNewsByAirtableId } from "@/lib/queries/news";
 import { extractNotionPageId, getNotionRecordMap, localizedNewsDescription, localizedNotionLink } from "@/lib/queries/notion";
 
 export default async function NewsDetailPage({ params }: Readonly<{ params: Promise<{ locale: string; airtableId: string; slug: string }> }>) {
   const { locale, airtableId } = await params;
+
+  if (!isSupportedLocale(locale)) {
+    notFound();
+  }
+
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "News" });
   const decodedAirtableId = safeDecodeURIComponent(airtableId);
@@ -21,7 +28,7 @@ export default async function NewsDetailPage({ params }: Readonly<{ params: Prom
     notFound();
   }
 
-  const title = textValue(locale === "vi" ? news.title_vi : news.title, textValue(locale === "vi" ? news.title : news.title_vi, t("fallbackTitle")));
+  const title = localizedText({ ko: news.title_ko, vi: news.title_vi, en: news.title }, locale, t("fallbackTitle"));
   const description = localizedNewsDescription(news.raw, news.description, locale);
   const notionLink = localizedNotionLink(news.raw, locale) ?? news.notion_url;
   const notionPageId = extractNotionPageId(notionLink);
