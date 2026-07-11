@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import {
   Calendar,
   MapPin,
@@ -24,6 +25,7 @@ interface Section1HeroProps {
 }
 
 export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
+  const t = useTranslations("ProductDetail");
   const [activeThumb, setActiveThumb] = useState(0);
   const productImageRef = useRef<HTMLDivElement>(null);
   const { addItem } = useCart();
@@ -71,7 +73,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
       price: product.newPrice,
       originalPrice: product.oldPrice || undefined,
       discount: product.discount || undefined,
-      badge: product.onSale ? "SALE" : "ĐANG CÓ HÀNG",
+      badge: product.onSale ? "SALE" : t("inStockBadge"),
       badgeTone: product.onSale ? "sale" : "stock",
       image: product.gallery[0] ?? "/images/p_lc2.png",
     });
@@ -115,7 +117,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
                 >
                   <Image
                     src={src}
-                    alt={`Thumbnail ${i + 1}`}
+                    alt={t("thumbnailAlt", { index: i + 1 })}
                     fill
                     sizes="80px"
                     className="max-w-full object-cover"
@@ -182,7 +184,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
           <div className="flex gap-4">
             <DarkCTAButton type="button" onClick={handleAddToCart} variant="solid" className="grow gap-2 leading-[20px]">
               <ShoppingCart className="h-4 w-4" />
-              Thêm vào giỏ
+              {t("addToCart")}
             </DarkCTAButton>
             <FavoriteButton variant="bordered" className="aspect-square h-auto min-h-full rounded-none px-0" />
           </div>
@@ -190,10 +192,10 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
           {/* Size info box */}
           <div className="flex flex-col gap-1 border border-[#CFC9C0] px-6 py-3">
             <span className="text-[14px] font-medium uppercase leading-[20px] text-[#111]">
-              Kích thước
+              {t("sizeDetails")}
             </span>
             <span className="whitespace-pre-line text-[14px] leading-[22px] text-[#111]">
-              {"W 1680 × D 730 × H 620 mm\nChiều cao ngồi: 400 mm"}
+              {t("sizeFallback")}
             </span>
           </div>
 
@@ -202,26 +204,26 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
             <IconTextRow
               iconVariant="round"
               icon={<Calendar className="h-4 w-4" strokeWidth={1.5} />}
-              value="Đặt lịch hẹn"
+              value={t("appointment")}
               href="#"
             />
             <IconTextRow
               iconVariant="round"
               icon={<MessageCircle className="h-4 w-4" strokeWidth={1.5} />}
-              label="Liên hệ"
-              value="Chuyên viên tư vấn sản khẩn"
+              label={t("contact")}
+              value={t("consultation")}
             />
             <IconTextRow
               iconVariant="round"
               icon={<Phone className="h-4 w-4" strokeWidth={1.5} />}
-              label="Đặt hàng qua điện thoại"
+              label={t("phoneOrder")}
               value="1800-1003"
               href="#"
             />
             <IconTextRow
               iconVariant="round"
               icon={<MapPin className="h-4 w-4" strokeWidth={1.5} />}
-              label="Đang có tại:"
+              label={t("availableAt")}
               value="Cassina Store"
               href="#"
             />

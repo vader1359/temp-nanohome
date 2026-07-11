@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Section1Hero } from "@/components/product-detail/section-1-hero";
 import { Section2Specs } from "@/components/product-detail/section-2-specs";
 import { Section3Related } from "@/components/product-detail/section-3-related";
@@ -11,7 +11,9 @@ import { COLORS } from "@/components/product-detail/mock-data";
 import { getVariantProducts, type VariantProductListItem } from "@/lib/queries/products";
 import { variantDetailHref } from "@/lib/queries/variant-url";
 import { getVariantBySlug, getVariantsByProductId } from "@/lib/queries/variants";
+import { localizedText } from "@/lib/i18n/content";
 import type { Variant } from "@/types/db";
+import { isSupportedLocale, type Locale } from "@/i18n/routing";
 
 interface ProductPageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -35,8 +37,8 @@ function formatPrice(price: Variant["price"]): string {
   return priceFormatter.format(Number(price));
 }
 
-function variantText(value: unknown, fallback = ""): string {
-  return typeof value === "string" && value.length > 0 ? value : fallback;
+function variantText(value: unknown, fallback: string | null = ""): string {
+  return typeof value === "string" && value.length > 0 ? value : fallback ?? "";
 }
 
 function getImageUrl(value: unknown): string {
@@ -119,10 +121,14 @@ type RelatedVariant = Pick<
   Variant,
   | "id"
   | "name"
+  | "name_vi"
+  | "name_ko"
   | "short_name"
   | "short_name_vi"
+  | "short_name_ko"
   | "slug"
   | "slug_vi"
+  | "slug_ko"
   | "price"
   | "compare_at_price"
   | "discount_percent"
@@ -132,6 +138,7 @@ type RelatedVariant = Pick<
   | "gallery_urls"
   | "finish"
   | "finish_vi"
+  | "finish_ko"
   | "size"
   | "brand_name_denorm"
   | "media_lifestyle_1"
@@ -142,27 +149,35 @@ type RelatedVariant = Pick<
   | "media_closeup"
 >;
 
-function toRelatedProduct(variant: RelatedVariant | VariantProductListItem): RelatedProduct {
+function localizedVariantText(variant: Pick<Variant, "name" | "name_vi" | "name_ko">, locale: Locale, fallback: string): string {
+  return localizedText({ ko: variant.name_ko, vi: variant.name_vi, en: variant.name }, locale, fallback);
+}
+
+function localizedFinish(variant: Pick<Variant, "finish" | "finish_vi" | "finish_ko">, locale: Locale, fallback = ""): string {
+  return localizedText({ ko: variant.finish_ko, vi: variant.finish_vi, en: variant.finish }, locale, fallback);
+}
+
+function toRelatedProduct(variant: RelatedVariant | VariantProductListItem, locale: Locale): RelatedProduct {
   const discounted = hasValidDiscount(variant);
 
   return {
-    name: variantText(variant.name, "Sản phẩm"),
+    name: localizedVariantText(variant, locale, "Sản phẩm"),
     brand: variantText(variant.brand_name_denorm, "nanoHome"),
-    category: [variantText(variant.finish_vi, variantText(variant.finish)), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
+    category: [localizedFinish(variant, locale), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
     price: formatPrice(variant.price),
     oldPrice: discounted ? formatPrice(variant.compare_at_price) : null,
     discount: discounted ? `-${variant.discount_percent}%` : null,
     image: getVariantPackshotUrl(variant) || getImageUrl(getGalleryUrls(variant.gallery_urls)[0]) || FALLBACK_PRODUCT_IMAGE,
     available: variant.in_stock,
-    href: variantDetailHref(variant),
+    href: variantDetailHref(variant, locale),
     tags: variant.on_sale && discounted ? ["Sale"] : undefined,
   };
 }
 
-function buildHeroProduct(variant: Variant) {
+function buildHeroProduct(variant: Variant, locale: Locale) {
   const gallery = getVariantImages(variant);
-  const title = variantText(variant.name_vi, variantText(variant.name, "Sản phẩm"));
-  const breadcrumbTitle = variantText(variant.short_name_vi, variantText(variant.short_name, title));
+  const title = localizedVariantText(variant, locale, "Sản phẩm");
+  const breadcrumbTitle = localizedText({ ko: variant.short_name_ko, vi: variant.short_name_vi, en: variant.short_name }, locale, title);
   const discounted = hasValidDiscount(variant);
 
   return {
@@ -172,7 +187,7 @@ function buildHeroProduct(variant: Variant) {
     brandLogoUrl: getVariantBrandLogoUrl(variant),
     title,
     breadcrumbTitle,
-    category: [variantText(variant.finish_vi, variantText(variant.finish)), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
+    category: [localizedFinish(variant, locale), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
     onSale: variant.on_sale && discounted,
     oldPrice: discounted ? formatPrice(variant.compare_at_price) : "",
     newPrice: formatPrice(variant.price),
@@ -182,26 +197,60 @@ function buildHeroProduct(variant: Variant) {
   };
 }
 
-function buildSpecColumns(variant: Variant) {
+interface ProductSpecLabels {
+  readonly availability: string;
+  readonly discount: string;
+  readonly finish: string;
+  readonly inStock: string;
+  readonly noDiscount: string;
+  readonly outOfStock: string;
+  readonly price: string;
+  readonly productId: string;
+  readonly productName: string;
+  readonly size: string;
+  readonly sku: string;
+  readonly updating: string;
+}
+
+function buildSpecColumns(variant: Variant, locale: Locale, labels: ProductSpecLabels) {
   return [
     [
-      { label: "Tên sản phẩm", value: variantText(variant.name_vi, variantText(variant.name, "Sản phẩm")) },
-      { label: "SKU", value: variantText(variant.sku, "Đang cập nhật") },
-      { label: "Tình trạng", value: variant.in_stock ? "Đang có hàng" : "Hết hàng" },
-      { label: "Hoàn thiện", value: variantText(variant.finish_vi, variantText(variant.finish, "Đang cập nhật")) },
+      { label: labels.productName, value: localizedVariantText(variant, locale, labels.productName) },
+      { label: labels.sku, value: variantText(variant.sku, labels.updating) },
+      { label: labels.availability, value: variant.in_stock ? labels.inStock : labels.outOfStock },
+      { label: labels.finish, value: localizedFinish(variant, locale, labels.updating) },
     ],
     [
-      { label: "Kích thước", value: variantText(variant.size, "Đang cập nhật") },
-      { label: "Giá", value: formatPrice(variant.price) },
-      { label: "Giảm giá", value: hasValidDiscount(variant) ? `${variant.discount_percent}%` : "Không" },
-      { label: "Mã sản phẩm", value: variant.id },
+      { label: labels.size, value: variantText(variant.size, labels.updating) },
+      { label: labels.price, value: formatPrice(variant.price) },
+      { label: labels.discount, value: hasValidDiscount(variant) ? `${variant.discount_percent}%` : labels.noDiscount },
+      { label: labels.productId, value: variant.id },
     ],
   ];
 }
 
 export default async function ProductDetailPage({ params }: ProductPageProps) {
   const { locale, slug } = await params;
+  if (!isSupportedLocale(locale)) {
+    notFound();
+  }
+
   setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: "ProductDetail" });
+  const specLabels = {
+    availability: t("availability"),
+    discount: t("discount"),
+    finish: t("finish"),
+    inStock: t("inStock"),
+    noDiscount: t("noDiscount"),
+    outOfStock: t("outOfStock"),
+    price: t("price"),
+    productId: t("productId"),
+    productName: t("productName"),
+    size: t("size"),
+    sku: t("sku"),
+    updating: t("updating"),
+  };
 
   const variant = await getVariantBySlug(decodeURIComponent(slug));
   if (variant === null) {
@@ -214,19 +263,19 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
     getVariantProducts({ excludeId: variant.id, pageSize: 4 }),
   ]);
   const relatedSource = similarCategoryVariants.length > 0 ? similarCategoryVariants : siblingVariants.filter((item) => item.id !== variant.id);
-  const related = relatedSource.slice(0, 8).map(toRelatedProduct);
-  const recommended = recommendedVariants.map(toRelatedProduct);
+  const related = relatedSource.slice(0, 8).map((item) => toRelatedProduct(item, locale));
+  const recommended = recommendedVariants.map((item) => toRelatedProduct(item, locale));
   const galleryImages = getVariantLifestyleImages(variant);
 
   return (
     <main className="flex flex-col">
-      <Section1Hero product={buildHeroProduct(variant)} />
+      <Section1Hero product={buildHeroProduct(variant, locale)} />
       <Section2Specs
-        specColumns={buildSpecColumns(variant)}
-        description={variant.meta_description}
-        designerDescription="Thông tin nhà thiết kế sẽ được cập nhật."
+        specColumns={buildSpecColumns(variant, locale, specLabels)}
+        description={localizedText({ ko: variant.meta_description_ko, vi: variant.meta_description_vi, en: variant.meta_description }, locale)}
+        designerDescription={localizedText({ ko: variant.designer_description_ko, vi: variant.designer_description_vi, en: variant.designer_description }, locale, t("designerFallback"))}
       />
-      <Section3Related products={related} collectionName={variantText(variant.finish_vi, variantText(variant.finish, "Cùng dòng"))} />
+      <Section3Related products={related} collectionName={localizedFinish(variant, locale, "Cùng dòng")} />
       <Section4Gallery galleryImages={galleryImages.length > 0 ? galleryImages : undefined} />
       <Section5Benefits />
       <Section6Recommended products={recommended} />
