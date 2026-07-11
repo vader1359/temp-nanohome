@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { isAuthSessionMissingError } from "@supabase/supabase-js";
 
 import { parseResetPasswordForm } from "@/lib/auth/credentials";
 import { getSupportedLocale } from "@/lib/auth/redirect";
-import { createClient } from "@/lib/supabase/server";
+import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
@@ -14,16 +15,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${locale}/reset-password?status=validation`, request.url));
   }
 
-  const supabase = await createClient();
+  const { supabase, applyCookies } = createRouteHandlerClient(request);
   const { error } = await supabase.auth.updateUser({ password: reset.value.password });
 
   if (error !== null) {
     if (isAuthSessionMissingError(error)) {
-      return NextResponse.redirect(new URL(`/${reset.value.locale}/reset-password?status=invalid`, request.url));
+      return applyCookies(
+        NextResponse.redirect(
+          new URL(`/${reset.value.locale}/reset-password?status=invalid`, request.url),
+        ),
+      );
     }
 
-    return NextResponse.redirect(new URL(`/${reset.value.locale}/reset-password?status=error`, request.url));
+    return applyCookies(
+      NextResponse.redirect(
+        new URL(`/${reset.value.locale}/reset-password?status=error`, request.url),
+      ),
+    );
   }
 
-  return NextResponse.redirect(new URL(reset.value.redirectTo, request.url));
+  revalidatePath("/", "layout");
+  return applyCookies(
+    NextResponse.redirect(new URL(reset.value.redirectTo, request.url)),
+  );
 }

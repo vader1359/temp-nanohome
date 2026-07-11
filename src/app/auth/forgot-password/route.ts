@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { parseForgotPasswordForm } from "@/lib/auth/credentials";
 import { getSupportedLocale } from "@/lib/auth/redirect";
-import { createClient } from "@/lib/supabase/server";
+import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${locale}?auth=forgot_error`, request.url));
   }
 
-  const supabase = await createClient();
+  const { supabase, applyCookies } = createRouteHandlerClient(request);
   const { error } = await supabase.auth.resetPasswordForEmail(recovery.value.email, {
     redirectTo: new URL(
       `/auth/callback?next=${encodeURIComponent(recovery.value.redirectTo)}`,
@@ -22,8 +22,16 @@ export async function POST(request: NextRequest) {
   });
 
   if (error !== null) {
-    return NextResponse.redirect(new URL(`/${recovery.value.locale}?auth=forgot_error`, request.url));
+    return applyCookies(
+      NextResponse.redirect(
+        new URL(`/${recovery.value.locale}?auth=forgot_error`, request.url),
+      ),
+    );
   }
 
-  return NextResponse.redirect(new URL(`/${recovery.value.locale}?auth=forgot_sent`, request.url));
+  return applyCookies(
+    NextResponse.redirect(
+      new URL(`/${recovery.value.locale}?auth=forgot_sent`, request.url),
+    ),
+  );
 }

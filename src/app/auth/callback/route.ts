@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 
 import { getRedirectLocale, getSafeRedirectPath } from "@/lib/auth/redirect";
-import { createClient } from "@/lib/supabase/server";
+import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -13,16 +14,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${locale}?auth=missing_code`, request.url));
   }
 
-  const supabase = await createClient();
+  const { supabase, applyCookies } = createRouteHandlerClient(request);
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error !== null) {
     if (redirectTo.endsWith("/reset-password")) {
-      return NextResponse.redirect(new URL(`${redirectTo}?status=invalid`, request.url));
+      return applyCookies(
+        NextResponse.redirect(new URL(`${redirectTo}?status=invalid`, request.url)),
+      );
     }
 
-    return NextResponse.redirect(new URL(`/${locale}?auth=callback_error`, request.url));
+    return applyCookies(
+      NextResponse.redirect(new URL(`/${locale}?auth=callback_error`, request.url)),
+    );
   }
 
-  return NextResponse.redirect(new URL(redirectTo, request.url));
+  revalidatePath("/", "layout");
+  return applyCookies(NextResponse.redirect(new URL(redirectTo, request.url)));
 }

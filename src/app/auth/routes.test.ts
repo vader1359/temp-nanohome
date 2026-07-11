@@ -22,8 +22,15 @@ const authState = vi.hoisted<AuthState>(() => ({
 
 vi.mock("server-only", () => ({}));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(async () => ({ auth: authState })),
+vi.mock("@/lib/supabase/route-handler", () => ({
+  createRouteHandlerClient: vi.fn(() => ({
+    supabase: { auth: authState },
+    applyCookies: <T,>(response: T) => response,
+  })),
+}));
+
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
 }));
 
 afterEach(() => {
@@ -62,6 +69,39 @@ describe("auth route handlers", () => {
     expect(response.headers.get("location")).toBe("https://app.test/en?auth=invalid_credentials");
   });
 
+  it("redirects unconfirmed email sign-in to a dedicated login state", async () => {
+    authState.signInWithPassword.mockResolvedValue({
+      error: new AuthApiError("Email not confirmed", 400, "email_not_confirmed"),
+    });
+    const { POST } = await import("./sign-in/route");
+
+    const response = await POST(formRequest("/auth/sign-in", {
+      email: "ian@example.com",
+      password: "correct-password",
+      locale: "vi",
+      redirectTo: "/vi",
+    }));
+
+    expect(response.headers.get("location")).toBe("https://app.test/vi?auth=email_not_confirmed");
+  });
+
+  it("redirects successful sign-in to the safe destination", async () => {
+    const { POST } = await import("./sign-in/route");
+
+    const response = await POST(formRequest("/auth/sign-in", {
+      email: "ian@example.com",
+      password: "correct-password",
+      locale: "en",
+      redirectTo: "/en/products",
+    }));
+
+    expect(authState.signInWithPassword).toHaveBeenCalledWith({
+      email: "ian@example.com",
+      password: "correct-password",
+    });
+    expect(response.headers.get("location")).toBe("https://app.test/en/products");
+  });
+
   it("passes signup metadata to the auth trigger contract", async () => {
     // Given: a complete Korean signup form.
     const { POST } = await import("./sign-up/route");
@@ -90,7 +130,7 @@ describe("auth route handlers", () => {
         emailRedirectTo: "https://app.test/auth/callback?next=%2Fko%2Fproducts",
       },
     });
-    expect(response.headers.get("location")).toBe("https://app.test/ko?auth=register_success");
+    expect(response.headers.get("location")).toBe("https://app.test/ko/check-email?signup=success");
   });
 
   it("returns mismatched signup passwords to the actionable registration state", async () => {

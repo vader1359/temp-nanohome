@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 
 import { parseSignUpForm } from "@/lib/auth/credentials";
 import { getSupportedLocale } from "@/lib/auth/redirect";
-import { createClient } from "@/lib/supabase/server";
+import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${locale}?auth=${error}`, request.url));
   }
 
-  const supabase = await createClient();
+  const { supabase, applyCookies } = createRouteHandlerClient(request);
   const { error } = await supabase.auth.signUp({
     email: credentials.value.email,
     password: credentials.value.password,
@@ -33,8 +34,17 @@ export async function POST(request: NextRequest) {
   });
 
   if (error !== null) {
-    return NextResponse.redirect(new URL(`/${credentials.value.locale}?auth=sign_up_error`, request.url));
+    return applyCookies(
+      NextResponse.redirect(
+        new URL(`/${credentials.value.locale}?auth=sign_up_error`, request.url),
+      ),
+    );
   }
 
-  return NextResponse.redirect(new URL(`/${credentials.value.locale}?auth=register_success`, request.url));
+  revalidatePath("/", "layout");
+  return applyCookies(
+    NextResponse.redirect(
+      new URL(`/${credentials.value.locale}/check-email?signup=success`, request.url),
+    ),
+  );
 }
