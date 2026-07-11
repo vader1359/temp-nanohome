@@ -259,7 +259,6 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
       status,
       imageUrl: getImageUrl(variant),
       href: variantDetailHref(variant, supportedLocale),
-      href: variantDetailHref(variant, supportedLocale),
       oldPrice: useContactPrice || variant.compare_at_price === null ? null : formatPrice(variant, variant.compare_at_price),
       discount: useContactPrice || variant.discount_percent === null ? null : `-${variant.discount_percent}%`,
       price: formatPrice(variant, variant.price),
