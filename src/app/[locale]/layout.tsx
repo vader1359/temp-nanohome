@@ -7,6 +7,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/sections/footer";
 import { Providers } from "../providers";
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { createClient } from "@/lib/supabase/server";
 
 export function generateStaticParams() {
@@ -29,13 +30,15 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
 
   const messages = await getMessages();
   const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getSession();
+  const isAuthenticated = data?.session != null;
 
   return (
     <NextIntlClientProvider messages={messages} locale={locale}>
       <Providers>
+        <Toaster position="top-center" offset="168px" mobileOffset="96px" />
         <Suspense fallback={null}>
-          <AuthProvider isAuthenticated={claims !== null}>
+          <AuthProvider isAuthenticated={isAuthenticated}>
             <Header />
             {children}
             <Footer />

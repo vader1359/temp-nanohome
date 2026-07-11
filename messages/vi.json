@@ -228,9 +228,14 @@
       "subtitle": "Tạo tài khoản nanoHome để lưu thông tin và mua sắm nhanh hơn.",
       "submit": "Tạo tài khoản",
       "loading": "Đang tạo tài khoản...",
+      "submitting": "Đang tạo tài khoản...",
       "signInLink": "Đăng nhập",
       "successTitle": "Tạo tài khoản thành công",
       "successBody": "Tài khoản nanoHome của bạn đã sẵn sàng. Hãy tiếp tục khám phá những lựa chọn nội thất dành riêng cho bạn."
+    },
+    "checkEmail": {
+      "title": "Kiểm tra email của bạn",
+      "body": "Chúng tôi đã gửi liên kết xác nhận đến địa chỉ email của bạn. Mở liên kết để kích hoạt tài khoản."
     },
     "forgot": {
       "title": "Quên mật khẩu",
@@ -253,6 +258,7 @@
     },
     "errors": {
       "invalidCredentials": "Email hoặc mật khẩu không đúng.",
+      "emailNotConfirmed": "Xác nhận email trước khi đăng nhập. Kiểm tra hộp thư để lấy liên kết xác minh.",
       "signInError": "Không thể đăng nhập lúc này. Vui lòng thử lại.",
       "signUpError": "Không thể tạo tài khoản lúc này. Vui lòng thử lại.",
       "forgotError": "Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại.",

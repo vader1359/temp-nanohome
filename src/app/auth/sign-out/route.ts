@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 
 import { getSafeRedirectPath, getSupportedLocale } from "@/lib/auth/redirect";
-import { createClient } from "@/lib/supabase/server";
+import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
@@ -11,9 +12,10 @@ export async function POST(request: NextRequest) {
     typeof redirectValue === "string" ? redirectValue : null,
     locale,
   );
-  const supabase = await createClient();
+  const { supabase, applyCookies } = createRouteHandlerClient(request);
 
   await supabase.auth.signOut();
 
-  return NextResponse.redirect(new URL(redirectTo, request.url));
+  revalidatePath("/", "layout");
+  return applyCookies(NextResponse.redirect(new URL(redirectTo, request.url)));
 }

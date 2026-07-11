@@ -172,7 +172,7 @@ export function Header() {
               </Link>
             ))}
           </div>
-          <div className="flex gap-5">
+          <div className="flex gap-3 2xl:gap-5">
             {topRight.map((key) => (
               <Link
                 key={key}
@@ -231,12 +231,12 @@ export function Header() {
           </button>
 
           {/* Desktop category nav */}
-          <nav className="hidden items-center gap-6 lg:flex">
+          <nav className="hidden items-center gap-4 lg:flex 2xl:gap-6">
             {nav.map((key) => (
               <Link
                 key={key}
                 href={navHref(key)}
-                className="whitespace-nowrap text-sm font-normal uppercase leading-5"
+                className="whitespace-nowrap text-xs font-normal uppercase leading-5 2xl:text-sm"
               >
                 {t(key)}
               </Link>
@@ -244,7 +244,7 @@ export function Header() {
           </nav>
 
           {/* Desktop full icons row */}
-          <div className="hidden lg:flex lg:items-center lg:gap-5 lg:ml-auto">
+          <div className="hidden lg:ml-auto lg:flex lg:items-center lg:gap-3 2xl:gap-5">
             <button aria-label="Wishlist" type="button" onClick={openWishlist} className="relative" data-wishlist-target>
               <Heart className="size-5 stroke-[1.4]" />
               {wishlistCount > 0 ? (

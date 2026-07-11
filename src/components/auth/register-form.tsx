@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { DarkCTAButton } from "@/components/shared/dark-cta-button";
 
@@ -12,6 +13,7 @@ interface AuthFormProps {
 export function RegisterForm({ onSwitchView, redirectTo, authError }: AuthFormProps) {
   const t = useTranslations("Auth");
   const locale = useLocale();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   return (
     <div className="flex flex-col h-full animate-in fade-in zoom-in-95 duration-200">
@@ -33,7 +35,13 @@ export function RegisterForm({ onSwitchView, redirectTo, authError }: AuthFormPr
           </p>
         )}
 
-        <form action="/auth/sign-up" method="POST" className="flex flex-col gap-6">
+        <form
+          action="/auth/sign-up"
+          method="POST"
+          className="flex flex-col gap-6"
+          aria-busy={isSubmitting}
+          onSubmit={() => setIsSubmitting(true)}
+        >
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="redirectTo" value={redirectTo ?? `/${locale}`} />
 
@@ -126,8 +134,25 @@ export function RegisterForm({ onSwitchView, redirectTo, authError }: AuthFormPr
             </span>
           </label>
 
-          <DarkCTAButton type="submit" className="w-full mt-4">
-            {t("register.submit")}
+          {isSubmitting ? (
+            <p role="status" className="sr-only">
+              {t("register.submitting")}
+            </p>
+          ) : null}
+
+          <DarkCTAButton type="submit" disabled={isSubmitting} className="w-full mt-4">
+            {isSubmitting ? (
+              <span className="inline-flex items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none"
+                  data-testid="register-submit-indicator"
+                />
+                {t("register.submitting")}
+              </span>
+            ) : (
+              t("register.submit")
+            )}
           </DarkCTAButton>
         </form>
 

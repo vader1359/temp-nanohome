@@ -76,10 +76,10 @@ export function Footer() {
 
   return (
     <footer className="min-h-[480px] bg-[#1F1F1F] py-12 md:py-24">
-      <div className="site-shell grid grid-cols-2 gap-8 md:gap-10 lg:flex lg:flex-row lg:justify-between lg:gap-8">
+      <div className="site-shell grid grid-cols-2 gap-8 md:gap-10 lg:flex lg:flex-row lg:justify-between lg:gap-4 2xl:gap-8">
         {linkColumns.map((column) => (
           <div key={column.heading} className="flex flex-col gap-5">
-            <h4 className="text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
+            <h4 className="whitespace-nowrap text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
               {t(column.heading)}
             </h4>
             <ul className="flex flex-col gap-5">
@@ -139,7 +139,7 @@ export function Footer() {
               {contacts.map(({ icon: Icon, key }) => (
                 <li key={key} className="flex items-center gap-2 text-sm font-normal leading-[21px] text-[#F1F1F1]">
                   <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span className="min-w-0 break-words">{t(key)}</span>
+                  <span className="min-w-0 whitespace-nowrap">{t(key)}</span>
                 </li>
               ))}
             </ul>
