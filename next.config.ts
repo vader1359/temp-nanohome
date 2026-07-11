@@ -32,6 +32,7 @@ const nextConfig: NextConfig = {
     } satisfies WebpackConfig;
   },
   images: {
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: "https",
