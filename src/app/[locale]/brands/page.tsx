@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { EditorialHeader, detailSlug, textValue } from "@/components/editorial/shared";
 import { Link } from "@/i18n/navigation";
@@ -18,8 +19,8 @@ export default async function BrandsPage({ params }: Readonly<{ params: Promise<
             const name = textValue(brand.name, t("fallbackName"));
             return (
               <article key={brand.id} className="group">
-                <Link href={`/brands/${encodeURIComponent(textValue(brand.airtable_id, brand.id))}/${detailSlug(brand.slug, brand.id)}`} className="flex aspect-[204/160] items-center justify-center bg-[#e1e1e1] p-8 transition-opacity duration-300 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-nh-accent">
-                  {brand.logo_url ? <img src={brand.logo_url} alt={name} className="max-h-16 max-w-full object-contain grayscale contrast-200 brightness-0" /> : <span className="text-center text-[14px] font-medium leading-[22px] text-nh-ink">{name}</span>}
+                <Link href={`/brands/${encodeURIComponent(textValue(brand.airtable_id, brand.id))}/${detailSlug(brand.slug, brand.id)}`} className="relative flex aspect-[204/160] items-center justify-center bg-[#e1e1e1] p-8 transition-opacity duration-300 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-nh-accent">
+                  {brand.logo_url ? <Image src={brand.logo_url} alt={name} fill sizes="(min-width: 1024px) 204px, (min-width: 640px) 33vw, 50vw" className="p-8 object-contain grayscale contrast-200 brightness-0" /> : <span className="text-center text-[14px] font-medium leading-[22px] text-nh-ink">{name}</span>}
                 </Link>
               </article>
             );
