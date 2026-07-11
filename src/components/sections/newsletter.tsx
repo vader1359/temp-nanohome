@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
@@ -7,10 +8,15 @@ export function Newsletter() {
   const t = useTranslations("Newsletter");
 
   return (
-    <section
-      className="relative flex min-h-[576px] w-full justify-center overflow-hidden bg-cover bg-center py-12 sm:py-16 lg:py-20"
-      style={{ backgroundImage: "url(/images/newsletter_bg.png)" }}
-    >
+    <section className="relative flex min-h-[576px] w-full justify-center overflow-hidden py-12 sm:py-16 lg:py-20">
+      <Image
+        src="/images/newsletter_bg.webp"
+        alt=""
+        aria-hidden="true"
+        fill
+        sizes="100vw"
+        className="object-cover object-center"
+      />
       <div className="absolute inset-0 bg-black/20" />
 
       <div className="site-shell relative z-10 flex flex-col items-center justify-center gap-4 text-center">
