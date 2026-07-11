@@ -179,9 +179,14 @@
       "subtitle": "nanoHome 계정을 만들어 정보를 저장하고 더 빠르게 쇼핑하세요.",
       "submit": "계정 만들기",
       "loading": "계정 생성 중...",
+      "submitting": "계정 생성 중...",
       "signInLink": "로그인",
       "successTitle": "계정이 생성되었습니다",
       "successBody": "nanoHome 계정이 준비되었습니다. 당신을 위해 큐레이션한 인테리어 선택을 계속 둘러보세요."
+    },
+    "checkEmail": {
+      "title": "이메일을 확인하세요",
+      "body": "이메일 주소로 확인 링크를 보냈습니다. 링크를 열어 계정을 활성화하세요."
     },
     "forgot": {
       "title": "비밀번호 찾기",
@@ -204,6 +209,7 @@
     },
     "errors": {
       "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다.",
+      "emailNotConfirmed": "로그인 전에 이메일을 확인해 주세요. 받은편지함에서 인증 링크를 확인하세요.",
       "signInError": "지금 로그인할 수 없습니다. 다시 시도해 주세요.",
       "signUpError": "지금 계정을 만들 수 없습니다. 다시 시도해 주세요.",
       "forgotError": "비밀번호 재설정 이메일을 보낼 수 없습니다. 다시 시도해 주세요.",

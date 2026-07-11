@@ -36,7 +36,7 @@ export function AuthProvider({ children, isAuthenticated }: { children: ReactNod
     : authParam === "register_success" ? "register_success"
     : authParam === "forgot_sent" ? "forgot_sent"
     : "login";
-  const authError = authParam === "sign_in_error" || authParam === "sign_up_error" || authParam === "forgot_error" || authParam === "invalid_credentials" || authParam === "password_mismatch" || authParam === "terms_required" ? authParam : null;
+  const authError = authParam === "sign_in_error" || authParam === "sign_up_error" || authParam === "forgot_error" || authParam === "invalid_credentials" || authParam === "email_not_confirmed" || authParam === "password_mismatch" || authParam === "terms_required" ? authParam : null;
   const redirectTo = getAuthRedirectPath(`${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`);
 
   const removeAuthParams = useCallback(() => {

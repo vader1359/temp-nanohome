@@ -23,9 +23,13 @@ export function LoginForm({ onSwitchView, redirectTo, authError }: AuthFormProps
           {t("login.subtitle")}
         </p>
 
-        {(authError === "sign_in_error" || authError === "invalid_credentials") && (
+        {(authError === "sign_in_error" || authError === "invalid_credentials" || authError === "email_not_confirmed") && (
           <p className="text-sm text-nh-red mb-6">
-            {authError === "invalid_credentials" ? t("errors.invalidCredentials") : t("errors.signInError")}
+            {authError === "invalid_credentials"
+              ? t("errors.invalidCredentials")
+              : authError === "email_not_confirmed"
+                ? t("errors.emailNotConfirmed")
+                : t("errors.signInError")}
           </p>
         )}
 
