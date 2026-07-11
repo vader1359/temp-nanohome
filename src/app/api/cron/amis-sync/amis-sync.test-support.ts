@@ -75,7 +75,7 @@ export function setRouteEnv(): void {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test");
   vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-test");
   vi.stubEnv("CRON_SECRET", "cron-test");
-  vi.stubEnv("AMIS_API_BASE_URL", "https://amis.example.test");
+  vi.stubEnv("AMIS_API_BASE_URL", "https://crmconnect.misa.vn");
   vi.stubEnv("AMIS_CLIENT_ID", "nanohome");
   vi.stubEnv("AMIS_CLIENT_SECRET", "amis-secret");
 }

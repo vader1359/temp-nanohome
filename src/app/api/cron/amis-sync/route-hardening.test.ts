@@ -77,11 +77,11 @@ describe("POST /api/cron/amis-sync hardening", () => {
     const response = await POST(authorizedPostRequest());
     const body = await response.json();
 
-    // Then: records from both AMIS pages are applied.
+    // Then: price records from both AMIS pages are applied without a stock feed.
     expect(response.status).toBe(200);
     expect(body).toMatchObject({ status: "success", itemsProcessed: 101, itemsFailed: 0 });
     expect(state.variantUpdates).toHaveLength(101);
-    expect(amisFetch).toHaveBeenCalledTimes(5);
+    expect(amisFetch).toHaveBeenCalledTimes(3);
     expect(productsFetchPages(amisFetch)).toEqual(["0", "1"]);
   });
 
@@ -95,13 +95,13 @@ describe("POST /api/cron/amis-sync hardening", () => {
     const response = await POST(authorizedPostRequest());
     const body = await response.json();
 
-    // Then: zero-row Supabase updates are counted as failures, not successes.
+    // Then: the public cron response hides the internal unmatched-SKU detail.
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
       status: "partial",
       itemsProcessed: 0,
       itemsFailed: 1,
-      error: "No Supabase variant matched AMIS SKU MISSING",
+      error: "AMIS sync failed",
     });
     expect(state.logs.at(-1)).toMatchObject({ status: "partial", items_processed: 0, items_failed: 1 });
   });
@@ -197,27 +197,24 @@ describe("POST /api/cron/amis-sync hardening", () => {
     expect(state.maxConcurrentVariantUpdates).toBe(10);
   });
 
-  it("updates only changed stock for uniquely matched local variants", async () => {
-    // Given: AMIS stock matches one changed variant and one already-current variant.
+  it("does not invoke the stock ledger from the legacy price cron", async () => {
+    // Given: local stock differs but the legacy cron has no price records to update.
     setRouteEnv();
     state.localVariants.push(
       { id: "variant-changed", sku: "SKU-CHANGED", stock: 1 },
       { id: "variant-current", sku: "SKU-CURRENT", stock: 4 },
     );
-    vi.stubGlobal("fetch", createAmisFetchMock([[]], [[
-      { product_code: "SKU-CHANGED", amount_summary: "2" },
-      { product_code: "SKU-CURRENT", amount_summary: 4 },
-    ]]));
+    vi.stubGlobal("fetch", createAmisFetchMock([[]]));
     const { POST } = await import("./route");
 
-    // When: the AMIS sync completes its full stock snapshot.
+    // When: the legacy price cron completes.
     const response = await POST(authorizedPostRequest());
     const body = await response.json();
 
-    // Then: it targets the changed unique local ID, never the SKU predicate.
+    // Then: it leaves stock projection to the dedicated inventory baseline job.
     expect(response.status).toBe(200);
-    expect(body).toMatchObject({ status: "success", itemsProcessed: 1, itemsFailed: 0 });
-    expect(state.stockUpdates).toEqual([{ id: "variant-changed", stock: 2 }]);
+    expect(body).toMatchObject({ status: "success", itemsProcessed: 0, itemsFailed: 0 });
+    expect(state.stockUpdates).toEqual([]);
   });
 
   it("ignores remote-only stock ledger records", async () => {
@@ -260,23 +257,20 @@ describe("POST /api/cron/amis-sync hardening", () => {
     expect(state.stockUpdates).toEqual([]);
   });
 
-  it("does not write stock when a later ledger page fails", async () => {
-    // Given: page one has a changed match but page two fails to load.
+  it("does not depend on a stock ledger page failure", async () => {
+    // Given: a local stock value differs but price data has no records.
     setRouteEnv();
     state.localVariants.push({ id: "variant-1", sku: "SKU-1", stock: 1 });
-    vi.stubGlobal("fetch", createAmisFetchMock([[]], [
-      [{ product_code: "SKU-1", amount_summary: 2 }],
-      null,
-    ]));
+    vi.stubGlobal("fetch", createAmisFetchMock([[]]));
     const { POST } = await import("./route");
 
-    // When: the stock ledger snapshot cannot finish paging.
+    // When: the legacy price cron runs.
     const response = await POST(authorizedPostRequest());
     const body = await response.json();
 
-    // Then: no page-one record reaches Supabase and the run is partial.
+    // Then: it succeeds without reading or writing inventory stock.
     expect(response.status).toBe(200);
-    expect(body).toMatchObject({ status: "partial", itemsProcessed: 0, itemsFailed: 1 });
+    expect(body).toMatchObject({ status: "success", itemsProcessed: 0, itemsFailed: 0 });
     expect(state.stockUpdates).toEqual([]);
   });
 
@@ -298,13 +292,13 @@ describe("POST /api/cron/amis-sync hardening", () => {
       status: "failed",
       itemsProcessed: 0,
       itemsFailed: 1,
-      error: "network reset",
+      error: "AMIS sync failed",
     });
     expect(state.logs.at(-1)).toMatchObject({
       status: "failed",
       items_processed: 0,
       items_failed: 1,
-      error: "network reset",
+      error: "Unexpected AMIS sync failure",
     });
   });
 });

@@ -17,5 +17,11 @@ async function handleAmisSyncCron(request: Request): Promise<Response> {
   }
 
   const result = await runAmisSync();
-  return Response.json(result, { status: 200 });
+  return Response.json({
+    status: result.status,
+    itemsProcessed: result.itemsProcessed,
+    itemsFailed: result.itemsFailed,
+    error: result.error === null ? null : "AMIS sync failed",
+    watermark: result.watermark,
+  }, { status: 200 });
 }

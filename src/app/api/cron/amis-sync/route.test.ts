@@ -87,6 +87,21 @@ describe("POST /api/cron/amis-sync", () => {
     expect(state.logs.at(-1)).toMatchObject({ status: "partial", items_processed: 0, items_failed: 1 });
   });
 
+  it("does not expose a failed AMIS response body", async () => {
+    // Given: the AMIS price feed returns sensitive upstream content.
+    setRouteEnv(configuredAmisEnv());
+    vi.stubGlobal("fetch", createAmisFetchMock(new Response("sensitive-order-data", { status: 502 })));
+    const { POST } = await import("./route");
+
+    // When: the authenticated cron route handles the price-sync failure.
+    const response = await POST(authorizedRequest());
+    const body = await response.json();
+
+    // Then: its public response omits the AMIS body while retaining the failure outcome.
+    expect(body).toMatchObject({ status: "partial", itemsProcessed: 0, itemsFailed: 1, error: "AMIS sync failed" });
+    expect(JSON.stringify(body)).not.toContain("sensitive-order-data");
+  });
+
   it("updates Supabase variants by SKU from a valid AMIS payload", async () => {
     // Given: AMIS returns one variant record keyed by SKU.
     setRouteEnv(configuredAmisEnv());
@@ -117,10 +132,9 @@ describe("POST /api/cron/amis-sync", () => {
       price: 1200000,
       source_updated_at: "2026-06-28T17:02:53.000+07:00",
     }]);
-    expect(amisFetch).toHaveBeenCalledTimes(4);
-    expect(amisFetch.mock.calls.map(([, init]) => init?.method)).toEqual(["POST", "GET", "POST", "GET"]);
+    expect(amisFetch).toHaveBeenCalledTimes(2);
+    expect(amisFetch.mock.calls.map(([, init]) => init?.method)).toEqual(["POST", "GET"]);
     expect(String(amisFetch.mock.calls[1]?.[0])).toContain("/api/v2/Products?");
-    expect(String(amisFetch.mock.calls[3]?.[0])).toContain("/api/v2/Stocks/product_ledger?");
   });
 
   it("returns 200 failed when AMIS returns a malformed payload", async () => {
@@ -179,7 +193,7 @@ type AmisTestEnv = {
 
 function configuredAmisEnv(): AmisTestEnv {
   return {
-    AMIS_API_BASE_URL: "https://amis.example.test",
+    AMIS_API_BASE_URL: "https://crmconnect.misa.vn",
     AMIS_CLIENT_ID: "nanohome",
     AMIS_CLIENT_SECRET: "amis-secret",
   };

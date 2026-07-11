@@ -2,13 +2,11 @@ import "server-only";
 
 import {
   createAmisClientConfig,
-  fetchAmisStockLedger,
   fetchAmisVariants,
   type AmisClientConfig,
 } from "@/lib/amis/client";
 import { env } from "@/lib/env";
 import { syncAmisPrices, type PriceSyncResult } from "@/lib/amis/price-sync";
-import { syncAmisStockSnapshot, type StockSyncResult } from "@/lib/amis/stock-sync";
 import { createAmisSyncAdminClient } from "@/lib/supabase/admin";
 import type { TypedSupabaseClient } from "@/types/db";
 
@@ -43,11 +41,9 @@ export async function runAmisSync(): Promise<AmisSyncResult> {
     const config = createAmisClientConfig(env);
     if (config === null) return finishSyncLog(supabase, logId, failedUpdate(AMIS_CREDENTIALS_MISSING_MESSAGE, watermark, 0));
 
-    const priceResult = await syncPriceDelta(supabase, config, watermark);
-    const stockResult = await syncStockSnapshot(supabase, config);
-    return finishSyncLog(supabase, logId, combinedUpdate(priceResult, stockResult));
-  } catch (error) {
-    return finishSyncLog(supabase, logId, failedUpdate(errorMessage(error), watermark, 1));
+    return finishSyncLog(supabase, logId, priceResultUpdate(await syncPriceDelta(supabase, config, watermark)));
+  } catch {
+    return finishSyncLog(supabase, logId, failedUpdate("Unexpected AMIS sync failure", watermark, 1));
   }
 }
 
@@ -77,20 +73,6 @@ function failedPriceResult(
   return { status, itemsProcessed: 0, itemsFailed: 1, error, watermark };
 }
 
-async function syncStockSnapshot(supabase: TypedSupabaseClient, config: AmisClientConfig): Promise<StockSyncResult> {
-  const fetchResult = await fetchAmisStockLedger(config);
-  switch (fetchResult.kind) {
-    case "success":
-      return syncAmisStockSnapshot({ supabase, records: fetchResult.records });
-    case "http_error":
-      return { itemsProcessed: 0, itemsFailed: 1, error: `AMIS stock HTTP ${fetchResult.status}: ${fetchResult.message}` };
-    case "malformed":
-      return { itemsProcessed: 0, itemsFailed: 1, error: `Malformed AMIS stock payload: ${fetchResult.message}` };
-    default:
-      return assertNever(fetchResult);
-  }
-}
-
 async function createSyncLog(supabase: TypedSupabaseClient): Promise<string> {
   const { data, error } = await supabase.from("amis_sync_log")
     .insert([{ status: "running", items_processed: 0, items_failed: 0, started_at: new Date().toISOString() }])
@@ -106,13 +88,12 @@ async function readWatermark(supabase: TypedSupabaseClient): Promise<string | nu
   return data?.[0]?.watermark ?? null;
 }
 
-function combinedUpdate(price: PriceSyncResult, stock: StockSyncResult): SyncLogUpdate {
-  const itemsFailed = price.itemsFailed + stock.itemsFailed;
+function priceResultUpdate(price: PriceSyncResult): SyncLogUpdate {
   return {
-    status: price.status === "failed" ? "failed" : statusFromCounts(itemsFailed),
-    items_processed: price.itemsProcessed + stock.itemsProcessed,
-    items_failed: itemsFailed,
-    error: stock.error ?? price.error,
+    status: price.status,
+    items_processed: price.itemsProcessed,
+    items_failed: price.itemsFailed,
+    error: price.error,
     watermark: price.watermark,
     finished_at: new Date().toISOString(),
   };
@@ -120,14 +101,6 @@ function combinedUpdate(price: PriceSyncResult, stock: StockSyncResult): SyncLog
 
 function failedUpdate(error: string, watermark: string | null, itemsFailed = 1): SyncLogUpdate {
   return { status: "failed", items_processed: 0, items_failed: itemsFailed, error, watermark, finished_at: new Date().toISOString() };
-}
-
-function statusFromCounts(itemsFailed: number): AmisSyncStatus {
-  return itemsFailed > 0 ? "partial" : "success";
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error && error.message.length > 0 ? error.message : "Unexpected AMIS sync failure";
 }
 
 async function finishSyncLog(supabase: TypedSupabaseClient, logId: string, update: SyncLogUpdate): Promise<AmisSyncResult> {
