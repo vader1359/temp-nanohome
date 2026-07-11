@@ -1,4 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
+import Image from "next/image";
 import { Link } from "@/i18n/navigation";
 import { localizedText } from "@/lib/i18n/content";
 import type { Locale } from "@/i18n/routing";
@@ -58,8 +59,8 @@ export function ImageFrame({
   className?: string;
 }>) {
   return (
-    <div className={`${ratio} overflow-hidden bg-[#e1e1e1] ${className}`}>
-      {src ? <img src={src} alt={alt} className="h-full w-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.03]" /> : null}
+    <div className={`relative ${ratio} overflow-hidden bg-[#e1e1e1] ${className}`}>
+      {src ? <Image src={src} alt={alt} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.03]" /> : null}
     </div>
   );
 }
