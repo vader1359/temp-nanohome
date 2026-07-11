@@ -15,7 +15,7 @@ import {
 import { variantDetailHref } from "@/lib/queries/variant-url";
 import { firstCloudinaryImage } from "@/lib/image";
 import type { Variant } from "@/types/db";
-import type { Locale } from "@/i18n/routing";
+import { isSupportedLocale, type Locale } from "@/i18n/routing";
 
 const PAGE_SIZE = 24;
 const FEATURED_FIRST_BRAND = "fritz-hansen";
@@ -144,13 +144,21 @@ function normalizeRooms(values: readonly string[] | undefined): readonly string[
   return values.map((value) => labelToSlug.get(value) ?? value);
 }
 
-function facetLabel(slug: string, locale: Locale, categoryBySlug: ReadonlyMap<string, { readonly name: string; readonly name_vi: string | null }>): string {
+function facetLabel(
+  slug: string,
+  locale: Locale,
+  categoryBySlug: ReadonlyMap<string, { readonly name: string; readonly name_ko: string | null; readonly name_vi: string | null }>,
+): string {
   const category = categoryBySlug.get(slug);
   if (locale === "vi") {
     return variantText(category?.name_vi, VIETNAMESE_FACET_LABELS[slug] ?? titleizeSlug(slug));
   }
 
-  return variantText(category?.name, titleizeSlug(slug));
+  if (locale === "ko") {
+    return variantText(category?.name_ko, variantText(category?.name, variantText(category?.name_vi, titleizeSlug(slug))));
+  }
+
+  return variantText(category?.name, variantText(category?.name_vi, titleizeSlug(slug)));
 }
 
 function getImageUrl(variant: VariantProductListItem): string {
@@ -183,9 +191,13 @@ function mergePreferredBrandFirst(
 
 export default async function ProductsRoute({ params, searchParams }: PageProps) {
   const { locale } = await params;
+  if (!isSupportedLocale(locale)) {
+    throw new Error(`Unsupported locale: ${locale}`);
+  }
+
   setRequestLocale(locale);
 
-  const supportedLocale = locale as Locale;
+  const supportedLocale = locale;
   const t = await getTranslations("Products");
   const sp = await searchParams;
   const parsed = FilterSchema.safeParse(sp);
@@ -249,13 +261,19 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
       brandLogoUrl: brand?.logo_url ?? (variantText(variant.brand_cldr_logo) || null),
       brandSlug: variant.filter_brand ?? undefined,
       category: variant.filter_category ?? undefined,
-      name: variantText(supportedLocale === "vi" ? variant.name_vi : variant.name, variantText(supportedLocale === "vi" ? variant.name : variant.name_vi, t("defaultProductName"))),
+      name: variantText(
+        supportedLocale === "ko" ? variant.name_ko : supportedLocale === "vi" ? variant.name_vi : variant.name,
+        variantText(
+          supportedLocale === "ko" ? variant.name : supportedLocale === "vi" ? variant.name : variant.name_vi,
+          supportedLocale === "ko" ? variantText(variant.name_vi, t("defaultProductName")) : t("defaultProductName"),
+        ),
+      ),
       rooms: variant.filter_room ?? [],
       subCategory: variant.filter_sub_category ?? undefined,
       subtitle: facetLabel(variant.filter_sub_category ?? "", supportedLocale, categoryBySlug),
       status,
       imageUrl: getImageUrl(variant),
-      href: variantDetailHref(variant),
+      href: variantDetailHref(variant, supportedLocale),
       oldPrice: variant.compare_at_price !== null ? formatPrice(variant.compare_at_price) : null,
       discount: variant.discount_percent !== null ? `-${variant.discount_percent}%` : null,
       price: formatPrice(variant.price),
@@ -289,7 +307,6 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
     });
 
   const categoryOptions = Array.from(categorySlugs).map((cat) => {
-    const category = categoryBySlug.get(cat);
     return {
       slug: cat,
       name: facetLabel(cat, supportedLocale, categoryBySlug),
