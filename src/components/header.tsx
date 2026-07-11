@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   ChevronDown,
   Heart,
@@ -25,7 +25,11 @@ export function Header() {
   const t = useTranslations("Header");
   const locale = useLocale();
   const pathname = usePathname();
-  const [currentQuery, setCurrentQuery] = useState("");
+  const currentQuery = useSyncExternalStore(
+    () => () => {},
+    () => window.location.search,
+    () => "",
+  );
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [cartTab, setCartTab] = useState<CartSidebarTab>("cart");
@@ -151,10 +155,6 @@ export function Header() {
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
   }, [cartOpen]);
-
-  useEffect(() => {
-    setCurrentQuery(window.location.search);
-  }, []);
 
   return (
     <header className="relative z-30 min-h-[80px] bg-white lg:h-[150px]">
