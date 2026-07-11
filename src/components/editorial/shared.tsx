@@ -1,5 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
 import { Link } from "@/i18n/navigation";
+import { localizedText } from "@/lib/i18n/content";
+import type { Locale } from "@/i18n/routing";
 import type { Product } from "@/types/db";
 
 export function textValue(value: string | null | undefined, fallback = ""): string {
@@ -116,11 +118,13 @@ export function SectionTitleLink({ title, href }: Readonly<{ title: string; href
 }
 
 export function ProductStrip({
+  locale,
   products,
   title,
   fallbackProductName,
   fallbackProductDescription,
 }: Readonly<{
+  locale: Locale;
   products: readonly Product[];
   title: string;
   fallbackProductName: string;
@@ -138,8 +142,8 @@ export function ProductStrip({
       <div className="mt-8 grid gap-6 md:grid-cols-3">
         {products.slice(0, 3).map((product) => (
           <article key={product.id} className="bg-white p-5">
-            <h3 className="text-[16px] font-medium leading-6 text-nh-ink">{textValue(product.name_vi, textValue(product.name, fallbackProductName))}</h3>
-            <p className="mt-2 line-clamp-3 text-[14px] leading-[22px] text-nh-muted">{textValue(product.description_vi, textValue(product.description, fallbackProductDescription))}</p>
+            <h3 className="text-[16px] font-medium leading-6 text-nh-ink">{localizedText({ ko: product.name_ko, vi: product.name_vi, en: product.name }, locale, fallbackProductName)}</h3>
+            <p className="mt-2 line-clamp-3 text-[14px] leading-[22px] text-nh-muted">{localizedText({ ko: product.description_ko, vi: product.description_vi, en: product.description }, locale, fallbackProductDescription)}</p>
           </article>
         ))}
       </div>

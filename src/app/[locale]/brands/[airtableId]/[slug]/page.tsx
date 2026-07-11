@@ -2,11 +2,18 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { NotionArticle } from "@/components/editorial/notion-article";
 import { ProductStrip, safeDecodeURIComponent, textValue } from "@/components/editorial/shared";
+import { localizedText } from "@/lib/i18n/content";
+import { isSupportedLocale } from "@/i18n/routing";
 import { getBrandByAirtableId, getProductsByBrandAirtableId } from "@/lib/queries/brands";
 import { extractNotionPageId, getNotionRecordMap, localizedNotionLink } from "@/lib/queries/notion";
 
 export default async function BrandDetailPage({ params }: Readonly<{ params: Promise<{ locale: string; airtableId: string; slug: string }> }>) {
   const { locale, airtableId } = await params;
+
+  if (!isSupportedLocale(locale)) {
+    notFound();
+  }
+
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "Brands" });
   const staticT = await getTranslations({ locale, namespace: "Static" });
@@ -24,8 +31,8 @@ export default async function BrandDetailPage({ params }: Readonly<{ params: Pro
 
   const products = await getProductsByBrandAirtableId(textValue(brand.airtable_id, brand.id), { pageSize: 3 });
   const name = textValue(brand.name, t("fallbackName"));
-  const description = textValue(locale === "vi" ? brand.description_vi : brand.description, textValue(locale === "vi" ? brand.description : brand.description_vi, t("fallbackDescription")));
-  const origin = textValue(locale === "vi" ? brand.origin_vi : brand.origin, textValue(locale === "vi" ? brand.origin : brand.origin_vi));
+  const description = localizedText({ ko: brand.description_ko, vi: brand.description_vi, en: brand.description }, locale, t("fallbackDescription"));
+  const origin = localizedText({ ko: brand.origin_ko, vi: brand.origin_vi, en: brand.origin }, locale);
   const notionLink = localizedNotionLink(brand.raw, locale);
   const notionPageId = extractNotionPageId(notionLink);
   const recordMap = notionPageId === null
@@ -49,7 +56,7 @@ export default async function BrandDetailPage({ params }: Readonly<{ params: Pro
         </article>
       </section>
       {recordMap ? <NotionArticle recordMap={recordMap} /> : null}
-      <ProductStrip products={products} title={staticT("relatedProducts")} fallbackProductName={staticT("fallbackProduct")} fallbackProductDescription={staticT("fallbackProductDescription")} />
+      <ProductStrip locale={locale} products={products} title={staticT("relatedProducts")} fallbackProductName={staticT("fallbackProduct")} fallbackProductDescription={staticT("fallbackProductDescription")} />
     </main>
   );
 }

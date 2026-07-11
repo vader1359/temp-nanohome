@@ -1,11 +1,17 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ImageFrame, ProductStrip, safeDecodeURIComponent, textValue } from "@/components/editorial/shared";
+import { isSupportedLocale } from "@/i18n/routing";
 import { getDesignerByAirtableId, getProductsByDesignerAirtableId } from "@/lib/queries/designers";
 import { localizedRawString } from "@/lib/queries/notion";
 
 export default async function DesignerDetailPage({ params }: Readonly<{ params: Promise<{ locale: string; airtableId: string; slug: string }> }>) {
   const { locale, airtableId } = await params;
+
+  if (!isSupportedLocale(locale)) {
+    notFound();
+  }
+
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "Designers" });
   const staticT = await getTranslations({ locale, namespace: "Static" });
@@ -35,7 +41,7 @@ export default async function DesignerDetailPage({ params }: Readonly<{ params: 
           <p className="mt-6 whitespace-pre-line text-[14px] leading-[22px] text-nh-muted">{textValue(designer.description, t("fallbackDescription"))}</p>
         </article>
       </section>
-      <ProductStrip products={products} title={staticT("relatedProducts")} fallbackProductName={staticT("fallbackProduct")} fallbackProductDescription={staticT("fallbackProductDescription")} />
+      <ProductStrip locale={locale} products={products} title={staticT("relatedProducts")} fallbackProductName={staticT("fallbackProduct")} fallbackProductDescription={staticT("fallbackProductDescription")} />
     </main>
   );
 }
