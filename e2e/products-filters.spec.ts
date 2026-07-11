@@ -32,15 +32,6 @@ async function expectEveryCardAttributeIncludes(page: Page, attribute: string, e
   expect(allMatch).toBe(true);
 }
 
-async function expectEveryCardAttributeContains(page: Page, attribute: string, expected: string): Promise<void> {
-  await expect(productCards(page).first()).toBeVisible({ timeout: 15_000 });
-  const allMatch = await productCards(page).evaluateAll(
-    (cards, args) => cards.every((card) => (card.getAttribute(args.attribute) ?? "").toLowerCase().includes(args.expected.toLowerCase())),
-    { attribute, expected },
-  );
-  expect(allMatch).toBe(true);
-}
-
 test("brand filter updates URL and product grid", async ({ page }) => {
   const response = await page.goto(PRODUCTS_URL);
   expect(response?.status()).toBe(200);

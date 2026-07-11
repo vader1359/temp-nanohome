@@ -1,9 +1,8 @@
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Category } from "@/types/db";
 
 export async function getCategories(): Promise<readonly Category[]> {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("categories")
     .select("*")

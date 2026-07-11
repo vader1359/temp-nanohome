@@ -24,8 +24,9 @@ const eslintConfig = defineConfig([
     name: "block-supabase-admin-from-client",
     files: ["src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
     ignores: [
-      "src/lib/supabase/**",
-      "src/lib/amis/sync.ts",
+       "src/lib/supabase/**",
+       "src/lib/amis/sync.ts",
+       "src/lib/amis/inventory-sync.ts",
       "src/lib/queries/cart.ts",
       "src/app/api/**",
       "**/route.{ts,tsx,js,jsx}",

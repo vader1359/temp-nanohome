@@ -11,7 +11,7 @@
     "korean-backfill:drafts": "tsx scripts/korean-backfill-drafts.ts",
     "korean-backfill:apply": "tsx scripts/apply-korean-backfill.ts",
     "korean-backfill:export": "tsx scripts/export-korean-backfill.ts",
-    "test:ui-merge-guard": "node scripts/ui-merge-guard.cjs"
+    "test:ui-merge-guard": "node scripts/ui-merge-guard.mjs"
   },
   "dependencies": {
     "@axiomhq/js": "^1.0.0",

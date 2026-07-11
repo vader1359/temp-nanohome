@@ -1,4 +1,5 @@
 import type { ProductGridItem } from "@/components/products/ProductGrid";
+import { isUsmContactVariant, isUsmVariant } from "@/lib/products/usm";
 import type { Variant } from "@/types/db";
 
 const priceFormatter = new Intl.NumberFormat("vi-VN", {
@@ -45,6 +46,8 @@ type ProductGridVariant = Pick<
   | "name_vi"
   | "slug"
   | "slug_vi"
+  | "sku"
+  | "stock"
   | "price"
   | "compare_at_price"
   | "discount_percent"
@@ -60,7 +63,7 @@ export function getProductGridImageUrl(variant: ProductGridVariant, options: Pro
       variantRawText(variant, "cldr_packshot_url") ||
       variantRawText(variant, "cldr_packshot") ||
       variantText(variant.packshot_url) ||
-      ""
+      "/images/p_lc2.png"
     );
   }
 
@@ -75,7 +78,8 @@ export function getProductGridImageUrl(variant: ProductGridVariant, options: Pro
 
 export function variantToProductGridItem(variant: ProductGridVariant, options: ProductGridMapperOptions = {}): ProductGridItem {
   const imageUrl = getProductGridImageUrl(variant, options);
-  const discount = variant.discount_percent !== null ? `-${variant.discount_percent}%` : null;
+  const useContactPrice = isUsmContactVariant(variant);
+  const discount = useContactPrice || variant.discount_percent === null ? null : `-${variant.discount_percent}%`;
   const name = variantText(variant.name_vi, variantText(variant.name, "Sản phẩm"));
   const detailSlug = variantText(variant.slug_vi, variantText(variant.slug, variant.id));
 
@@ -88,9 +92,13 @@ export function variantToProductGridItem(variant: ProductGridVariant, options: P
     status: variant.on_sale ? "sale" : variant.in_stock ? "in_stock" : "out_of_stock",
     imageUrl,
     href: `/products/${encodeURIComponent(detailSlug)}`,
-    oldPrice: variant.compare_at_price !== null ? formatVndPrice(variant.compare_at_price) : null,
+    oldPrice: useContactPrice || variant.compare_at_price === null ? null : formatVndPrice(variant.compare_at_price),
     discount,
-    price: formatVndPrice(variant.price),
+    price: useContactPrice
+      ? formatVndPrice(null)
+      : isUsmVariant(variant) && variant.price !== null
+        ? priceFormatter.format(Number(variant.price))
+        : formatVndPrice(variant.price),
     swatches: [],
   };
 }

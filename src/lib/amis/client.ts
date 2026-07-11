@@ -32,6 +32,7 @@ export type AccessTokenResult =
   | { readonly kind: "malformed"; readonly message: string };
 
 const AMIS_PRODUCT_PAGE_SIZE = 100;
+const AMIS_CRM_ORIGIN = "https://crmconnect.misa.vn";
 
 export function createAmisClientConfig(env: Env): AmisClientConfig | null {
   if (
@@ -39,6 +40,22 @@ export function createAmisClientConfig(env: Env): AmisClientConfig | null {
     || env.AMIS_CLIENT_ID === undefined
     || env.AMIS_CLIENT_SECRET === undefined
   ) {
+    return null;
+  }
+
+  try {
+    const url = new URL(env.AMIS_API_BASE_URL);
+    if (
+      url.origin !== AMIS_CRM_ORIGIN
+      || url.username.length > 0
+      || url.password.length > 0
+      || url.pathname !== "/"
+      || url.search.length > 0
+      || url.hash.length > 0
+    ) {
+      return null;
+    }
+  } catch {
     return null;
   }
 

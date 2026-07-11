@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const { readFileSync } = require("node:fs");
-const { join } = require("node:path");
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const root = process.cwd();
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 
 export type WishlistItem = {
   id: string;
@@ -27,28 +27,40 @@ type WishlistContextValue = {
 
 const WishlistContext = createContext<WishlistContextValue | null>(null);
 const WISHLIST_STORAGE_KEY = "nanohome.wishlist.items";
+const emptyWishlistItems: WishlistItem[] = [];
+let wishlistItems = emptyWishlistItems;
+let wishlistStorageRead = false;
+const wishlistListeners = new Set<() => void>();
+
+function getWishlistItems(): WishlistItem[] {
+  if (!wishlistStorageRead && typeof window !== "undefined") {
+    wishlistItems = readStoredWishlistItems();
+    wishlistStorageRead = true;
+  }
+
+  return wishlistItems;
+}
+
+function subscribeToWishlist(listener: () => void): () => void {
+  wishlistListeners.add(listener);
+  return () => wishlistListeners.delete(listener);
+}
+
+function updateWishlistItems(update: (items: WishlistItem[]) => WishlistItem[]): void {
+  wishlistItems = update(getWishlistItems());
+  try {
+    window.localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlistItems));
+  } catch {
+    // Ignore storage failures so wishlist interactions still work in memory.
+  }
+  wishlistListeners.forEach((listener) => listener());
+}
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<WishlistItem[]>([]);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setItems(readStoredWishlistItems());
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-
-    try {
-      window.localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(items));
-    } catch {
-      // Ignore storage failures so wishlist interactions still work in memory.
-    }
-  }, [hydrated, items]);
+  const items = useSyncExternalStore(subscribeToWishlist, getWishlistItems, () => emptyWishlistItems);
 
   const addItem = useCallback((newItem: WishlistItem) => {
-    setItems((prev) => {
+    updateWishlistItems((prev) => {
       const existing = prev.findIndex((item) => item.id === newItem.id);
       if (existing !== -1) {
         const updated = [...prev];
@@ -61,15 +73,15 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removeItem = useCallback((id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+    updateWishlistItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
   const clearWishlist = useCallback(() => {
-    setItems([]);
+    updateWishlistItems(() => []);
   }, []);
 
   const toggleItem = useCallback((item: WishlistItem) => {
-    setItems((prev) => (prev.some((current) => current.id === item.id) ? prev.filter((current) => current.id !== item.id) : [...prev, item]));
+    updateWishlistItems((prev) => (prev.some((current) => current.id === item.id) ? prev.filter((current) => current.id !== item.id) : [...prev, item]));
   }, []);
 
   const hasItem = useCallback((id: string) => items.some((item) => item.id === id), [items]);

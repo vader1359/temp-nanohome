@@ -12,6 +12,7 @@ import { getVariantProducts, type VariantProductListItem } from "@/lib/queries/p
 import { variantDetailHref } from "@/lib/queries/variant-url";
 import { getVariantBySlug, getVariantsByProductId } from "@/lib/queries/variants";
 import { localizedText } from "@/lib/i18n/content";
+import { isUsmContactVariant, isUsmVariant } from "@/lib/products/usm";
 import type { Variant } from "@/types/db";
 import { isSupportedLocale, type Locale } from "@/i18n/routing";
 
@@ -29,8 +30,8 @@ const priceFormatter = new Intl.NumberFormat("vi-VN", {
 
 const FALLBACK_PRODUCT_IMAGE = "/images/p_lc2.png";
 
-function formatPrice(price: Variant["price"]): string {
-  if (price === null || Number(price) === 0) {
+function formatPrice(variant: Pick<Variant, "sku" | "stock">, price: Variant["price"]): string {
+  if (isUsmContactVariant(variant) || price === null || (Number(price) === 0 && !isUsmVariant(variant))) {
     return "Liên hệ";
   }
 
@@ -70,10 +71,10 @@ function getGalleryUrls(value: unknown): readonly unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-function hasValidDiscount(variant: Pick<Variant, "price" | "compare_at_price" | "discount_percent">): boolean {
+function hasValidDiscount(variant: Pick<Variant, "price" | "compare_at_price" | "discount_percent" | "sku" | "stock">): boolean {
   const price = Number(variant.price);
   const compareAtPrice = Number(variant.compare_at_price);
-  return price > 0 && compareAtPrice > price && variant.discount_percent !== null;
+  return !isUsmContactVariant(variant) && price > 0 && compareAtPrice > price && variant.discount_percent !== null;
 }
 
 type VariantRawSource = { readonly raw?: unknown };
@@ -129,6 +130,8 @@ type RelatedVariant = Pick<
   | "slug"
   | "slug_vi"
   | "slug_ko"
+  | "sku"
+  | "stock"
   | "price"
   | "compare_at_price"
   | "discount_percent"
@@ -164,8 +167,8 @@ function toRelatedProduct(variant: RelatedVariant | VariantProductListItem, loca
     name: localizedVariantText(variant, locale, "Sản phẩm"),
     brand: variantText(variant.brand_name_denorm, "nanoHome"),
     category: [localizedFinish(variant, locale), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
-    price: formatPrice(variant.price),
-    oldPrice: discounted ? formatPrice(variant.compare_at_price) : null,
+    price: formatPrice(variant, variant.price),
+    oldPrice: discounted ? formatPrice(variant, variant.compare_at_price) : null,
     discount: discounted ? `-${variant.discount_percent}%` : null,
     image: getVariantPackshotUrl(variant) || getImageUrl(getGalleryUrls(variant.gallery_urls)[0]) || FALLBACK_PRODUCT_IMAGE,
     available: variant.in_stock,
@@ -189,8 +192,8 @@ function buildHeroProduct(variant: Variant, locale: Locale) {
     breadcrumbTitle,
     category: [localizedFinish(variant, locale), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
     onSale: variant.on_sale && discounted,
-    oldPrice: discounted ? formatPrice(variant.compare_at_price) : "",
-    newPrice: formatPrice(variant.price),
+    oldPrice: discounted ? formatPrice(variant, variant.compare_at_price) : "",
+    newPrice: formatPrice(variant, variant.price),
     discount: discounted ? `-${variant.discount_percent}%` : "",
     colors: COLORS,
     gallery: gallery.length > 0 ? gallery : [FALLBACK_PRODUCT_IMAGE],
@@ -222,7 +225,7 @@ function buildSpecColumns(variant: Variant, locale: Locale, labels: ProductSpecL
     ],
     [
       { label: labels.size, value: variantText(variant.size, labels.updating) },
-      { label: labels.price, value: formatPrice(variant.price) },
+      { label: labels.price, value: formatPrice(variant, variant.price) },
       { label: labels.discount, value: hasValidDiscount(variant) ? `${variant.discount_percent}%` : labels.noDiscount },
       { label: labels.productId, value: variant.id },
     ],

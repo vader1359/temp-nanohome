@@ -47,6 +47,144 @@ export type Database = {
         }
         Relationships: []
       }
+      amis_inventory_baseline_lines: {
+        Row: {
+          baseline_id: string
+          sku: string
+          stock: number
+        }
+        Insert: {
+          baseline_id: string
+          sku: string
+          stock: number
+        }
+        Update: {
+          baseline_id?: string
+          sku?: string
+          stock?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amis_inventory_baseline_lines_baseline_id_fkey"
+            columns: ["baseline_id"]
+            isOneToOne: false
+            referencedRelation: "amis_inventory_baselines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      amis_inventory_baselines: {
+        Row: {
+          completed_at: string
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          completed_at: string
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: []
+      }
+      amis_inventory_sync_state: {
+        Row: {
+          active_baseline_id: string | null
+          sale_order_watermark: string | null
+          sync_key: string
+        }
+        Insert: {
+          active_baseline_id?: string | null
+          sale_order_watermark?: string | null
+          sync_key: string
+        }
+        Update: {
+          active_baseline_id?: string | null
+          sale_order_watermark?: string | null
+          sync_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amis_inventory_sync_state_active_baseline_id_fkey"
+            columns: ["active_baseline_id"]
+            isOneToOne: false
+            referencedRelation: "amis_inventory_baselines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      amis_sale_order_lines: {
+        Row: {
+          amis_line_id: number
+          amis_order_id: number
+          amount: number | null
+          is_deleted: boolean
+          is_note_row: boolean
+          produced_quantity: number | null
+          sku: string | null
+          total_amount_delivered: number | null
+        }
+        Insert: {
+          amis_line_id: number
+          amis_order_id: number
+          amount?: number | null
+          is_deleted?: boolean
+          is_note_row: boolean
+          produced_quantity?: number | null
+          sku?: string | null
+          total_amount_delivered?: number | null
+        }
+        Update: {
+          amis_line_id?: number
+          amis_order_id?: number
+          amount?: number | null
+          is_deleted?: boolean
+          is_note_row?: boolean
+          produced_quantity?: number | null
+          sku?: string | null
+          total_amount_delivered?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amis_sale_order_lines_amis_order_id_fkey"
+            columns: ["amis_order_id"]
+            isOneToOne: false
+            referencedRelation: "amis_sale_orders"
+            referencedColumns: ["amis_order_id"]
+          },
+        ]
+      }
+      amis_sale_orders: {
+        Row: {
+          amis_order_id: number
+          approved_date: string | null
+          approved_status: string | null
+          is_deleted: boolean
+          modified_date: string
+          status: string | null
+        }
+        Insert: {
+          amis_order_id: number
+          approved_date?: string | null
+          approved_status?: string | null
+          is_deleted: boolean
+          modified_date: string
+          status?: string | null
+        }
+        Update: {
+          amis_order_id?: number
+          approved_date?: string | null
+          approved_status?: string | null
+          is_deleted?: boolean
+          modified_date?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       brands: {
         Row: {
           airtable_id: string | null
@@ -1192,6 +1330,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_amis_inventory_sync: {
+        Args: {
+          p_baseline_lines: Json
+          p_completed_at: string
+          p_expected_baseline_id: string | null
+          p_expected_watermark: string | null
+          p_mode: string
+          p_order_lines: Json
+          p_orders: Json
+          p_watermark: string | null
+        }
+        Returns: Json
+      }
       capture_order_from_cart: {
         Args: {
           p_address: string

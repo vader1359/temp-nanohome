@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 
 export type CartItem = {
   id: string;
@@ -28,29 +28,41 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 const CART_STORAGE_KEY = "nanohome.cart.items";
+const emptyCartItems: CartItem[] = [];
+let cartItems = emptyCartItems;
+let cartStorageRead = false;
+const cartListeners = new Set<() => void>();
+
+function getCartItems(): CartItem[] {
+  if (!cartStorageRead && typeof window !== "undefined") {
+    cartItems = readStoredCartItems();
+    cartStorageRead = true;
+  }
+
+  return cartItems;
+}
+
+function subscribeToCart(listener: () => void): () => void {
+  cartListeners.add(listener);
+  return () => cartListeners.delete(listener);
+}
+
+function updateCartItems(update: (items: CartItem[]) => CartItem[]): void {
+  cartItems = update(getCartItems());
+  try {
+    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+  } catch {
+    // Ignore storage failures so cart interactions still work in memory.
+  }
+  cartListeners.forEach((listener) => listener());
+}
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setItems(readStoredCartItems());
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-
-    try {
-      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
-    } catch {
-      // Ignore storage failures so cart interactions still work in memory.
-    }
-  }, [hydrated, items]);
+  const items = useSyncExternalStore(subscribeToCart, getCartItems, () => emptyCartItems);
 
   const addItem = useCallback((newItem: AddCartItem) => {
     const qty = Math.max(1, Math.floor(newItem.quantity ?? 1));
-    setItems((prev) => {
+    updateCartItems((prev) => {
       const existing = prev.findIndex((item) => item.id === newItem.id);
       if (existing !== -1) {
         const updated = [...prev];
@@ -66,21 +78,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removeItem = useCallback((id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+    updateCartItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
   const updateQuantity = useCallback((id: string, quantity: number) => {
     const qty = Math.max(0, Math.floor(quantity));
     if (qty === 0) {
-      setItems((prev) => prev.filter((item) => item.id !== id));
+      updateCartItems((prev) => prev.filter((item) => item.id !== id));
       return;
     }
 
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, quantity: qty } : item)));
+    updateCartItems((prev) => prev.map((item) => (item.id === id ? { ...item, quantity: qty } : item)));
   }, []);
 
   const clearCart = useCallback(() => {
-    setItems([]);
+    updateCartItems(() => []);
   }, []);
 
   const getItemCount = useCallback(() => {

@@ -11,9 +11,13 @@ interface SearchBarProps {
 
 export function SearchBar({ search, setSearch }: SearchBarProps) {
   const t = useTranslations("Products");
+  const [previousSearch, setPreviousSearch] = useState(search);
   const [value, setValue] = useState(search);
 
-  useEffect(() => setValue(search), [search]);
+  if (search !== previousSearch) {
+    setPreviousSearch(search);
+    setValue(search);
+  }
 
   useEffect(() => {
     const handle = window.setTimeout(() => {

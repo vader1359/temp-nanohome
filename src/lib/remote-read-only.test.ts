@@ -66,6 +66,7 @@ describe("remote read-only safeguard", () => {
   });
 
   it.each([
+    ["POST", "rpc/apply_amis_inventory_sync"],
     ["POST", "amis_sync_log"],
     ["PATCH", "amis_sync_log"],
     ["PATCH", "variants"],
@@ -83,6 +84,7 @@ describe("remote read-only safeguard", () => {
     ["DELETE", "variants"],
     ["PATCH", "orders"],
     ["POST", "amis_sync_log/extra"],
+    ["PATCH", "rpc/apply_amis_inventory_sync"],
   ])("blocks cron-scoped Supabase %s on %s", async (method, table) => {
     const networkFetch = vi.fn();
     vi.stubGlobal("fetch", networkFetch);
@@ -172,6 +174,27 @@ describe("remote read-only safeguard", () => {
       new URL("https://crmconnect.misa.vn/api/v2/Stocks/product_ledger"),
       method,
     )).toThrow(RemoteWriteBlockedError);
+  });
+
+  it.each(["GET", "HEAD"])("allows %s on AMIS Sale Orders", (method) => {
+    // Given: the AMIS Sale Order endpoint is required for availability deltas.
+    const url = new URL("https://crmconnect.misa.vn/api/v2/SaleOrders?page=0&pageSize=100");
+
+    // When: the client requests an allowed read method.
+    const request = () => assertAmisRequestAllowed(url, method);
+
+    // Then: the read passes the remote safeguard.
+    expect(request).not.toThrow();
+  });
+
+  it.each([
+    "http://crmconnect.misa.vn/api/v2/Products",
+    "https://crmconnect.misa.vn:8443/api/v2/Products",
+    "https://crmconnect.misa.vn.evil.test/api/v2/Products",
+    "https://user:password@crmconnect.misa.vn/api/v2/Products",
+  ])("blocks AMIS requests outside the exact HTTPS origin %s", (url) => {
+    expect(() => assertAmisRequestAllowed(new URL(url), "GET"))
+      .toThrow(RemoteWriteBlockedError);
   });
 
   it.each([
