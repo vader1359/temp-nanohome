@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.css";
@@ -28,6 +29,7 @@ function toProductGridItem(product: RelatedProduct, index: number): ProductGridI
 }
 
 export function Section6Recommended({ products = fallbackRecommended }: Section6RecommendedProps) {
+  const t = useTranslations("ProductDetail");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -67,7 +69,7 @@ export function Section6Recommended({ products = fallbackRecommended }: Section6
   return (
     <section className="bg-white py-12 md:py-16">
       <div className="site-shell flex flex-col gap-8">
-        <h2 className="text-[24px] font-medium text-[#444]">Sản phẩm dành cho bạn</h2>
+        <h2 className="text-[24px] font-medium text-[#444]">{t("recommendedTitle")}</h2>
 
         <div className="relative overflow-visible">
           <div ref={sliderRef} className="keen-slider overflow-visible">
@@ -84,7 +86,7 @@ export function Section6Recommended({ products = fallbackRecommended }: Section6
 
           <button
             type="button"
-            aria-label="Sản phẩm trước"
+            aria-label={t("previousProductAria")}
             disabled={!canPrev}
             onClick={() => slider.current?.prev()}
             className="absolute left-2 top-[38%] z-20 flex h-8 w-8 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
@@ -93,7 +95,7 @@ export function Section6Recommended({ products = fallbackRecommended }: Section6
           </button>
           <button
             type="button"
-            aria-label="Sản phẩm tiếp theo"
+            aria-label={t("nextProductAria")}
             disabled={!canNext}
             onClick={() => slider.current?.next()}
             className="absolute right-2 top-[38%] z-20 flex h-8 w-8 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"
@@ -104,7 +106,7 @@ export function Section6Recommended({ products = fallbackRecommended }: Section6
 
         <div className="flex justify-center">
           <a href="#" className="inline-flex w-fit items-center justify-center bg-[#111] px-6 py-2 text-[14px] font-normal text-white transition hover:bg-[#333]">
-            Xem tất cả
+            {t("viewAll")}
           </a>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.css";
@@ -29,6 +30,7 @@ function toProductGridItem(product: RelatedProduct, index: number): ProductGridI
 }
 
 export function Section3Related({ products = fallbackRelatedSet }: Section3RelatedProps) {
+  const t = useTranslations("ProductDetail");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -70,10 +72,10 @@ export function Section3Related({ products = fallbackRelatedSet }: Section3Relat
       <div className="site-shell flex flex-col gap-8">
         <div className="flex items-start justify-between gap-6">
           <div className="flex flex-col items-start gap-3">
-            <h2 className="text-[24px] font-medium text-[#444]">Sản phẩm cùng bộ</h2>
+            <h2 className="text-[24px] font-medium text-[#444]">{t("relatedTitle")}</h2>
           </div>
           <a href="#" className="mt-1 text-[14px] font-normal text-[#111] hover:underline">
-            Xem tất cả
+            {t("viewAll")}
           </a>
         </div>
 
@@ -92,7 +94,7 @@ export function Section3Related({ products = fallbackRelatedSet }: Section3Relat
 
           <button
             type="button"
-            aria-label="Sản phẩm trước"
+            aria-label={t("previousProductAria")}
             disabled={!canPrev}
             onClick={() => slider.current?.prev()}
             className="absolute left-2 top-[38%] z-20 flex h-8 w-8 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
@@ -101,7 +103,7 @@ export function Section3Related({ products = fallbackRelatedSet }: Section3Relat
           </button>
           <button
             type="button"
-            aria-label="Sản phẩm tiếp theo"
+            aria-label={t("nextProductAria")}
             disabled={!canNext}
             onClick={() => slider.current?.next()}
             className="absolute right-2 top-[38%] z-20 flex h-8 w-8 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.css";
@@ -12,6 +13,7 @@ interface Section4GalleryProps {
 }
 
 export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Section4GalleryProps) {
+  const t = useTranslations("ProductDetail");
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const slides = useMemo(() => (galleryImages.length > 0 ? galleryImages : fallbackGalleryImages), [galleryImages]);
@@ -45,7 +47,7 @@ export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Secti
   return (
     <section className="bg-white py-12 md:py-16">
       <div className="site-shell flex flex-col gap-8">
-        <h2 className="text-[24px] font-medium text-[#444]">Ảnh sản phẩm</h2>
+        <h2 className="text-[24px] font-medium text-[#444]">{t("galleryTitle")}</h2>
 
         <div className="relative overflow-visible">
           <div ref={sliderRef} className="keen-slider overflow-visible">
@@ -61,7 +63,7 @@ export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Secti
                   <div className="relative h-[300px] overflow-hidden bg-transparent sm:h-[360px] lg:h-[420px]">
                     <Image
                       src={src}
-                      alt={`Ảnh ${i + 1}`}
+                      alt={t("galleryImageAlt", { index: i + 1 })}
                       fill
                       sizes="(max-width:640px) 78vw, (max-width:1024px) 48vw, 31vw"
                       className="object-cover"
@@ -74,7 +76,7 @@ export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Secti
 
           <button
             type="button"
-            aria-label="Previous"
+            aria-label={t("previousGalleryAria")}
             disabled={!canPrev}
             onClick={() => slider.current?.prev()}
             className="absolute left-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:left-0 sm:-translate-x-1/2"
@@ -83,7 +85,7 @@ export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Secti
           </button>
           <button
             type="button"
-            aria-label="Next"
+            aria-label={t("nextGalleryAria")}
             disabled={!canNext}
             onClick={() => slider.current?.next()}
             className="absolute right-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-[#FFF5EB] text-[#18181B] shadow-sm transition disabled:opacity-30 sm:right-0 sm:translate-x-1/2"
