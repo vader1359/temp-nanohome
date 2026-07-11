@@ -20,10 +20,13 @@ export type VariantProductListItem = Pick<
   | "id"
   | "name"
   | "name_vi"
+  | "name_ko"
   | "short_name"
   | "short_name_vi"
+  | "short_name_ko"
   | "slug"
   | "slug_vi"
+  | "slug_ko"
   | "price"
   | "compare_at_price"
   | "discount_percent"
@@ -33,6 +36,7 @@ export type VariantProductListItem = Pick<
   | "gallery_urls"
   | "finish"
   | "finish_vi"
+  | "finish_ko"
   | "size"
   | "product_id"
   | "brand_id"
@@ -43,6 +47,7 @@ export type VariantProductListItem = Pick<
   | "filter_category"
   | "filter_room"
   | "filter_room_vi"
+  | "filter_room_ko"
   | "media_lifestyle_1"
   | "media_lifestyle_2"
   | "cldr_media_lifestyle_1"
@@ -56,7 +61,7 @@ export type VariantProductListItem = Pick<
 export type VariantProductFacetItem = Pick<Variant, "filter_brand" | "filter_category" | "filter_room_vi" | "filter_sub_category">;
 
 const VARIANT_PRODUCT_LIST_COLUMNS =
-  "id,name,name_vi,short_name,short_name_vi,slug,slug_vi,price,compare_at_price,discount_percent,on_sale,in_stock,packshot_url,gallery_urls,finish,finish_vi,size,product_id,brand_id,brand_cldr_logo,brand_name_denorm,category_id,filter_brand,filter_category,filter_room,filter_room_vi,media_lifestyle_1,media_lifestyle_2,cldr_media_lifestyle_1,cldr_media_lifestyle_2,media_long,media_closeup,filter_sub_category,filter_is_new_arrival";
+  "id,name,name_vi,name_ko,short_name,short_name_vi,short_name_ko,slug,slug_vi,slug_ko,price,compare_at_price,discount_percent,on_sale,in_stock,packshot_url,gallery_urls,finish,finish_vi,finish_ko,size,product_id,brand_id,brand_cldr_logo,brand_name_denorm,category_id,filter_brand,filter_category,filter_room,filter_room_vi,filter_room_ko,media_lifestyle_1,media_lifestyle_2,cldr_media_lifestyle_1,cldr_media_lifestyle_2,media_long,media_closeup,filter_sub_category,filter_is_new_arrival";
 
 export function productRange(page = 1, pageSize = 24): readonly [number, number] {
   if (!Number.isInteger(page) || !Number.isInteger(pageSize) || page < 1 || pageSize < 1) {
@@ -135,7 +140,7 @@ function hasValues(values: readonly string[] | undefined): values is readonly [s
 }
 
 const POSTGREST_RESERVED_VALUE_CHARACTERS = /[",.:*()\\]/u;
-const VARIANT_SEARCH_COLUMNS = ["name_vi", "name", "sku", "finish_vi", "finish", "brand_name_denorm"] as const;
+const VARIANT_SEARCH_COLUMNS = ["name_vi", "name", "name_ko", "sku", "finish_vi", "finish", "finish_ko", "brand_name_denorm"] as const;
 
 function postgrestFilterValue(searchTerm: string): string {
   if (!POSTGREST_RESERVED_VALUE_CHARACTERS.test(searchTerm)) {

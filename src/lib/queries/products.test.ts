@@ -89,6 +89,9 @@ describe("getVariantProducts", () => {
     const selectArg = state.chain.select.mock.calls[0]?.[0];
     expect(selectArg).toContain("id");
     expect(selectArg).toContain("slug_vi");
+    expect(selectArg).toContain("slug_ko");
+    expect(selectArg).toContain("name_ko");
+    expect(selectArg).toContain("finish_ko");
     expect(selectArg).toContain("price");
     expect(selectArg).toContain("filter_brand");
     expect(selectArg).toContain("filter_category");
@@ -116,7 +119,7 @@ describe("getVariantProducts", () => {
     expect(state.inCalls).toContainEqual(["filter_sub_category", ["table-lamps"]]);
     expect(state.overlapCalls).toContainEqual(["filter_room", ["living-room"]]);
     expect(state.chain.or).toHaveBeenCalledWith(
-      "name_vi.ilike.%lamp%,name.ilike.%lamp%,sku.ilike.%lamp%,finish_vi.ilike.%lamp%,finish.ilike.%lamp%,brand_name_denorm.ilike.%lamp%",
+      "name_vi.ilike.%lamp%,name.ilike.%lamp%,name_ko.ilike.%lamp%,sku.ilike.%lamp%,finish_vi.ilike.%lamp%,finish.ilike.%lamp%,finish_ko.ilike.%lamp%,brand_name_denorm.ilike.%lamp%",
     );
     expect(state.eqCalls).toContainEqual(["on_sale", true]);
   });
