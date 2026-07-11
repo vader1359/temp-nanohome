@@ -44,7 +44,7 @@ describe("getVariantBySlug", () => {
   it("filters by public slug columns for non-UUID slugs", async () => {
     await getVariantBySlug("ghe-viet");
 
-    expect(state.chain.or).toHaveBeenCalledWith("slug.eq.ghe-viet,slug_vi.eq.ghe-viet");
+    expect(state.chain.or).toHaveBeenCalledWith("slug.eq.ghe-viet,slug_vi.eq.ghe-viet,slug_ko.eq.ghe-viet");
   });
 
   it("includes the id filter for UUID detail slugs", async () => {
@@ -52,7 +52,7 @@ describe("getVariantBySlug", () => {
 
     await getVariantBySlug(id);
 
-    expect(state.chain.or).toHaveBeenCalledWith(`id.eq.${id},slug.eq.${id},slug_vi.eq.${id}`);
+    expect(state.chain.or).toHaveBeenCalledWith(`id.eq.${id},slug.eq.${id},slug_vi.eq.${id},slug_ko.eq.${id}`);
   });
 
   it("orders and limits to one row so duplicate slugs do not throw PGRST116", async () => {

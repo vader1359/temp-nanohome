@@ -39,7 +39,9 @@ function isUuid(value: string): boolean {
 
 export async function getVariantBySlug(slug: string): Promise<Variant | null> {
   const supabase = await createClient();
-  const slugFilter = isUuid(slug) ? `id.eq.${slug},slug.eq.${slug},slug_vi.eq.${slug}` : `slug.eq.${slug},slug_vi.eq.${slug}`;
+  const slugFilter = isUuid(slug)
+    ? `id.eq.${slug},slug.eq.${slug},slug_vi.eq.${slug},slug_ko.eq.${slug}`
+    : `slug.eq.${slug},slug_vi.eq.${slug},slug_ko.eq.${slug}`;
   // Variants intentionally share slug/slug_vi across size/material combos (see
   // 202606280003_add_slug_unique_indexes.sql), so .maybeSingle() would throw
   // PGRST116 on duplicate slugs. Order + limit(1) picks a canonical row.
