@@ -1,11 +1,10 @@
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Brand, Product } from "@/types/db";
 
 import { productRange, type ProductListOptions } from "./products";
 
 export async function getBrands(): Promise<readonly Brand[]> {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("brands")
     .select("*")
@@ -20,7 +19,7 @@ export async function getBrands(): Promise<readonly Brand[]> {
 }
 
 export async function getProductFilterBrands(): Promise<readonly Brand[]> {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("brands")
     .select("*")

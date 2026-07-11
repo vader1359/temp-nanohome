@@ -143,7 +143,7 @@ export function ProductGrid({ products }: ProductGridProps) {
               data-product-status={product.status}
               data-product-subcategory={product.subCategory ?? ""}
             >
-              <div className="relative flex min-h-0 w-full flex-1 items-center justify-center bg-white px-2 pb-2 pt-8 sm:px-5 sm:pb-9 sm:pt-16">
+              <div className="relative flex min-h-0 w-full flex-1 items-end justify-center bg-white px-2 pb-2 pt-8 sm:px-5 sm:pb-9 sm:pt-16">
                 <button
                   className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 sm:right-1.5 sm:top-1.5"
                   type="button"
@@ -158,7 +158,7 @@ export function ProductGrid({ products }: ProductGridProps) {
                   <Heart
                     strokeWidth={1.5}
                     className={cn(
-                      "size-4 text-nh-ink transition-transform duration-200 group-hover:scale-110",
+                      "size-5 text-nh-ink transition-transform duration-200 group-hover:scale-110",
                       favorited && "fill-nh-red text-nh-red",
                     )}
                   />
@@ -180,7 +180,7 @@ export function ProductGrid({ products }: ProductGridProps) {
                 >
                   <Image
                     alt={product.name}
-                    className="object-contain"
+                    className="object-contain object-bottom"
                     fill
                     priority={priorityImage}
                     sizes="(min-width: 1280px) 360px, (min-width: 640px) 45vw, 90vw"
@@ -205,7 +205,7 @@ export function ProductGrid({ products }: ProductGridProps) {
                     {product.brand}
                   </div>
                 )}
-              <h3 className="line-clamp-2 min-h-8 text-balance text-[11px] font-normal leading-4 text-nh-ink sm:min-h-9 sm:text-[12px] sm:leading-[18px]">
+              <h3 className="line-clamp-2 text-[13px] font-normal min-h-8 text-balance leading-4 text-nh-ink sm:min-h-9 sm:text-[12px] sm:leading-[18px]">
                 <Link className="transition-colors hover:text-nh-red" href={product.href}>
                   {product.name}
                 </Link>

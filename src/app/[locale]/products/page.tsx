@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache";
 import { z } from "zod";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ProductsPage } from "@/components/products/products-page";
@@ -14,6 +13,7 @@ import {
 } from "@/lib/queries/products";
 import { variantDetailHref } from "@/lib/queries/variant-url";
 import { firstCloudinaryImage } from "@/lib/image";
+import { isUsmContactVariant, isUsmVariant } from "@/lib/products/usm";
 import type { Variant } from "@/types/db";
 import type { Locale } from "@/i18n/routing";
 
@@ -41,22 +41,6 @@ const FilterSchema = z.object({
   q: z.string().optional(),
   sort: z.enum(["priority", "price_asc", "price_desc", "newest"]).optional(),
   page: z.coerce.number().int().min(1).optional(),
-});
-
-const getCachedBrands = unstable_cache(getProductFilterBrands, ["product-filter-brands-v1"], { revalidate: 3600 });
-
-const getCachedCategories = unstable_cache(getCategories, ["categories-v2"], { revalidate: 3600 });
-
-const getCachedFacets = unstable_cache(getVariantProductFacets, ["variant-facets-v2"], {
-  revalidate: 300,
-});
-
-const getCachedVariantProducts = unstable_cache(getVariantProducts, ["variant-products-v2"], {
-  revalidate: 60,
-});
-
-const getCachedVariantProductCount = unstable_cache(getVariantProductCount, ["variant-product-count-v2"], {
-  revalidate: 60,
 });
 
 interface PageProps {
@@ -213,14 +197,14 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
   };
 
   const [variants, preferredBrandVariants, totalCount, brands, categories, facets] = await Promise.all([
-    getCachedVariantProducts(queryOptions),
+    getVariantProducts(queryOptions),
     shouldPreferFritzHansen
-      ? getCachedVariantProducts(preferredBrandQueryOptions)
+      ? getVariantProducts(preferredBrandQueryOptions)
       : Promise.resolve([]),
-    getCachedVariantProductCount(queryOptions),
-    getCachedBrands(),
-    getCachedCategories(),
-    getCachedFacets(),
+    getVariantProductCount(queryOptions),
+    getProductFilterBrands(),
+    getCategories(),
+    getVariantProductFacets(),
   ]);
 
   const brandById = new Map(brands.map((b) => [b.id, b]));
@@ -230,13 +214,14 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
   const categoryBySlug = new Map(categories.flatMap((category) => (category.slug ? [[category.slug, category]] : [])));
   const fmt = buildPriceFormatter(supportedLocale);
 
-  function formatPrice(price: Variant["price"]): string {
-    if (price === null || Number(price) === 0) return t("contactForPrice");
+  function formatPrice(variant: Pick<VariantProductListItem, "sku" | "stock">, price: Variant["price"]): string {
+    if (isUsmContactVariant(variant) || price === null || (Number(price) === 0 && !isUsmVariant(variant))) return t("contactForPrice");
     return fmt.format(Number(price));
   }
 
   function toGridItem(variant: VariantProductListItem): ProductGridItem {
     const brand = variant.brand_id ? brandById.get(variant.brand_id) : undefined;
+    const useContactPrice = isUsmContactVariant(variant);
     const status: ProductStatusKind = variant.on_sale
       ? "sale"
       : variant.in_stock
@@ -256,9 +241,9 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
       status,
       imageUrl: getImageUrl(variant),
       href: variantDetailHref(variant),
-      oldPrice: variant.compare_at_price !== null ? formatPrice(variant.compare_at_price) : null,
-      discount: variant.discount_percent !== null ? `-${variant.discount_percent}%` : null,
-      price: formatPrice(variant.price),
+      oldPrice: useContactPrice || variant.compare_at_price === null ? null : formatPrice(variant, variant.compare_at_price),
+      discount: useContactPrice || variant.discount_percent === null ? null : `-${variant.discount_percent}%`,
+      price: formatPrice(variant, variant.price),
       swatches: [],
     };
   }
@@ -289,14 +274,12 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
     });
 
   const categoryOptions = Array.from(categorySlugs).map((cat) => {
-    const category = categoryBySlug.get(cat);
     return {
       slug: cat,
       name: facetLabel(cat, supportedLocale, categoryBySlug),
       subCategories: Array.from(subCategorySlugs.entries())
         .filter(([, parentCat]) => parentCat === cat)
         .map(([slug]) => {
-          const subCategory = categoryBySlug.get(slug);
           return {
             slug,
             name: facetLabel(slug, supportedLocale, categoryBySlug),

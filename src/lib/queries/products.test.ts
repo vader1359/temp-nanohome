@@ -15,6 +15,7 @@ type QueryMock = PromiseLike<QueryResult> & {
 const state = vi.hoisted(() => {
   const eqCalls: Array<readonly [string, string | boolean]> = [];
   const inCalls: Array<readonly [string, readonly string[]]> = [];
+  const orCalls: string[] = [];
   const overlapCalls: Array<readonly [string, readonly string[]]> = [];
   const chain: QueryMock = {
     select: vi.fn(() => chain),
@@ -28,7 +29,10 @@ const state = vi.hoisted(() => {
       return chain;
     }),
     order: vi.fn(() => chain),
-    or: vi.fn(() => chain),
+    or: vi.fn((filter: string) => {
+      orCalls.push(filter);
+      return chain;
+    }),
     overlaps: vi.fn((column: string, value: readonly string[]) => {
       overlapCalls.push([column, value]);
       return chain;
@@ -36,22 +40,33 @@ const state = vi.hoisted(() => {
     range: vi.fn(() => chain),
     then: (resolve) => Promise.resolve({ data: [{}], error: null }).then(resolve),
   };
-  return { chain, eqCalls, from: vi.fn(() => chain), inCalls, overlapCalls };
+  return {
+    chain,
+    createClient: vi.fn(async () => ({ from: state.from })),
+    eqCalls,
+    from: vi.fn(() => chain),
+    inCalls,
+    orCalls,
+    overlapCalls,
+  };
 });
 
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: vi.fn(() => ({ from: state.from })),
+  createAdminClient: vi.fn(() => {
+    throw new Error("Public product queries must not use the admin client");
+  }),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(async () => ({ from: state.from })),
+  createClient: state.createClient,
 }));
 
-import { getProducts, getVariantProducts } from "./products";
+import { getProducts, getVariantProductCount, getVariantProducts } from "./products";
 
 beforeEach(() => {
   state.eqCalls.length = 0;
   state.inCalls.length = 0;
+  state.orCalls.length = 0;
   state.overlapCalls.length = 0;
   vi.clearAllMocks();
 });
@@ -80,6 +95,15 @@ describe("getProducts", () => {
 });
 
 describe("getVariantProducts", () => {
+  it("uses the public server client for product listing queries", async () => {
+    // Given: the public server client is the only permitted query client.
+    // When: variants are fetched for the listing page.
+    await getVariantProducts({ page: 1 });
+
+    // Then: the listing query is built with the public server client.
+    expect(state.createClient).toHaveBeenCalledOnce();
+  });
+
   it("selects explicit fields instead of the full variant row", async () => {
     // Given: the product grid only needs a bounded set of variant columns.
     // When: variants are fetched for the listing page.
@@ -132,14 +156,18 @@ describe("getVariantProducts", () => {
     expect(state.chain.order).toHaveBeenNthCalledWith(3, "priority", { ascending: true, nullsFirst: false });
   });
 
-  it("maps status filters to stock and sale columns", async () => {
+  it("keeps USM variants in the in-stock result and count", async () => {
     // Given: stock status filters from the UI.
-    // When: each status is queried.
+    // When: the listing and its pagination count query the in-stock state.
     await getVariantProducts({ status: "in_stock" });
+    await getVariantProductCount({ status: "in_stock" });
     await getVariantProducts({ status: "out_of_stock" });
 
-    // Then: the status contract maps to the persisted boolean columns.
-    expect(state.eqCalls).toContainEqual(["in_stock", true]);
+    // Then: unavailable USMUS variants remain visible without changing the out-of-stock filter.
+    expect(state.orCalls).toEqual([
+      "in_stock.eq.true,sku.ilike.USMUS%",
+      "in_stock.eq.true,sku.ilike.USMUS%",
+    ]);
     expect(state.eqCalls).toContainEqual(["in_stock", false]);
   });
 });
