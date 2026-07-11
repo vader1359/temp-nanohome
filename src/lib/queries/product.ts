@@ -34,8 +34,10 @@ export async function getProductByAirtableId(airtableId: string): Promise<Produc
     return null;
   }
 
-  const related = await getRelatedProducts(product);
-  const news = await getLinkedNews(product.id);
+  const [related, news] = await Promise.all([
+    getRelatedProducts(product),
+    getLinkedNews(product.id),
+  ]);
 
   return {
     ...product,
