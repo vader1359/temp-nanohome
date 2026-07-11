@@ -44,3 +44,6 @@ next-env.d.ts
 # MemPalace per-project files (issue #185)
 mempalace.yaml
 entities.json
+
+# Draft-only Korean translation review output
+/artifacts/korean-backfill/
