@@ -358,6 +358,7 @@ export function Header() {
           onClear={clearCart}
           onRemove={removeItem}
           onUpdateQuantity={updateQuantity}
+          locale={locale}
           wishlistItems={wishlistItems}
           onClearWishlist={clearWishlist}
           onRemoveWishlist={removeWishlistItem}
@@ -378,6 +379,7 @@ function CartSidebar({
   onClear,
   onRemove,
   onUpdateQuantity,
+  locale,
   wishlistItems,
   onClearWishlist,
   onRemoveWishlist,
@@ -390,6 +392,7 @@ function CartSidebar({
   onClear: () => void;
   onRemove: (id: string) => void;
   onUpdateQuantity: (id: string, quantity: number) => void;
+  locale: string;
   wishlistItems: WishlistItem[];
   onClearWishlist: () => void;
   onRemoveWishlist: (id: string) => void;
@@ -476,7 +479,7 @@ function CartSidebar({
                   </div>
                   {wishlistItems.length > 0 ? (
                     <div className="mt-6 flex min-h-0 flex-1 basis-0 flex-col gap-6 overflow-y-auto overscroll-contain pr-2">
-                      {wishlistItems.map((item) => <WishlistSidebarItem key={item.id} item={item} onRemove={onRemoveWishlist} />)}
+                      {wishlistItems.map((item) => <WishlistSidebarItem key={item.id} item={item} locale={locale} onRemove={onRemoveWishlist} />)}
                     </div>
                   ) : (
                     <div className="grid flex-1 place-items-center text-center text-[14px] leading-5 text-nh-muted">Danh sách yêu thích của bạn đang trống</div>
@@ -546,17 +549,18 @@ function hasValidCartDiscount(item: CartItem): boolean {
   return Math.abs(expectedPrice - price) <= 1;
 }
 
-function WishlistSidebarItem({ item, onRemove }: { item: WishlistItem; onRemove: (id: string) => void }) {
+function WishlistSidebarItem({ item, locale, onRemove }: { item: WishlistItem; locale: string; onRemove: (id: string) => void }) {
   const hasDiscount = item.badgeTone === "sale" && item.originalPrice && item.discount;
+  const href = /^\/(?:vi|en|ko)(?=\/|$)/.test(item.href) ? item.href : `/${locale}${item.href}`;
 
   return (
     <article className="grid min-h-[168px] grid-cols-[104px_minmax(0,1fr)] items-center gap-6 border-b border-[#eee] pb-10">
-      <Link href={item.href} className="relative h-[124px] w-[104px] overflow-hidden" onClick={() => undefined}>
+      <a href={href} className="relative h-[124px] w-[104px] overflow-hidden">
         <Image src={item.image} alt="" fill sizes="104px" className="object-contain" />
-      </Link>
+      </a>
       <div className="flex min-w-0 flex-col pl-1">
         <h3 className="truncate text-[14px] font-normal leading-[22px] text-nh-ink">
-          <Link href={item.href}>{item.name}</Link>
+          <a href={href}>{item.name}</a>
         </h3>
         <p className="mt-1 text-[12px] font-medium leading-4 text-nh-ink">{item.category}</p>
         <span className={cn("mt-3 mb-5 w-fit px-2 py-1 text-[12px] font-semibold uppercase leading-4", item.badgeTone === "sale" ? "bg-[#FBECEC] text-nh-red" : item.badgeTone === "stock" ? "bg-[#EAF7EF] text-nh-green" : "bg-[#E6E6E6] text-nh-ink")}>{item.badge}</span>

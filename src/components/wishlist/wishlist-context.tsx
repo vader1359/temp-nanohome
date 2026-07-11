@@ -33,16 +33,18 @@ let wishlistStorageRead = false;
 const wishlistListeners = new Set<() => void>();
 
 function getWishlistItems(): WishlistItem[] {
-  if (!wishlistStorageRead && typeof window !== "undefined") {
-    wishlistItems = readStoredWishlistItems();
-    wishlistStorageRead = true;
-  }
-
   return wishlistItems;
 }
 
 function subscribeToWishlist(listener: () => void): () => void {
   wishlistListeners.add(listener);
+  if (!wishlistStorageRead) {
+    wishlistStorageRead = true;
+    setTimeout(() => {
+      wishlistItems = readStoredWishlistItems();
+      listener();
+    }, 0);
+  }
   return () => wishlistListeners.delete(listener);
 }
 

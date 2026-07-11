@@ -34,16 +34,18 @@ let cartStorageRead = false;
 const cartListeners = new Set<() => void>();
 
 function getCartItems(): CartItem[] {
-  if (!cartStorageRead && typeof window !== "undefined") {
-    cartItems = readStoredCartItems();
-    cartStorageRead = true;
-  }
-
   return cartItems;
 }
 
 function subscribeToCart(listener: () => void): () => void {
   cartListeners.add(listener);
+  if (!cartStorageRead) {
+    cartStorageRead = true;
+    setTimeout(() => {
+      cartItems = readStoredCartItems();
+      listener();
+    }, 0);
+  }
   return () => cartListeners.delete(listener);
 }
 
