@@ -75,75 +75,81 @@ export function Footer() {
   const [openShowroom, setOpenShowroom] = useState<number | null>(0);
 
   return (
-    <footer className="min-h-[480px] bg-[#1F1F1F] py-12 md:py-24">
-      <div className="site-shell grid grid-cols-2 gap-8 md:gap-10 lg:flex lg:flex-row lg:justify-between lg:gap-4 2xl:gap-8">
-        {linkColumns.map((column) => (
-          <div key={column.heading} className="flex flex-col gap-5">
-            <h4 className="whitespace-nowrap text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
-              {t(column.heading)}
-            </h4>
-            <ul className="flex flex-col gap-5">
-              {column.links.map((link) => (
-                <li key={link}>
-                  <Link
-                    href={footerLinkHref(link)}
-                    className="text-sm font-normal leading-[21px] text-[#F1F1F1] hover:text-white"
-                  >
-                    {t(link)}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+    <footer className="bg-nh-footer py-12 text-[#F1F1F1] md:py-16">
+      <div className="site-shell">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-3 lg:grid-cols-[repeat(4,minmax(0,1fr))_minmax(220px,1.4fr)_minmax(180px,1fr)] lg:gap-x-8 lg:gap-y-12">
+          {linkColumns.map((column) => (
+            <nav key={column.heading} aria-label={t(column.heading)} className="flex flex-col gap-4">
+              <h4 className="text-xs font-medium uppercase tracking-[0.08em] text-white">
+                {t(column.heading)}
+              </h4>
+              <ul className="flex flex-col gap-3">
+                {column.links.map((link) => (
+                  <li key={link}>
+                    <Link
+                      href={footerLinkHref(link)}
+                      className="text-xs leading-[18px] text-[#C9C9C9] transition-colors duration-150 ease-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+                    >
+                      {t(link)}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
 
-        <div className="col-span-2 grid grid-cols-1 gap-8 lg:contents">
-          <div className="flex min-w-0 flex-col gap-5 md:max-w-[280px]">
-            <h4 className="text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
+          <section className="col-span-2 flex min-w-0 flex-col gap-4 md:col-span-1 lg:col-span-1" aria-labelledby="footer-showrooms">
+            <h4 id="footer-showrooms" className="text-xs font-medium uppercase tracking-[0.08em] text-white">
               {t("col5Heading")}
             </h4>
-            <ul className="flex flex-col gap-5">
+            <ul className="flex flex-col gap-3">
               {showrooms.map((showroom, index) => {
                 const isOpen = openShowroom === index;
+                const detailsId = `showroom-details-${index}`;
 
                 return (
-                  <li key={showroom} className="flex flex-col gap-3">
+                  <li key={showroom} className="flex flex-col gap-2">
                     <button
                       type="button"
+                      aria-expanded={isOpen}
+                      aria-controls={detailsId}
                       onClick={() => setOpenShowroom(isOpen ? null : index)}
-                      className="flex w-full items-center justify-between gap-2 text-left text-sm italic leading-[22px] text-white"
+                      className="flex w-full items-center justify-between gap-2 text-left text-xs leading-[18px] text-[#E7E7E7] transition-colors duration-150 ease-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
                     >
                       <span className="min-w-0 flex-1">{t(showroom)}</span>
                       <ChevronRight
-                        className={cn("h-4 w-4 shrink-0", isOpen ? "-rotate-90" : "rotate-90")}
+                        className={cn("size-3.5 shrink-0 transition-transform duration-150 ease-out", isOpen ? "-rotate-90" : "rotate-90")}
                         aria-hidden="true"
                       />
                     </button>
                     {isOpen && index === 0 ? (
-                      <div className="pl-0 text-sm font-normal leading-[22px] text-[#C1C1C1] sm:pl-6">
+                      <div id={detailsId} className="text-xs leading-[18px] text-[#AFAFAF]">
                         <p>{t("showroom1Address")}</p>
-                        <p className="mt-3 italic">{t("showroom1Hours")}</p>
+                        <p className="mt-2">{t("showroom1Hours")}</p>
                       </div>
                     ) : null}
                   </li>
                 );
               })}
             </ul>
-          </div>
+          </section>
 
-          <div className="flex min-w-0 flex-col gap-5">
-            <h4 className="text-xl font-normal leading-[27.5px] text-[#F1F1F1]">
+          <section className="col-span-2 flex min-w-0 flex-col gap-4 md:col-span-1 lg:col-span-1" aria-labelledby="footer-contact">
+            <h4 id="footer-contact" className="text-xs font-medium uppercase tracking-[0.08em] text-white">
               {t("col6Heading")}
             </h4>
-            <ul className="flex flex-col gap-4">
+            <ul className="flex flex-col gap-3">
               {contacts.map(({ icon: Icon, key }) => (
-                <li key={key} className="flex items-center gap-2 text-sm font-normal leading-[21px] text-[#F1F1F1]">
-                  <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span className="min-w-0 whitespace-nowrap">{t(key)}</span>
+                <li key={key} className="flex items-center gap-2 text-xs leading-[18px] text-[#C9C9C9]">
+                  <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 break-words">{t(key)}</span>
                 </li>
               ))}
             </ul>
-          </div>
+          </section>
+        </div>
+        <div className="mt-12 border-t border-white/15 pt-5 text-xs leading-[18px] text-[#AFAFAF] md:mt-16">
+          {t("website")}
         </div>
       </div>
     </footer>

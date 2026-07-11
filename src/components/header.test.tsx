@@ -1,21 +1,28 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Header } from "./header";
+
+const headerMessages = new Map<string, string>([
+  ["search", "Tìm kiếm"],
+  ["wishlist", "Yêu thích"],
+  ["cart", "Giỏ hàng"],
+]);
 
 vi.mock("next/image", () => ({
   default: ({ alt, src }: { readonly alt: string; readonly src: string }) => <div aria-label={alt} data-src={src} />,
 }));
 
 vi.mock("next/link", () => ({
-  default: ({ children, href }: { readonly children: React.ReactNode; readonly href: string }) => (
-    <a href={href.replace(/^\/vi/, "")}>{children}</a>
+  default: ({ children, href, ...props }: Readonly<{ children: ReactNode; href: string }> & AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a href={href.replace(/^\/vi/, "")} {...props}>{children}</a>
   ),
 }));
 
 vi.mock("next-intl", () => ({
   useLocale: () => "vi",
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => (key: string) => headerMessages.get(key) ?? key,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -56,14 +63,54 @@ vi.mock("@/components/wishlist/wishlist-context", () => ({
 }));
 
 describe("Header", () => {
-  it("preserves the locale-prefixed product link in the wishlist", () => {
+  it("links every translated search affordance to the locale product catalog", () => {
     render(<Header />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Wishlist" })[0]);
+    const searchLinks = screen.getAllByRole("link", { name: "Tìm kiếm" });
+
+    expect(searchLinks).toHaveLength(2);
+    for (const searchLink of searchLinks) {
+      expect(searchLink).toHaveAttribute("href", "/products");
+    }
+  });
+
+  it("keeps Korean available in every locale switcher", () => {
+    render(<Header />);
+
+    const koreanLinks = screen.getAllByRole("link", { name: "KO" });
+
+    expect(koreanLinks).toHaveLength(2);
+    for (const koreanLink of koreanLinks) {
+      expect(koreanLink).toHaveAttribute("href", "/ko/products");
+    }
+  });
+
+  it("exposes both cart controls with the Vietnamese accessible name", () => {
+    render(<Header />);
+
+    expect(screen.getAllByRole("button", { name: "Giỏ hàng" })).toHaveLength(2);
+  });
+
+  it("uses localized utility labels while preserving the locale-prefixed product link in the wishlist", () => {
+    render(<Header />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Yêu thích" })[0]);
 
     expect(screen.getByRole("link", { name: "Bàn ăn SUPERELLIPSE" })).toHaveAttribute(
       "href",
       "/vi/products/ban-an-superellipse",
     );
+  });
+
+  it("routes the cart CTA to the active locale checkout", () => {
+    // Given: the cart sidebar is open in the Vietnamese locale.
+    render(<Header />);
+    fireEvent.click(screen.getAllByRole("button", { name: "Giỏ hàng" })[0]);
+
+    // When: the checkout CTA is inspected.
+    const checkoutLink = screen.getByRole("link", { name: "Hoàn tất giỏ hàng" });
+
+    // Then: the CTA preserves the active locale in its destination.
+    expect(checkoutLink).toHaveAttribute("href", "/checkout");
   });
 });

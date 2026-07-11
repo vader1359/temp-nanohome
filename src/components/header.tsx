@@ -8,6 +8,7 @@ import {
   Menu,
   Minus,
   Plus,
+  Search,
   ShoppingCart,
   User,
   X,
@@ -186,26 +187,34 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile bar: hamburger + centered logo + cart */}
+        {/* Mobile bar: navigation utilities, centered wordmark, cart */}
         <div className="flex items-center justify-between gap-4 pt-2 lg:h-[83px] lg:gap-0 lg:pt-0">
-          {/* Mobile hamburger */}
-          <button
-            type="button"
-            aria-label={drawerOpen ? "Close menu" : "Open menu"}
-            className="flex size-8 shrink-0 items-center justify-center text-[#111] lg:hidden"
-            onClick={() => setDrawerOpen((prev) => !prev)}
-          >
-            {drawerOpen ? (
-              <X className="size-6" />
-            ) : (
-              <Menu className="size-6" />
-            )}
-          </button>
+          <div className="flex items-center gap-1 lg:hidden">
+            <button
+              type="button"
+              aria-label={drawerOpen ? t("closeMenu") : t("openMenu")}
+              className="flex size-8 shrink-0 items-center justify-center text-nh-ink transition-colors duration-150 ease-out hover:text-nh-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent"
+              onClick={() => setDrawerOpen((prev) => !prev)}
+            >
+              {drawerOpen ? (
+                <X className="size-5 stroke-[1.5]" />
+              ) : (
+                <Menu className="size-5 stroke-[1.5]" />
+              )}
+            </button>
+            <Link
+              href={productsPath}
+              aria-label={t("search")}
+              className="flex size-8 items-center justify-center text-nh-ink transition-colors duration-150 ease-out hover:text-nh-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent"
+            >
+              <Search className="size-[18px]" strokeWidth={1.5} />
+            </Link>
+          </div>
 
           {/* Logo — centered on mobile, static on desktop */}
           <Link
             href={`/${locale}`}
-            className="absolute left-1/2 -translate-x-1/2 lg:static lg:left-auto lg:translate-x-0"
+            className="absolute left-1/2 -translate-x-1/2 lg:absolute lg:left-1/2 lg:-translate-x-1/2"
           >
             <Image
               src="/images/nanohome-logo.svg"
@@ -219,7 +228,7 @@ export function Header() {
 
           {/* Mobile-only cart — always visible */}
           <button
-            aria-label="Cart"
+            aria-label={t("cart")}
             type="button"
             onClick={openCart}
             className="relative flex items-center lg:hidden"
@@ -245,7 +254,14 @@ export function Header() {
 
           {/* Desktop full icons row */}
           <div className="hidden lg:ml-auto lg:flex lg:items-center lg:gap-3 2xl:gap-5">
-            <button aria-label="Wishlist" type="button" onClick={openWishlist} className="relative" data-wishlist-target>
+            <Link
+              href={productsPath}
+              aria-label={t("search")}
+              className="flex size-8 items-center justify-center text-nh-ink transition-colors duration-150 ease-out hover:text-nh-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent"
+            >
+              <Search className="size-[18px]" strokeWidth={1.5} />
+            </Link>
+            <button aria-label={t("wishlist")} type="button" onClick={openWishlist} className="relative" data-wishlist-target>
               <Heart className="size-5 stroke-[1.4]" />
               {wishlistCount > 0 ? (
                 <span className="absolute -bottom-1 -left-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
@@ -253,7 +269,7 @@ export function Header() {
                 </span>
               ) : null}
             </button>
-            <button aria-label="Cart" type="button" onClick={openCart} className="relative" data-cart-target>
+            <button aria-label={t("cart")} type="button" onClick={openCart} className="relative" data-cart-target>
               <ShoppingCart className="size-5 stroke-[1.4]" />
               <span className="absolute -bottom-1 -left-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
                 {cartCount}
@@ -297,7 +313,7 @@ export function Header() {
                     <User className="size-5 stroke-[1.4]" />
                   </button>
                 )}
-                <button aria-label="Wishlist" type="button" onClick={openWishlist} className="relative" data-wishlist-target>
+                <button aria-label={t("wishlist")} type="button" onClick={openWishlist} className="relative" data-wishlist-target>
                   <Heart className="size-5 stroke-[1.4]" />
                   {wishlistCount > 0 ? (
                     <span className="absolute -bottom-1 -left-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
@@ -397,8 +413,6 @@ function CartSidebar({
   onClearWishlist: () => void;
   onRemoveWishlist: (id: string) => void;
 }) {
-  const [checkoutStatus, setCheckoutStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
-  const [checkoutError, setCheckoutError] = useState("");
   const showingWishlist = activeTab === "wishlist";
 
   const addWishlistToCart = () => {
@@ -415,39 +429,6 @@ function CartSidebar({
         image: item.image,
         quantity: 1,
       });
-    }
-  };
-
-  const handleCheckout = async () => {
-    if (items.length === 0 || checkoutStatus === "submitting") return;
-
-    setCheckoutStatus("submitting");
-    setCheckoutError("");
-    try {
-      const response = await fetch("/api/cart/submit", {
-        body: JSON.stringify({
-          cartItems: items.map((item) => ({
-            ...item,
-            lineTotal: parseCartPrice(item.price) * item.quantity,
-          })),
-          pageUrl: window.location.href,
-          source: "nanohome-cart",
-          total: items.reduce((sum, item) => sum + parseCartPrice(item.price) * item.quantity, 0),
-        }),
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-      });
-
-      const data = await response.json().catch(() => null);
-      if (!response.ok || data?.ok !== true) {
-        throw new Error(data?.error ?? "Unable to submit cart");
-      }
-
-      onClear();
-      setCheckoutStatus("success");
-    } catch (error) {
-      setCheckoutError(error instanceof Error ? error.message : "Unable to submit cart");
-      setCheckoutStatus("error");
     }
   };
 
@@ -500,11 +481,9 @@ function CartSidebar({
                   ) : (
                     <div className="grid flex-1 place-items-center text-center text-[14px] leading-5 text-nh-muted">Giỏ hàng của bạn đang trống</div>
                   )}
-                  {checkoutStatus === "success" ? <p className="mt-4 text-[12px] leading-4 text-nh-green">Đã gửi giỏ hàng.</p> : null}
-                  {checkoutStatus === "error" ? <p className="mt-3 text-[12px] leading-4 text-nh-red">{checkoutError || "Không thể gửi giỏ hàng. Vui lòng thử lại."}</p> : null}
-                  <button type="button" onClick={handleCheckout} disabled={items.length === 0 || checkoutStatus === "submitting"} className="mt-6 h-[52px] w-full shrink-0 bg-nh-ink text-[14px] font-medium leading-5 text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-                    {checkoutStatus === "submitting" ? "Đang mở..." : "Hoàn tất giỏ hàng"}
-                  </button>
+                   <Link href={`/${locale}/checkout`} className="mt-6 flex h-[52px] w-full shrink-0 items-center justify-center bg-nh-ink text-[14px] font-medium leading-5 text-white transition-opacity hover:opacity-90 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={items.length === 0}>
+                     Hoàn tất giỏ hàng
+                   </Link>
                 </>
               )}
             </div>

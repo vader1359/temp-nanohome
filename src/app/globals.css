@@ -45,6 +45,7 @@
   --nh-icon-gray: #7B7770;
   --nh-green: #00A63E;
   --nh-red: #930000;
+  --nh-footer: #1F1F1F;
 }
 
 .dark {
@@ -127,6 +128,7 @@
   --color-nh-icon-gray: var(--nh-icon-gray);
   --color-nh-green: var(--nh-green);
   --color-nh-red: var(--nh-red);
+  --color-nh-footer: var(--nh-footer);
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
