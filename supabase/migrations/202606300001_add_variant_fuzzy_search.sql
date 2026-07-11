@@ -139,11 +139,11 @@ as $$
       or coalesce(v.finish_vi, '') ilike '%' || search_query || '%'
       or coalesce(v.finish, '') ilike '%' || search_query || '%'
       or coalesce(v.brand_name_denorm, '') ilike '%' || search_query || '%'
-      or word_similarity(search_query, coalesce(v.name_vi, ''), search_query) > 0.18
-      or word_similarity(search_query, coalesce(v.name, ''), search_query) > 0.18
-      or word_similarity(search_query, coalesce(v.sku, ''), search_query) > 0.18
-      or word_similarity(search_query, coalesce(v.finish_vi, ''), search_query) > 0.18
-      or word_similarity(search_query, coalesce(v.finish, ''), search_query) > 0.18
-      or word_similarity(search_query, coalesce(v.brand_name_denorm, ''), search_query) > 0.18
+      or word_similarity(search_query, coalesce(v.name_vi, '')) > 0.18
+      or word_similarity(search_query, coalesce(v.name, '')) > 0.18
+      or word_similarity(search_query, coalesce(v.sku, '')) > 0.18
+      or word_similarity(search_query, coalesce(v.finish_vi, '')) > 0.18
+      or word_similarity(search_query, coalesce(v.finish, '')) > 0.18
+      or word_similarity(search_query, coalesce(v.brand_name_denorm, '')) > 0.18
     );
 $$;
