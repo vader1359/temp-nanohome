@@ -46,6 +46,10 @@
   --nh-green: #00A63E;
   --nh-red: #930000;
   --nh-footer: #1F1F1F;
+  --nh-surface-primary: #FFFFFF;
+  --nh-surface-warm: #FAF9F8;
+  --nh-surface-muted: #E1E1E1;
+  --nh-highlight: #EEE3D7;
 }
 
 .dark {
@@ -129,6 +133,10 @@
   --color-nh-green: var(--nh-green);
   --color-nh-red: var(--nh-red);
   --color-nh-footer: var(--nh-footer);
+  --color-nh-surface-primary: var(--nh-surface-primary);
+  --color-nh-surface-warm: var(--nh-surface-warm);
+  --color-nh-surface-muted: var(--nh-surface-muted);
+  --color-nh-highlight: var(--nh-highlight);
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
@@ -180,6 +188,10 @@
     color: var(--foreground);
     font-family: var(--font-libre-franklin), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   }
+}
+
+.locale-shell:lang(ko) {
+  font-family: var(--font-noto-sans-kr), var(--font-libre-franklin), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 .site-shell {
