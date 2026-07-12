@@ -128,7 +128,11 @@
     "sortPriceDesc": "Price: High → Low",
     "sortNewest": "Newest",
     "filterWarningEmpty": "Updating",
-    "clearAll": "Clear all"
+    "clearAll": "Clear all",
+    "brandHeading": "Brands",
+    "filterDialogTitle": "Filters",
+    "filterDialogLabel": "Product filters",
+    "closeFilter": "Close filters"
   },
   "ProductDetail": {
     "detailsTitle": "Product details",
@@ -302,7 +306,24 @@
       "callbackError": "We could not complete authentication. Please try again."
     }
   },
-  "Search": {},
+  "Search": {
+    "title": "Search",
+    "label": "Search nanoHome",
+    "placeholder": "Search products, news, or designers",
+    "submit": "Search",
+    "prompt": "Enter a term to search products, news, and designers.",
+    "summary": "Results for \"{query}\"",
+    "products": "Products",
+    "news": "News",
+    "designers": "Designers",
+    "emptyProducts": "No matching products found.",
+    "emptyNews": "No matching news found.",
+    "emptyDesigners": "No matching designers found.",
+    "noResults": "No results found for this search.",
+    "productImageAlt": "Image of product {name}",
+    "newsImageAlt": "Image for article {title}",
+    "designerImageAlt": "Portrait of designer {name}"
+  },
   "Brands": {
     "eyebrow": "Official Authorized Distributor",
     "title": "our current brands",
