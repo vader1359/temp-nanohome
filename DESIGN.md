@@ -134,14 +134,28 @@ All spacing derives from a base of **4px**.
 - **Accessibility**: modal dialog semantics, labelled close control, focus return to trigger, keyboard escape close, and no server error copy that reveals whether email or password failed.
 - **Motion**: backdrop opacity and panel transform only, `300ms ease-in-out`, with reduced-motion support.
 
+### Deferred Interactive Gallery
+
+- **Performance contract**: below-fold, interaction-heavy galleries may load as a Client Component bundle after the server sends a stable placeholder. Never defer the homepage hero or its initial LCP image.
+- **Layout contract**: the Instagram gallery placeholder reserves `420px` on mobile, `500px` from `sm`, and `600px` from `lg`, using `--nh-surface-primary`. It is decorative and hidden from the accessibility tree until the real gallery mounts.
+- **Accessibility & motion**: the mounted gallery remains the only semantic section and source of interactive controls; the placeholder must not duplicate headings, links, or controls.
+
 ### Global Navigation
 
 - **Reference contract**: a crisp white editorial surface with low-contrast `rgba(17, 17, 17, 0.14)` separators, `#111111` primary ink, `#444444` secondary ink, and restrained warm-brown active states near `#5F5954`.
 - **Structure**: desktop uses a compact meta row above the primary category row; the wordmark remains centered while utility controls sit at the outer edge. The desktop header remains within the existing `150px` site allocation, with a `~79px` visual primary navigation band. Mobile keeps a centered wordmark, menu and search controls on the left, and cart/account utilities on the right.
 - **Typography**: meta links use `12px` tracked labels; primary navigation uses `14px` tracked labels. Preserve locale-provided labels; do not import reference-site copy or replace Korean content.
-- **Search**: use the installed Lucide `Search` icon at `18px`, `strokeWidth={1.5}`. It is an accessible link labelled with the translated `Header.search` value and routes to `/{locale}/products`, where the existing catalog search input handles queries. Do not create a second inline search surface.
+- **Search**: use the installed Lucide `Search` icon at `18px`, `strokeWidth={1.5}`. It is an accessible link labelled with the translated `Header.search` value and routes to `/{locale}/search`. The dedicated search page owns query entry and groups Products, News, and Designers results; do not overload the catalog filter input.
 - **States**: navigation and utility links use `150ms ease-out` color transitions plus a visible `:focus-visible` outline. Icons do not receive decorative animation.
 - **Accessibility**: utility controls must retain translated accessible names; desktop and mobile affordances are both keyboard reachable.
+
+### Aggregate Search
+
+- **Structure**: `/{locale}/search` owns one query field and presents Products, News, and Designers as three independent semantic sections. A blank query shows a translated prompt without fetching; a submitted query always renders all three section headings and their respective empty state where needed.
+- **Cards**: each result is a fully linked live DOM card with a localized title, optional excerpt, and existing source image. Reuse `ImageFrame` so missing imagery retains a neutral `--nh-surface-muted` well instead of a broken image surface.
+- **Typography & highlight**: section headings use `H2`; result titles use `H3`. Literal, case-insensitive text matches render as semantic `<mark>` elements with a quiet warm highlight. Never inject highlighted HTML.
+- **Layout**: use `--nh-surface-warm` page background, `1344px` content width, 24px desktop / 16px mobile gaps, and responsive 1/2/3-card grids at 375px, 768px, and 1280px.
+- **Accessibility**: use one `h1`, labelled search input and submit control, section landmarks, descriptive localized image alt text, visible focus rings, and an `aria-live` result summary. Korean content must remain unaltered and naturally wrap.
 
 ### Global Footer
 
