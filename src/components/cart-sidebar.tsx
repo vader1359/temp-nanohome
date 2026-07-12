@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import {
   Heart,
   Minus,
@@ -16,6 +17,7 @@ import type { WishlistItem } from "@/components/wishlist/wishlist-context";
 export type CartSidebarTab = "wishlist" | "cart";
 
 type CartSidebarProps = {
+  isOpen: boolean;
   activeTab: CartSidebarTab;
   onClose: () => void;
   onTabChange: (tab: CartSidebarTab) => void;
@@ -31,6 +33,7 @@ type CartSidebarProps = {
 };
 
 export function CartSidebar({
+  isOpen,
   activeTab,
   onClose,
   onTabChange,
@@ -63,10 +66,24 @@ export function CartSidebar({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[9999] transition pointer-events-auto">
-      <button type="button" aria-label="Đóng giỏ hàng" onClick={onClose} className="absolute inset-0 bg-black/25 transition-opacity duration-300 opacity-100" />
-      <aside role="dialog" aria-modal="true" aria-label="Giỏ hàng" className="absolute right-0 top-0 flex h-dvh w-full max-w-[466px] flex-col overflow-hidden bg-white px-4 py-6 text-nh-ink shadow-[-18px_0_40px_rgba(0,0,0,0.12)] transition-transform duration-300 sm:px-6 translate-x-0">
+  return createPortal(
+    <div className="door-stage fixed inset-0 z-[9999]" data-state={isOpen ? "open" : "closed"}>
+      <button
+        type="button"
+        aria-label="Đóng giỏ hàng"
+        onClick={onClose}
+        className="door-backdrop absolute inset-0 bg-black/25"
+        data-state={isOpen ? "open" : "closed"}
+      />
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Giỏ hàng"
+        className="door-panel absolute right-0 top-0 flex h-dvh w-full max-w-[466px] flex-col overflow-hidden bg-white px-4 py-6 text-nh-ink shadow-[-18px_0_40px_rgba(0,0,0,0.12)] sm:px-6"
+        data-state={isOpen ? "open" : "closed"}
+        aria-hidden={!isOpen}
+        inert={!isOpen}
+      >
         <div className="flex h-full min-h-0 flex-col">
           <button type="button" aria-label="Đóng giỏ hàng" onClick={onClose} className="ml-auto flex size-6 items-center justify-center text-nh-ink transition-opacity hover:opacity-70">
             <X className="size-6 stroke-[1.4]" />
@@ -117,7 +134,8 @@ export function CartSidebar({
           </div>
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body
   );
 }
 

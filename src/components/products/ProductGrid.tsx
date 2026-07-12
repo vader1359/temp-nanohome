@@ -82,6 +82,19 @@ function playAddToWishlistAnimation(imageSrc: string, origin: HTMLElement) {
   const target = getVisibleWishlistTarget();
   if (!target) return;
 
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reducedMotion) {
+    target.animate(
+      [
+        { transform: "scale(1)" },
+        { transform: "scale(1.1)" },
+        { transform: "scale(1)" },
+      ],
+      { duration: 260, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
+    );
+    return;
+  }
+
   const originRect = origin.getBoundingClientRect();
   const targetRect = target.getBoundingClientRect();
   const image = document.createElement("img");
@@ -99,16 +112,50 @@ function playAddToWishlistAnimation(imageSrc: string, origin: HTMLElement) {
 
   const deltaX = targetRect.left + targetRect.width / 2 - (originRect.left + originRect.width / 2);
   const deltaY = targetRect.top + targetRect.height / 2 - (originRect.top + originRect.height / 2);
+  const isUpward = deltaY < 0;
+
   const animation = image.animate(
     [
-      { opacity: 0.92, transform: "translate3d(0, 0, 0) scale(1) skew(0deg)" },
-      { opacity: 0.72, transform: `translate3d(${deltaX * 0.45}px, ${deltaY * 0.35}px, 0) scale(0.72, 1.08) skew(-8deg)` },
-      { opacity: 0.2, transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.08, 0.22) skew(-14deg)` },
+      {
+        opacity: 1,
+        transform: "translate3d(0, 0, 0) scale(1)",
+        clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)"
+      },
+      {
+        opacity: 0.94,
+        transform: `translate3d(${deltaX * 0.22}px, ${deltaY * 0.16}px, 0) scale(0.78, 0.88)`,
+        clipPath: isUpward ? "polygon(30% 0%, 70% 0%, 92% 100%, 8% 100%)" : "polygon(8% 0%, 92% 0%, 70% 100%, 30% 100%)"
+      },
+      {
+        opacity: 0.8,
+        transform: `translate3d(${deltaX * 0.52}px, ${deltaY * 0.44}px, 0) scale(0.5, 0.68)`,
+        clipPath: isUpward ? "polygon(45% 0%, 55% 0%, 75% 100%, 25% 100%)" : "polygon(25% 0%, 75% 0%, 55% 100%, 45% 100%)"
+      },
+      {
+        opacity: 0.45,
+        transform: `translate3d(${deltaX * 0.82}px, ${deltaY * 0.75}px, 0) scale(0.25, 0.42)`,
+        clipPath: isUpward ? "polygon(48% 0%, 52% 0%, 58% 100%, 42% 100%)" : "polygon(42% 0%, 58% 0%, 52% 100%, 48% 100%)"
+      },
+      {
+        opacity: 0,
+        transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.08, 0.16)`,
+        clipPath: "polygon(50% 0%, 50% 0%, 50% 100%, 50% 100%)"
+      },
     ],
-    { duration: 720, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" },
+    { duration: 650, easing: "cubic-bezier(0.25, 0.8, 0.25, 1)", fill: "forwards" },
   );
 
-  animation.onfinish = () => image.remove();
+  animation.onfinish = () => {
+    image.remove();
+    target.animate(
+      [
+        { transform: "scale(1)" },
+        { transform: "scale(1.1)" },
+        { transform: "scale(1)" },
+      ],
+      { duration: 260, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
+    );
+  };
   animation.oncancel = () => image.remove();
 }
 
