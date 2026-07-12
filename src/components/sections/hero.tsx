@@ -113,7 +113,7 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
         alt=""
         aria-hidden="true"
         fill
-        fetchPriority={activeIndex === 0 ? "high" : "auto"}
+        preload={activeIndex === 0}
         sizes="100vw"
         className="object-cover object-center"
       />
@@ -122,7 +122,7 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
 
       {/* Brand logo */}
       <div className="site-shell absolute inset-x-0 bottom-[250px] z-20 sm:bottom-[310px] lg:bottom-[340px]">
-        <Image src="/images/brand_logo_hero.png" alt="NanoHome" width={148} height={48} priority className="h-auto w-[110px] object-contain sm:w-[130px] lg:w-[156px]" />
+        <Image src="/images/brand_logo_hero.png" alt="NanoHome" width={148} height={48} className="h-auto w-[110px] object-contain sm:w-[130px] lg:w-[156px]" />
       </div>
 
       {/* Title + CTA */}
