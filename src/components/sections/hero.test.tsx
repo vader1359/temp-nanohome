@@ -6,8 +6,8 @@ vi.mock("next-intl", () => ({
 }));
 
 vi.mock("next/image", () => ({
-  default: ({ alt, preload, sizes, src }: { readonly alt: string; readonly preload?: boolean; readonly sizes?: string; readonly src: string }) => (
-    <div aria-label={alt} data-hero-image={src.startsWith("/images/home/hero/") || undefined} data-preload={preload ? "true" : "false"} data-sizes={sizes} data-src={src} />
+  default: ({ alt, fetchPriority, preload, sizes, src }: { readonly alt: string; readonly fetchPriority?: string; readonly preload?: boolean; readonly sizes?: string; readonly src: string }) => (
+    <div aria-label={alt} data-fetch-priority={fetchPriority ?? "auto"} data-hero-image={src.startsWith("/images/home/hero/") || undefined} data-preload={preload ? "true" : "false"} data-sizes={sizes} data-src={src} />
   ),
 }));
 
@@ -23,11 +23,13 @@ describe("Hero", () => {
     if (image === null) throw new Error("The hero image was not rendered");
     expect(image).toHaveAttribute("data-src", "/images/home/hero/hero-1.webp");
     expect(image).toHaveAttribute("data-sizes", "100vw");
-    expect(image).toHaveAttribute("data-preload", "true");
+    expect(image).toHaveAttribute("data-preload", "false");
+    expect(image).toHaveAttribute("data-fetch-priority", "high");
     fireEvent.click(screen.getByRole("button", { name: "Next slide" }));
 
     // Then: only the active image changes and later slides are not preloaded.
     expect(image).toHaveAttribute("data-src", "/images/home/hero/hero-2.webp");
     expect(image).toHaveAttribute("data-preload", "false");
+    expect(image).toHaveAttribute("data-fetch-priority", "auto");
   });
 });
