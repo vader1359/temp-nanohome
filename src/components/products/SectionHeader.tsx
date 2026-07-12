@@ -67,7 +67,7 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
               </div>
             ) : null}
             <button
-              aria-label="Mở bộ lọc"
+               aria-label={t("filterDialogLabel")}
               className="flex min-h-[44px] min-w-[44px] items-center justify-center bg-white text-nh-ink lg:hidden"
               onClick={onOpenFilters}
               type="button"
@@ -97,7 +97,7 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
               type="button"
               onClick={onResetFilters}
             >
-              Xóa tất cả
+               {t("clearAll")}
             </button>
           </div>
         ) : null}
