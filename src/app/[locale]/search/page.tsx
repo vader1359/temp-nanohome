@@ -38,10 +38,10 @@ export default async function SearchPage({ params, searchParams }: Readonly<Sear
       <section className="site-shell flex flex-col gap-10">
         <header className="mx-auto flex w-full max-w-3xl flex-col gap-5 text-center">
           <h1 className="text-[32px] font-medium leading-[40px] md:text-[40px] md:leading-[48px]">{t("title")}</h1>
-          <form action={`/${locale}/search`} className="flex border border-nh-border bg-nh-surface-primary p-1 text-left">
+          <form action={`/${locale}/search`} className="flex w-full border border-nh-border bg-nh-surface-primary p-1 text-left sm:w-auto">
             <label className="sr-only" htmlFor="site-search">{t("label")}</label>
-            <input id="site-search" name="q" defaultValue={query} placeholder={t("placeholder")} className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[14px] leading-[22px] outline-none placeholder:text-nh-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent" />
-            <button type="submit" className="bg-nh-ink px-5 py-2 text-[12px] font-medium uppercase tracking-[0.08em] text-white transition-colors duration-150 ease-out hover:bg-nh-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent">{t("submit")}</button>
+            <input id="site-search" name="q" defaultValue={query} placeholder={t("placeholder")} className="min-w-0 flex-1 bg-transparent px-2 sm:px-3 py-2 text-[14px] leading-[22px] outline-none placeholder:text-nh-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent" />
+            <button type="submit" className="bg-nh-ink px-4 sm:px-5 py-2 text-[12px] font-medium uppercase tracking-[0.08em] text-white transition-colors duration-150 ease-out hover:bg-nh-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent whitespace-nowrap">{t("submit")}</button>
           </form>
           {query === "" ? <p className="text-[14px] leading-[22px] text-nh-muted">{t("prompt")}</p> : <p aria-live="polite" className="text-[14px] leading-[22px] text-nh-muted">{t("summary", { query })}</p>}
         </header>

@@ -76,12 +76,42 @@ const heroImages = [
 export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) }: { products?: HotspotProduct[] }) {
   const t = useTranslations("Hero");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [fadeState, setFadeState] = useState<"in" | "out">("in");
+  const [nextIndex, setNextIndex] = useState<number | null>(null);
   const [openCard, setOpenCard] = useState<number | null>(null);
   const hotspotRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const changeSlide = useCallback((newIndex: number) => {
+    if (newIndex === activeIndex || fadeState === "out") return;
+    setNextIndex(newIndex);
+    setFadeState("out");
+  }, [activeIndex, fadeState]);
+
+  useEffect(() => {
+    if (fadeState === "out" && nextIndex !== null) {
+      const timer = setTimeout(() => {
+        setActiveIndex(nextIndex);
+        setNextIndex(null);
+        setFadeState("in");
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [fadeState, nextIndex]);
 
   const handleHotspotClick = useCallback((index: number) => {
     setOpenCard((prev) => (prev === index ? null : index));
   }, []);
+
+  /* Dismiss card on escape key */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenCard(null);
+    };
+    if (openCard !== null) {
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [openCard]);
 
   /* Dismiss card when clicking outside any hotspot container */
   useEffect(() => {
@@ -98,16 +128,15 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
   }, [openCard]);
 
   const goToPrevious = () => {
-    setActiveIndex((current) => (current === 0 ? heroImages.length - 1 : current - 1));
+    changeSlide(activeIndex === 0 ? heroImages.length - 1 : activeIndex - 1);
   };
 
   const goToNext = () => {
-    setActiveIndex((current) => (current === heroImages.length - 1 ? 0 : current + 1));
+    changeSlide(activeIndex === heroImages.length - 1 ? 0 : activeIndex + 1);
   };
 
   return (
-    <section className="relative min-h-[280px] aspect-[3/2] w-full overflow-hidden lg:aspect-auto lg:h-[665px]">
-      {/* The active slide remains the only decoded hero image. */}
+    <section className="relative min-h-[280px] aspect-[3/2] w-full overflow-hidden lg:aspect-auto lg:h-[840px] xl:h-[900px]">
       <Image
         src={heroImages[activeIndex]}
         alt=""
@@ -115,8 +144,10 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
         fill
         preload={activeIndex === 0}
         sizes="100vw"
-        className="object-cover object-center"
+        style={{ opacity: fadeState === "in" ? 1 : 0 }}
+        className="object-cover object-center transition-opacity duration-300 ease-in-out motion-reduce:transition-none"
       />
+
       <div className="absolute inset-0 bg-linear-to-r from-black/55 via-black/25 to-black/20" />
       <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/35" />
 
@@ -141,6 +172,7 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
       {/* Hotspots with product cards */}
       {hotspotData.map((hotspot, index) => {
         const product = products[index] ?? hotspot.product;
+        const isOpen = openCard === index;
 
         return (
         <div
@@ -148,14 +180,15 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
           ref={(el) => {
             hotspotRefs.current[index] = el;
           }}
-          className={cn("absolute z-30 hidden sm:block", hotspot.position)}
+          className={cn("absolute z-30", hotspot.position)}
         >
           {/* Concentric-circle hotspot button */}
           <button
             type="button"
             onClick={() => handleHotspotClick(index)}
+            aria-expanded={isOpen}
             aria-label="Xem sản phẩm nổi bật"
-            className="relative flex h-7 w-7 items-center justify-center rounded-full border border-white shadow-[0_0_12px_rgba(255,255,255,0.35)] transition-shadow duration-300 hover:shadow-[0_0_20px_rgba(255,255,255,0.55)]"
+            className="relative flex h-7 w-7 items-center justify-center rounded-full border border-white shadow-[0_0_12px_rgba(255,255,255,0.35)] transition-shadow duration-300 hover:shadow-[0_0_20px_rgba(255,255,255,0.55)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
           >
             {/* Ping ring — subtle radar pulse */}
             <span
@@ -167,40 +200,46 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
           </button>
 
           {/* Product highlight card */}
-          {openCard === index && (
+          {isOpen && (
             <div
         className={cn(
-          "absolute w-[280px] max-w-[calc(100vw-2rem)]",
+          "absolute w-[220px] max-w-[calc(100vw-2rem)]",
           cardPositionClasses[hotspot.cardPlacement],
         )}
             >
-              <div className="overflow-hidden rounded-lg bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+              <div className="overflow-hidden rounded-lg bg-white p-2.5 shadow-xl ring-1 ring-black/5">
                 {/* Close */}
                 <button
                   type="button"
                   onClick={() => setOpenCard(null)}
                   aria-label="Đóng"
-                  className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white/80 text-[#666] shadow-sm backdrop-blur-sm transition-colors hover:bg-white hover:text-[#111]"
+                  className="absolute right-3 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-[#666] shadow-sm backdrop-blur-md transition-colors hover:bg-gray-100 hover:text-[#111] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
 
                 {/* Product thumbnail */}
-                <div className="relative aspect-[4/5] w-full bg-white">
+                <div className="relative aspect-[4/3] w-full bg-[#FAFAFA] rounded-md overflow-hidden">
                   <Image
                     src={product.image}
                     alt={product.name}
                     fill
-                    className="object-contain p-4"
-                    sizes="280px"
+                    className="object-contain p-2"
+                    sizes="200px"
                   />
                 </div>
 
                 {/* Product info */}
-                <div className="px-4 pb-4 pt-3">
-                  <h3 className="line-clamp-2 text-sm leading-snug text-[#444]">
+                <div className="px-1 pb-1 pt-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-nh-muted">
+                    {product.brand}
+                  </p>
+                  <h3 className="mt-0.5 truncate text-xs font-medium text-[#222]">
                     {product.name}
                   </h3>
+                  <p className="mt-1.5 text-xs font-semibold text-nh-ink">
+                    {product.price}
+                  </p>
                 </div>
               </div>
             </div>
@@ -233,7 +272,7 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
           <button
             key={index}
             type="button"
-            onClick={() => setActiveIndex(index)}
+            onClick={() => changeSlide(index)}
             aria-label={`Go to slide ${index + 1}`}
             className={cn(
               "h-0.5 transition-all",

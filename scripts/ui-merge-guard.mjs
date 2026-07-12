@@ -41,7 +41,7 @@ const checks = [
   },
   {
     file: "src/components/sections/footer.tsx",
-    markers: ["col-span-2 grid grid-cols-1", "lg:contents"],
+    markers: ["md:flex-row", "md:justify-between", "socialLinks.map"],
     absent: ["col-span-2 grid grid-cols-2"],
   },
   {
