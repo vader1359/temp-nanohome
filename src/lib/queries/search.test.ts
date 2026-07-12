@@ -146,7 +146,7 @@ describe("searchProducts", () => {
     expect(createClient).not.toHaveBeenCalled();
   });
 
-  it("uses PGroonga and visibility filters for Vietnamese product and variant search", async () => {
+  it("uses portable literal filters and visibility rules for Vietnamese product and variant search", async () => {
     // Given: a Vietnamese search term and second-page pagination.
     state.queryResults.push(
       { data: [{ product_id: "product-from-variant" }], error: null },
@@ -156,7 +156,7 @@ describe("searchProducts", () => {
     // When: product search runs.
     const rows = await searchProducts(" đèn ", "vi", { page: 2, pageSize: 10 });
 
-    // Then: the backend contract includes validated-only visibility filters, PGroonga, variant fields, ranking order, and range.
+    // Then: the backend contract uses valid PostgREST ILIKE filters while preserving validated-only visibility and pagination.
     expect(state.tableCalls).toEqual(["variants", "products"]);
     expect(state.chain.select).toHaveBeenCalledWith(
       "*, variants(name,name_ko,sku,finish,finish_vi,finish_ko,validated,approved)"
@@ -165,13 +165,14 @@ describe("searchProducts", () => {
     expect(state.eqCalls).not.toContainEqual(["approved", true]);
     expect(state.eqCalls).toContainEqual(["variants.validated", true]);
     expect(state.eqCalls).not.toContainEqual(["variants.approved", true]);
-    expect(state.orCalls[0]).toContain("finish_vi.&@~.đèn");
-    expect(state.orCalls[0]).toContain("sku.&@~.đèn");
+    expect(state.orCalls[0]).toContain("finish_vi.ilike.*đèn*");
+    expect(state.orCalls[0]).toContain("sku.ilike.*đèn*");
+    expect(state.orCalls.join(",")).not.toContain("&@~");
     expect(state.notCalls).toContainEqual(["product_id", "is", null]);
-    expect(state.orCalls[1]).toContain("name_vi.&@~.đèn");
-    expect(state.orCalls[1]).toContain("description_vi.&@~.đèn");
-    expect(state.orCalls[1]).toContain("name.&@~.đèn");
-    expect(state.orCalls[1]).toContain("description.&@~.đèn");
+    expect(state.orCalls[1]).toContain("name_vi.ilike.*đèn*");
+    expect(state.orCalls[1]).toContain("description_vi.ilike.*đèn*");
+    expect(state.orCalls[1]).toContain("name.ilike.*đèn*");
+    expect(state.orCalls[1]).toContain("description.ilike.*đèn*");
     expect(state.orCalls[1]).toContain("id.in.(product-from-variant)");
     expect(state.orderCalls[0]).toEqual([
       "name_vi",
@@ -181,15 +182,15 @@ describe("searchProducts", () => {
     expect(rows).toEqual([{ id: "product" }]);
   });
 
-  it("prioritizes Korean fields without PGroonga Korean operands", async () => {
+  it("prioritizes Korean fields with portable PostgREST predicates", async () => {
     // Given: a Korean search term.
     state.queryResults.push({ data: [], error: null }, { data: [{ id: "product" }], error: null });
 
     // When: Korean product search runs.
     await searchProducts("의자", "ko");
 
-    // Then: Korean search remains safe until Korean PGroonga indexes exist.
-    expect(state.orCalls.join(",")).not.toContain("_ko.&@~");
+    // Then: Korean text fields are searched through portable literal ILIKE operands.
+    expect(state.orCalls.join(",")).not.toContain("&@~");
     expect(state.orCalls[0]).toContain("name_ko.ilike.*의자*");
     expect(state.orCalls[0]).toContain("finish_ko.ilike.*의자*");
     expect(state.orCalls[1]).toContain("description_ko.ilike.*의자*");
@@ -203,35 +204,35 @@ describe("searchProducts", () => {
     // When: product search runs.
     await searchProducts("lamp", "en");
 
-    // Then: English columns lead the PGroonga disjunction and Vietnamese columns remain searchable.
-    expect(state.orCalls[0].startsWith("name.&@~.lamp,sku.&@~.lamp")).toBe(true);
-    expect(state.orCalls[0]).toContain("finish_vi.&@~.lamp");
-    expect(state.orCalls[1].startsWith("name.&@~.lamp,description.&@~.lamp")).toBe(true);
-    expect(state.orCalls[1]).toContain("name_vi.&@~.lamp");
-    expect(state.orCalls[1]).toContain("description_vi.&@~.lamp");
+    // Then: English columns lead the portable disjunction and Vietnamese columns remain searchable.
+    expect(state.orCalls[0].startsWith("name.ilike.*lamp*,sku.ilike.*lamp*")).toBe(true);
+    expect(state.orCalls[0]).toContain("finish_vi.ilike.*lamp*");
+    expect(state.orCalls[1].startsWith("name.ilike.*lamp*,description.ilike.*lamp*")).toBe(true);
+    expect(state.orCalls[1]).toContain("name_vi.ilike.*lamp*");
+    expect(state.orCalls[1]).toContain("description_vi.ilike.*lamp*");
     expect(state.orderCalls[0]).toEqual(["name", { ascending: true, nullsFirst: false }]);
   });
 
-  it("quotes malformed search grammar characters before building PGroonga OR filters", async () => {
+  it("quotes malformed search grammar characters before building ILIKE OR filters", async () => {
     // Given: a user search containing PostgREST OR grammar separators and grouping characters.
     const malformedQuery = "lamp,shade.(sale)";
     state.queryResults.push({ data: [], error: null }, { data: [{ id: "product" }], error: null });
 
-    // When: product search builds variant and product PGroonga filters.
+    // When: product search builds variant and product ILIKE filters.
     await searchProducts(malformedQuery, "en");
 
     // Then: the raw query remains one quoted operand per searchable field instead of splitting the OR grammar.
     expect(splitTopLevelOrFilter(state.orCalls[0] ?? "")).toEqual([
-      'name.&@~."lamp,shade.(sale)"',
-      'sku.&@~."lamp,shade.(sale)"',
-      'finish.&@~."lamp,shade.(sale)"',
-      'finish_vi.&@~."lamp,shade.(sale)"',
+      'name.ilike.*"lamp,shade.(sale)"*',
+      'sku.ilike.*"lamp,shade.(sale)"*',
+      'finish.ilike.*"lamp,shade.(sale)"*',
+      'finish_vi.ilike.*"lamp,shade.(sale)"*',
     ]);
     expect(splitTopLevelOrFilter(state.orCalls[1] ?? "")).toEqual([
-      'name.&@~."lamp,shade.(sale)"',
-      'description.&@~."lamp,shade.(sale)"',
-      'name_vi.&@~."lamp,shade.(sale)"',
-      'description_vi.&@~."lamp,shade.(sale)"',
+      'name.ilike.*"lamp,shade.(sale)"*',
+      'description.ilike.*"lamp,shade.(sale)"*',
+      'name_vi.ilike.*"lamp,shade.(sale)"*',
+      'description_vi.ilike.*"lamp,shade.(sale)"*',
     ]);
   });
 });

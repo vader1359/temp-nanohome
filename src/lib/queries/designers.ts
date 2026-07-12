@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Designer, Product } from "@/types/db";
 
 import { productRange, type ProductListOptions } from "./products";
+import { postgrestFilterValue } from "./search";
 
 export async function getDesigners(): Promise<readonly Designer[]> {
   const supabase = await createClient();
@@ -10,6 +11,33 @@ export async function getDesigners(): Promise<readonly Designer[]> {
     .select("*")
     .eq("validated", true)
     .order("priority", { ascending: false, nullsFirst: false });
+
+  if (error !== null) {
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+export async function searchDesigners(
+  query: string,
+  options: Readonly<{ pageSize?: number }> = {},
+): Promise<readonly Designer[]> {
+  const searchTerm = query.trim();
+  if (searchTerm === "") {
+    return [];
+  }
+
+  const supabase = await createClient();
+  const pageSize = options.pageSize ?? 6;
+  const filterValue = postgrestFilterValue(searchTerm);
+  const { data, error } = await supabase
+    .from("designers")
+    .select("*")
+    .eq("validated", true)
+    .or(`name.ilike.*${filterValue}*,description.ilike.*${filterValue}*`)
+    .order("priority", { ascending: false, nullsFirst: false })
+    .range(0, pageSize - 1);
 
   if (error !== null) {
     throw error;
