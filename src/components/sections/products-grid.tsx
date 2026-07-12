@@ -73,6 +73,7 @@ export function ProductsGrid({ products }: ProductsGridProps) {
                   product={p}
                   isFavorite={favorites.has(p.id)}
                   onToggleFavorite={toggleFavorite}
+                  fetchPriority="auto"
                 />
               </div>
             ))}
@@ -102,6 +103,7 @@ export function ProductsGrid({ products }: ProductsGridProps) {
                 product={p}
                 isFavorite={favorites.has(p.id)}
                 onToggleFavorite={toggleFavorite}
+                fetchPriority={index === 0 ? "high" : "auto"}
               />
             </div>
           ))}

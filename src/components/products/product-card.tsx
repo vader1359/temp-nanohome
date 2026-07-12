@@ -30,10 +30,12 @@ export function ProductCard({
   product,
   isFavorite,
   onToggleFavorite,
+  fetchPriority = "auto",
 }: Readonly<{
   product: ProductGridItem;
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
+  fetchPriority?: "auto" | "high";
 }>) {
   const sale = product.status === "sale";
 
@@ -70,6 +72,7 @@ export function ProductCard({
             alt={product.name}
             className="object-contain object-bottom"
             fill
+            fetchPriority={fetchPriority}
             sizes="(min-width: 1280px) 300px, (min-width: 640px) 45vw, 90vw"
             src={product.imageUrl}
           />

@@ -114,7 +114,7 @@ export function FilterSidebar({
                     type="button"
                     onClick={onResetFilters}
                   >
-                    Xóa tất cả
+                     {t("clearAll")}
                   </button>
                 ) : null}
               </div>
@@ -196,7 +196,7 @@ export function FilterSidebar({
           ) : null}
 
           {variant === "modal" && brandOptions.length > 0 ? (
-            <CardSection title="Thương hiệu">
+             <CardSection title={t("brandHeading")}>
               <div className="flex flex-wrap gap-2">
                 {brandOptions.map((brand) => {
                   const checked = selectedBrands.has(brand.slug);
@@ -218,20 +218,21 @@ export function FilterSidebar({
                       onClick={() => toggleBrand(brand.slug)}
                     >
                       {brand.logoUrl ? (
-                        <Image
-                          alt={brand.name}
-                          className={cn(
-                            "h-3.5 w-auto max-w-[72px] object-contain transition-[filter]",
-                            preserveLogoColor
-                              ? ""
-                              : "grayscale contrast-200 brightness-0 group-hover:brightness-0 group-hover:invert",
-                            checked && !preserveLogoColor && "brightness-0 invert"
-                          )}
-                          height={14}
-                          src={brand.logoUrl}
-                          style={{ width: "auto" }}
-                          width={120}
-                        />
+                        <span className="relative h-3.5 w-[72px]">
+                          <Image
+                            alt={brand.name}
+                            className={cn(
+                              "object-contain transition-[filter]",
+                              preserveLogoColor
+                                ? ""
+                                : "grayscale contrast-200 brightness-0 group-hover:brightness-0 group-hover:invert",
+                              checked && !preserveLogoColor && "brightness-0 invert"
+                            )}
+                            fill
+                            sizes="72px"
+                            src={brand.logoUrl}
+                          />
+                        </span>
                       ) : (
                         <span className={cn("text-[10px] font-medium uppercase leading-3 text-nh-ink transition-colors group-hover:text-white", checked && "text-white")}>{brand.name}</span>
                       )}

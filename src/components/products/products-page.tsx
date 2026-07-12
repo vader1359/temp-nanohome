@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useOptimistic, useState, useTransition } from "react";
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { SectionHeader } from "./SectionHeader";
 import { FilterSidebar } from "./FilterSidebar";
@@ -58,6 +59,7 @@ export function ProductsPage({
   roomOptions,
   totalCount,
 }: ProductsPageProps) {
+  const t = useTranslations("Products");
   const router = useRouter();
   const pathname = usePathname();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -186,12 +188,12 @@ export function ProductsPage({
         sortBy={optimisticFilters.sort}
       />
       {filtersOpen ? (
-        <div className="fixed inset-0 z-[70] flex justify-end bg-black/40 lg:hidden" role="dialog" aria-modal="true" aria-label="Bộ lọc sản phẩm">
+        <div className="fixed inset-0 z-[70] flex justify-end bg-black/40 lg:hidden" role="dialog" aria-modal="true" aria-label={t("filterDialogLabel")}>
           <div className="h-dvh w-full max-w-[420px] overflow-y-auto bg-white pb-8 shadow-[-12px_0_30px_rgba(0,0,0,0.18)]">
             <div className="sticky top-0 z-30 mb-4 flex flex-col gap-3 border-b border-nh-border bg-white px-4 pb-3 pt-4 sm:px-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-[18px] font-medium uppercase text-nh-ink">Bộ lọc</h2>
-                <button className="flex size-11 items-center justify-center" type="button" aria-label="Đóng bộ lọc" onClick={() => setFiltersOpen(false)}>
+                <h2 className="text-[18px] font-medium uppercase text-nh-ink">{t("filterDialogTitle")}</h2>
+                <button className="flex size-11 items-center justify-center" type="button" aria-label={t("closeFilter")} onClick={() => setFiltersOpen(false)}>
                   <X className="size-5" />
                 </button>
               </div>

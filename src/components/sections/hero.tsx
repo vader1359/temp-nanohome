@@ -113,7 +113,7 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
         alt=""
         aria-hidden="true"
         fill
-        preload={activeIndex === 0}
+        fetchPriority={activeIndex === 0 ? "high" : "auto"}
         sizes="100vw"
         className="object-cover object-center"
       />

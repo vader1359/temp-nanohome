@@ -63,14 +63,14 @@ vi.mock("@/components/wishlist/wishlist-context", () => ({
 }));
 
 describe("Header", () => {
-  it("links every translated search affordance to the locale product catalog", () => {
+  it("links every translated search affordance to the locale aggregate search page", () => {
     render(<Header />);
 
     const searchLinks = screen.getAllByRole("link", { name: "Tìm kiếm" });
 
     expect(searchLinks).toHaveLength(2);
     for (const searchLink of searchLinks) {
-      expect(searchLink).toHaveAttribute("href", "/products");
+      expect(searchLink).toHaveAttribute("href", "/search");
     }
   });
 
@@ -91,24 +91,25 @@ describe("Header", () => {
     expect(screen.getAllByRole("button", { name: "Giỏ hàng" })).toHaveLength(2);
   });
 
-  it("uses localized utility labels while preserving the locale-prefixed product link in the wishlist", () => {
+  it("uses localized utility labels while preserving the locale-prefixed product link in the wishlist", async () => {
     render(<Header />);
 
     fireEvent.click(screen.getAllByRole("button", { name: "Yêu thích" })[0]);
+    const wishlistLink = await screen.findByRole("link", { name: "Bàn ăn SUPERELLIPSE" });
 
-    expect(screen.getByRole("link", { name: "Bàn ăn SUPERELLIPSE" })).toHaveAttribute(
+    expect(wishlistLink).toHaveAttribute(
       "href",
       "/vi/products/ban-an-superellipse",
     );
   });
 
-  it("routes the cart CTA to the active locale checkout", () => {
+  it("routes the cart CTA to the active locale checkout", async () => {
     // Given: the cart sidebar is open in the Vietnamese locale.
     render(<Header />);
     fireEvent.click(screen.getAllByRole("button", { name: "Giỏ hàng" })[0]);
 
     // When: the checkout CTA is inspected.
-    const checkoutLink = screen.getByRole("link", { name: "Hoàn tất giỏ hàng" });
+    const checkoutLink = await screen.findByRole("link", { name: "Hoàn tất giỏ hàng" });
 
     // Then: the CTA preserves the active locale in its destination.
     expect(checkoutLink).toHaveAttribute("href", "/checkout");

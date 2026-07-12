@@ -128,7 +128,11 @@
     "sortPriceDesc": "Giá: Cao → Thấp",
     "sortNewest": "Mới nhất",
     "filterWarningEmpty": "Đang cập nhật",
-    "clearAll": "Xóa tất cả"
+    "clearAll": "Xóa tất cả",
+    "brandHeading": "Thương hiệu",
+    "filterDialogTitle": "Bộ lọc",
+    "filterDialogLabel": "Bộ lọc sản phẩm",
+    "closeFilter": "Đóng bộ lọc"
   },
   "ProductDetail": {
     "detailsTitle": "Thông tin chi tiết",
@@ -302,7 +306,24 @@
       "callbackError": "Không thể hoàn tất xác thực. Vui lòng thử lại."
     }
   },
-  "Search": {},
+  "Search": {
+    "title": "Tìm kiếm",
+    "label": "Tìm kiếm nanoHome",
+    "placeholder": "Tìm sản phẩm, tin tức hoặc nhà thiết kế",
+    "submit": "Tìm kiếm",
+    "prompt": "Nhập từ khóa để tìm sản phẩm, tin tức và nhà thiết kế.",
+    "summary": "Kết quả cho \"{query}\"",
+    "products": "Sản phẩm",
+    "news": "Tin tức",
+    "designers": "Nhà thiết kế",
+    "emptyProducts": "Không tìm thấy sản phẩm phù hợp.",
+    "emptyNews": "Không tìm thấy tin tức phù hợp.",
+    "emptyDesigners": "Không tìm thấy nhà thiết kế phù hợp.",
+    "noResults": "Không tìm thấy kết quả cho tìm kiếm này.",
+    "productImageAlt": "Hình ảnh sản phẩm {name}",
+    "newsImageAlt": "Hình ảnh bài viết {title}",
+    "designerImageAlt": "Chân dung nhà thiết kế {name}"
+  },
   "Brands": {
     "eyebrow": "Nhà phân phối chính hãng",
     "title": "thương hiệu hiện tại của chúng tôi",

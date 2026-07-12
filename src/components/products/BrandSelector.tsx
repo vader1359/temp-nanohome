@@ -48,20 +48,21 @@ export function BrandSelector({ brandOptions, selectedBrands, toggleBrand }: Bra
                 onClick={() => toggleBrand(brand.slug)}
               >
                 {brand.logoUrl ? (
-                  <Image
-                    alt={brand.name}
-                    className={cn(
-                      "h-3.5 w-auto max-w-[72px] object-contain transition-[filter]",
-                      preserveLogoColor
-                        ? ""
-                        : "grayscale contrast-200 brightness-0 group-hover:brightness-0 group-hover:invert",
-                      active && !preserveLogoColor && "brightness-0 invert",
-                    )}
-                    height={14}
-                    src={brand.logoUrl}
-                    style={{ width: "auto" }}
-                    width={120}
-                  />
+                  <span className="relative h-3.5 w-[72px]">
+                    <Image
+                      alt={brand.name}
+                      className={cn(
+                        "object-contain transition-[filter]",
+                        preserveLogoColor
+                          ? ""
+                          : "grayscale contrast-200 brightness-0 group-hover:brightness-0 group-hover:invert",
+                        active && !preserveLogoColor && "brightness-0 invert",
+                      )}
+                      fill
+                      sizes="72px"
+                      src={brand.logoUrl}
+                    />
+                  </span>
                 ) : (
                   <span className={cn("text-[12px] font-medium leading-4 text-nh-ink transition-colors group-hover:text-white", active && "text-white")}>{brand.name}</span>
                 )}

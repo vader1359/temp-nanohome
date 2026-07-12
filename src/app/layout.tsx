@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Libre_Franklin } from "next/font/google";
+import { Geist, Geist_Mono, Libre_Franklin, Noto_Sans_KR } from "next/font/google";
 import Script from "next/script";
-import "react-notion-x/src/styles.css";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -20,6 +19,14 @@ const libreFranklin = Libre_Franklin({
   display: "swap",
   variable: "--font-libre-franklin",
   subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const notoSansKr = Noto_Sans_KR({
+  display: "swap",
+  preload: false,
+  variable: "--font-noto-sans-kr",
+  subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
@@ -65,7 +72,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           />
         )}
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} ${libreFranklin.variable} antialiased font-[family-name:var(--font-libre-franklin)]`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${libreFranklin.variable} ${notoSansKr.variable} antialiased font-[family-name:var(--font-libre-franklin)]`}>
         {children}
       </body>
     </html>

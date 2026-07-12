@@ -59,7 +59,7 @@ export function ImageFrame({
   className?: string;
 }>) {
   return (
-    <div className={`relative ${ratio} overflow-hidden bg-[#e1e1e1] ${className}`}>
+    <div className={`relative ${ratio} overflow-hidden bg-nh-surface-muted ${className}`}>
       {src ? <Image src={src} alt={alt} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.03]" /> : null}
     </div>
   );
