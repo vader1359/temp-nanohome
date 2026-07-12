@@ -84,6 +84,7 @@ export function FilterSidebar({
   const classifyItems = [
     { label: t("classifyInStock"), value: "in_stock" as const },
     { label: t("classifyOnSale"), value: "sale" as const },
+    { label: t("classifyNewArrival"), value: "new_arrival" as const },
   ];
 
   return (
@@ -204,7 +205,7 @@ export function FilterSidebar({
                   return (
                     <button
                       className={cn(
-                        "group flex h-8 w-fit min-w-[68px] items-center justify-center border border-nh-ink bg-transparent px-2 transition-colors hover:bg-nh-ink",
+                        "group flex h-11 w-[132px] items-center justify-center border border-nh-ink bg-transparent px-3 transition-colors hover:bg-nh-ink",
                         checked && "bg-nh-ink"
                       )}
                       aria-label={brand.name}
@@ -218,7 +219,7 @@ export function FilterSidebar({
                       onClick={() => toggleBrand(brand.slug)}
                     >
                       {brand.logoUrl ? (
-                        <span className="relative h-3.5 w-[72px]">
+                          <span className="relative h-5 w-[108px]">
                           <Image
                             alt={brand.name}
                             className={cn(
@@ -229,7 +230,7 @@ export function FilterSidebar({
                               checked && !preserveLogoColor && "brightness-0 invert"
                             )}
                             fill
-                            sizes="72px"
+                            sizes="108px"
                             src={brand.logoUrl}
                           />
                         </span>

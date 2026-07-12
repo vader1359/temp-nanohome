@@ -27,6 +27,8 @@ const product = {
   price: "1.000.000 ₫",
   status: "in_stock" as const,
   subtitle: "Chair subtitle",
+  discount: null,
+  swatches: [],
 };
 
 describe("ProductCard", () => {

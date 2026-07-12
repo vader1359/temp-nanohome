@@ -23,7 +23,7 @@ export type SelectedProductFilters = {
   category: readonly string[];
   subCategory: readonly string[];
   room: readonly string[];
-  status: "in_stock" | "sale" | "out_of_stock" | null;
+  status: "in_stock" | "sale" | "out_of_stock" | "new_arrival" | null;
   q: string;
   sort: "priority" | "price_asc" | "price_desc" | "newest";
   page: number;

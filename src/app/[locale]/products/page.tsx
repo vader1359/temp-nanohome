@@ -37,7 +37,7 @@ const FilterSchema = z.object({
     .union([z.string(), z.array(z.string())])
     .optional()
     .transform((v) => (Array.isArray(v) ? v : v ? [v] : undefined)),
-  status: z.enum(["in_stock", "sale", "out_of_stock"]).optional().nullable(),
+  status: z.enum(["in_stock", "sale", "out_of_stock", "new_arrival"]).optional().nullable(),
   q: z.string().optional(),
   sort: z.enum(["priority", "price_asc", "price_desc", "newest"]).optional(),
   page: z.coerce.number().int().min(1).optional(),

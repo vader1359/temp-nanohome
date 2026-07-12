@@ -122,10 +122,11 @@
     "subCategory": "Sub-category",
     "classifyInStock": "In stock",
     "classifyOnSale": "On sale",
+    "classifyNewArrival": "New arrivals",
     "roomsHeading": "By room",
     "sortPriority": "Recommended",
-    "sortPriceAsc": "Price: Low → High",
-    "sortPriceDesc": "Price: High → Low",
+    "sortPriceAsc": "Price Low → High",
+    "sortPriceDesc": "Price High → Low",
     "sortNewest": "Newest",
     "filterWarningEmpty": "Updating",
     "clearAll": "Clear all",
@@ -389,6 +390,11 @@
     "col6Heading": "Contact",
     "phone": "(+84) 33 948 7632",
     "email": "info@nanohome.vn",
-    "website": "nanohome.vn"
+    "website": "nanohome.vn",
+    "followUs": "Connect",
+    "socialFacebook": "Facebook",
+    "socialInstagram": "Instagram",
+    "socialYoutube": "YouTube",
+    "socialTiktok": "TikTok"
   }
 }
