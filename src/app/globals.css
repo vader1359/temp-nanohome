@@ -223,3 +223,11 @@
 @media (min-width: 1441px) {
   .site-shell { max-width: 1440px; }
 }
+
+/* Simple right-side reveal animation. */
+.door-stage { pointer-events: none; }
+.door-backdrop[data-state="closed"] { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.3s ease, visibility 0s linear 0.3s; }
+.door-backdrop[data-state="open"] { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 0.3s ease, visibility 0s; }
+.door-panel { will-change: transform; }
+.door-panel[data-state="closed"] { transform: translate3d(100%, 0, 0); visibility: hidden; pointer-events: none; transition: transform 0.3s ease, visibility 0s linear 0.3s; }
+.door-panel[data-state="open"] { transform: translate3d(0, 0, 0); visibility: visible; pointer-events: auto; transition: transform 0.3s ease, visibility 0s; }

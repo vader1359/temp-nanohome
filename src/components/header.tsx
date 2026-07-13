@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useState, useSyncExternalStore } from "react";
 import {
   ChevronDown,
   Heart,
@@ -37,6 +37,7 @@ export function Header() {
   );
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [hasOpenedCart, setHasOpenedCart] = useState(false);
   const [cartTab, setCartTab] = useState<CartSidebarTab>("cart");
   const { items, addItem, clearCart, getItemCount, removeItem, updateQuantity } = useCart();
   const { items: wishlistItems, clearWishlist, getItemCount: getWishlistCount, removeItem: removeWishlistItem } = useWishlist();
@@ -135,12 +136,14 @@ export function Header() {
 
   const openWishlist = () => {
     setCartTab("wishlist");
+    setHasOpenedCart(true);
     setCartOpen(true);
     setDrawerOpen(false);
   };
 
   const openCart = () => {
     setCartTab("cart");
+    setHasOpenedCart(true);
     setCartOpen(true);
   };
 
@@ -149,15 +152,21 @@ export function Header() {
     openAuth("login");
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!cartOpen) return;
 
     const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyPaddingRight = document.body.style.paddingRight;
     const previousHtmlOverflow = document.documentElement.style.overflow;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
+    document.body.style.paddingRight = `${scrollbarWidth}px`;
+
     return () => {
       document.body.style.overflow = previousBodyOverflow;
+      document.body.style.paddingRight = previousBodyPaddingRight;
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
   }, [cartOpen]);
@@ -375,8 +384,9 @@ export function Header() {
           </div>
         </div>
       </div>
-      {cartOpen ? (
+      {hasOpenedCart ? (
         <CartSidebar
+          isOpen={cartOpen}
           activeTab={cartTab}
           onClose={() => setCartOpen(false)}
           onTabChange={setCartTab}
