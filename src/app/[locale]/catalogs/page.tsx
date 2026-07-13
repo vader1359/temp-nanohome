@@ -1,27 +1,43 @@
 import { notFound } from "next/navigation";
-import { Download } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { EditorialHeader, SectionTitleLink, textValue } from "@/components/editorial/shared";
-import { isSupportedLocale } from "@/i18n/routing";
+import { CatalogGroup, type CatalogCardItem } from "@/components/catalogs/catalog-group";
+import { EditorialHeader, textValue } from "@/components/editorial/shared";
+import { isSupportedLocale, type Locale } from "@/i18n/routing";
 import { localizedText } from "@/lib/i18n/content";
 import { catalogFileUrl } from "@/lib/queries/catalog-url";
+import { getBrands } from "@/lib/queries/brands";
 import { getCatalogs } from "@/lib/queries/catalogs";
 
-type CatalogGroup = {
+type CatalogGroupData = {
   readonly brandName: string;
-  readonly catalogs: Awaited<ReturnType<typeof getCatalogs>>;
+  readonly cards: readonly CatalogCardItem[];
+  readonly logoUrl: string | null;
 };
 
-function groupCatalogs(catalogs: Awaited<ReturnType<typeof getCatalogs>>): readonly CatalogGroup[] {
-  const groups = new Map<string, Awaited<ReturnType<typeof getCatalogs>>>();
+function groupCatalogs(
+  catalogs: Awaited<ReturnType<typeof getCatalogs>>,
+  brands: Awaited<ReturnType<typeof getBrands>>,
+  locale: Locale,
+  fallbackOrigin: string,
+): readonly CatalogGroupData[] {
+  const brandById = new Map(brands.map((brand) => [brand.id, brand]));
+  const groups = new Map<string, CatalogGroupData>();
 
   for (const catalog of catalogs) {
-    const brandName = textValue(catalog.brand_name, "nanoHome");
-    const existing = groups.get(brandName) ?? [];
-    groups.set(brandName, [...existing, catalog]);
+    const brand = catalog.brand_id === null ? undefined : brandById.get(catalog.brand_id);
+    const brandName = brand?.name ?? textValue(catalog.brand_name, "nanoHome");
+    const groupKey = brand?.id ?? brandName;
+    const existing = groups.get(groupKey) ?? { brandName, cards: [], logoUrl: brand?.logo_url ?? null };
+    const origin = localizedText({ ko: catalog.origin_ko, vi: catalog.origin_vi, en: catalog.origin }, locale, fallbackOrigin);
+    const cards = catalog.file_urls
+      .map(catalogFileUrl)
+      .filter((url): url is string => url !== null)
+      .map((url, index) => ({ id: `${catalog.id}-${url}`, origin, title: `${brandName} Catalog ${index + 1}`, url }));
+
+    groups.set(groupKey, { ...existing, cards: [...existing.cards, ...cards] });
   }
 
-  return Array.from(groups.entries()).map(([brandName, groupedCatalogs]) => ({ brandName, catalogs: groupedCatalogs }));
+  return Array.from(groups.values()).filter((group) => group.cards.length > 0);
 }
 
 export default async function CatalogsPage({ params }: Readonly<{ params: Promise<{ locale: string }> }>) {
@@ -33,39 +49,15 @@ export default async function CatalogsPage({ params }: Readonly<{ params: Promis
 
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "Catalogs" });
-  const catalogs = await getCatalogs();
-  const groups = groupCatalogs(catalogs);
+  const [brands, catalogs] = await Promise.all([getBrands(), getCatalogs()]);
+  const groups = groupCatalogs(catalogs, brands, locale, t("fallbackOrigin"));
 
   return (
     <main className="bg-[#faf9f8] text-nh-ink">
       <section className="mx-auto flex max-w-[1344px] flex-col gap-[60px] px-4 py-20 sm:px-6 lg:px-12">
         <EditorialHeader title={t("title")} description={t("description")} />
         <div className="flex flex-col gap-[72px]">
-          {groups.map((group) => (
-            <section key={group.brandName} className="flex flex-col gap-8">
-              <SectionTitleLink title={group.brandName} />
-              <div className="grid gap-6 md:grid-cols-3">
-                {group.catalogs.map((catalog) => {
-                  const primaryFile = catalog.file_urls.map(catalogFileUrl).find((url) => url !== null) ?? null;
-                  return (
-                    <article key={catalog.id} className="bg-white p-6">
-                      <div className="flex aspect-[432/260] items-center justify-center bg-[#e1e1e1] p-8">
-                        <span className="text-center text-[24px] font-medium leading-8 text-nh-ink">{group.brandName}</span>
-                      </div>
-                      <h2 className="mt-5 text-[18px] font-medium leading-7 text-nh-ink">{group.brandName} Catalog</h2>
-                       <p className="mt-2 text-[14px] leading-[22px] text-nh-muted">{localizedText({ ko: catalog.origin_ko, vi: catalog.origin_vi, en: catalog.origin }, locale, t("fallbackOrigin"))}</p>
-                      {primaryFile ? (
-                        <a href={primaryFile} target="_blank" rel="noreferrer" className="mt-5 inline-flex items-center gap-2 text-[14px] font-medium leading-[22px] text-nh-accent hover:text-nh-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-nh-accent">
-                          {t("download")}
-                          <Download className="size-4" aria-hidden="true" />
-                        </a>
-                      ) : null}
-                    </article>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
+          {groups.map((group) => <CatalogGroup key={group.brandName} {...group} downloadLabel={t("download")} />)}
         </div>
       </section>
     </main>
