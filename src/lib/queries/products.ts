@@ -235,7 +235,8 @@ export async function getVariantProducts(options: VariantProductQueryOptions = {
   let query = supabase
     .from("variants")
     .select(VARIANT_PRODUCT_LIST_COLUMNS)
-    .eq("validated", true);
+    .eq("validated", true)
+    .neq("filter_brand", "moooi");
 
   if (hasValues(options.category)) {
     query = query.in("filter_category", options.category);
@@ -327,7 +328,8 @@ export async function getVariantProductCount(options: Omit<VariantProductQueryOp
   let query = supabase
     .from("variants")
     .select("id", { count: "exact", head: true })
-    .eq("validated", true);
+    .eq("validated", true)
+    .neq("filter_brand", "moooi");
 
   if (hasValues(options.category)) {
     query = query.in("filter_category", options.category);
@@ -396,6 +398,7 @@ export async function getVariantProductFacets(): Promise<readonly VariantProduct
     .from("variants")
     .select("filter_brand,filter_category,filter_room_vi,filter_sub_category")
     .eq("validated", true)
+    .neq("filter_brand", "moooi")
     .limit(500);
 
   if (error !== null) {
@@ -405,4 +408,18 @@ export async function getVariantProductFacets(): Promise<readonly VariantProduct
   const rows = data ?? [];
   facetCache = { at: Date.now(), data: rows };
   return rows;
+}
+
+export async function getVariantProductsBySkus(skus: readonly string[]): Promise<readonly VariantProductListItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("variants")
+    .select(VARIANT_PRODUCT_LIST_COLUMNS)
+    .in("sku", skus)
+    .eq("validated", true);
+
+  if (error !== null) {
+    throw error;
+  }
+  return data ?? [];
 }

@@ -2,18 +2,25 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { ProductCard, type ProductGridItem } from "@/components/products/product-card";
+import { ProductCard, toWishlistItem, type ProductGridItem } from "@/components/products/product-card";
+import { useWishlist } from "@/components/wishlist/wishlist-context";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.css";
 
 interface ProductsGridProps {
-  products: readonly ProductGridItem[];
+  trendingProducts: readonly ProductGridItem[];
+  bestSellerProducts: readonly ProductGridItem[];
+  newArrivalProducts: readonly ProductGridItem[];
 }
 
-export function ProductsGrid({ products }: ProductsGridProps) {
+export function ProductsGrid({
+  trendingProducts,
+  bestSellerProducts,
+  newArrivalProducts,
+}: ProductsGridProps) {
   const t = useTranslations("ProductGrid");
   const [active, setActive] = useState(0);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const { hasItem, toggleItem } = useWishlist();
   const [slideIdx, setSlideIdx] = useState(0);
   const [sliderLoaded, setSliderLoaded] = useState(false);
 
@@ -34,20 +41,25 @@ export function ProductsGrid({ products }: ProductsGridProps) {
 
   const tabs = [t("tabTrending"), t("tabBestSeller"), t("tabNew")];
 
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+  const toggleFavorite = (product: ProductGridItem) => {
+    toggleItem(toWishlistItem(product));
   };
 
-  const mobileProducts = products.slice(0, 6);
-  const desktopProducts = products.slice(0, 8);
+  const activeProducts =
+    active === 0
+      ? trendingProducts
+      : active === 1
+      ? bestSellerProducts
+      : newArrivalProducts;
+
+  const mobileProducts = activeProducts.slice(0, 6);
+  const desktopProducts = activeProducts.slice(0, 8);
+
+  const handleTabChange = (index: number) => {
+    setActive(index);
+    setSlideIdx(0);
+    setSliderLoaded(false);
+  };
 
   return (
     <section className="py-12 sm:py-16 lg:py-20">
@@ -56,7 +68,7 @@ export function ProductsGrid({ products }: ProductsGridProps) {
           {tabs.map((x, i) => (
             <button
               key={x}
-              onClick={() => setActive(i)}
+              onClick={() => handleTabChange(i)}
               className={`whitespace-nowrap text-sm font-medium leading-6 sm:text-2xl sm:leading-8 ${active === i ? "underline underline-offset-4" : "text-[#999]"}`}
             >
               {x}
@@ -66,13 +78,13 @@ export function ProductsGrid({ products }: ProductsGridProps) {
 
         {/* Mobile carousel — visible below sm */}
         <div className="mt-10 block sm:hidden">
-          <div ref={sliderRef} className="keen-slider">
+          <div key={active} ref={sliderRef} className="keen-slider">
             {mobileProducts.map((p) => (
               <div key={p.id} className="keen-slider__slide">
                 <ProductCard
                   product={p}
-                  isFavorite={favorites.has(p.id)}
-                  onToggleFavorite={toggleFavorite}
+                  isFavorite={hasItem(p.id)}
+                  onToggleFavorite={() => toggleFavorite(p)}
                   fetchPriority="auto"
                 />
               </div>
@@ -101,8 +113,8 @@ export function ProductsGrid({ products }: ProductsGridProps) {
             <div key={p.id} className={index >= 6 ? "hidden 2xl:block" : undefined}>
               <ProductCard
                 product={p}
-                isFavorite={favorites.has(p.id)}
-                onToggleFavorite={toggleFavorite}
+                isFavorite={hasItem(p.id)}
+                onToggleFavorite={() => toggleFavorite(p)}
                 fetchPriority={index === 0 ? "high" : "auto"}
               />
             </div>

@@ -20,18 +20,25 @@ const FALLBACK_BRANDS: BrandLogoItem[] = [
 ];
 
 function BrandLogo({ brand }: { brand: BrandLogoItem }) {
-  if (!brand.logoUrl) {
+  const isUsm = brand.id === "usm" || brand.name.toLowerCase() === "usm";
+  const isVolta = brand.id === "volta" || brand.name.toLowerCase() === "volta";
+  const logoUrl = isUsm ? "/images/usm_logo.png" : brand.logoUrl;
+
+  if (!logoUrl) {
     return <span className="min-w-[112px] whitespace-nowrap text-center text-sm font-semibold uppercase tracking-wide">{brand.name}</span>;
   }
 
   return (
     <span className="flex h-12 min-w-[136px] items-center justify-center">
       <Image
-        src={brand.logoUrl!}
+        src={logoUrl}
         alt={brand.name}
         width={128}
         height={48}
-        className="h-10 w-auto max-w-[156px] object-contain grayscale contrast-200 brightness-0"
+        className={cn(
+          "h-10 w-auto max-w-[156px] object-contain",
+          !(isUsm || isVolta) && "grayscale contrast-200 brightness-0"
+        )}
       />
     </span>
   );

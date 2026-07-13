@@ -18,11 +18,28 @@ export default async function BrandsPage({ params }: Readonly<{ params: Promise<
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-5">
           {brands.map((brand) => {
             const name = textValue(brand.name, t("fallbackName"));
+            const isUsm = brand.slug === "usm";
+            const isVolta = brand.slug === "volta";
+            const logoSrc = isUsm ? "/images/usm_logo.png" : brand.logo_url;
+            const useFilter = !isUsm && !isVolta;
+
             return (
               <article key={brand.id} className="group">
-                <GlareHover className="aspect-[204/160] bg-[#e1e1e1]">
+                <GlareHover className={`aspect-[204/160] ${isVolta || isUsm ? "bg-white" : "bg-[#e1e1e1]"}`}>
                   <Link href={`/brands/${encodeURIComponent(textValue(brand.airtable_id, brand.id))}/${detailSlug(brand.slug, brand.id)}`} className="relative flex h-full w-full items-center justify-center p-10 transition-opacity duration-300 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-nh-accent">
-                    {brand.logo_url ? <div className="relative h-full w-full"><Image src={brand.logo_url} alt={name} fill sizes="(min-width: 1024px) 204px, (min-width: 640px) 33vw, 50vw" className="object-contain grayscale contrast-200 brightness-0" /></div> : <span className="text-center text-[14px] font-medium leading-[22px] text-nh-ink">{name}</span>}
+                    {logoSrc ? (
+                      <div className="relative h-full w-full">
+                        <Image
+                          src={logoSrc}
+                          alt={name}
+                          fill
+                          sizes="(min-width: 1024px) 204px, (min-width: 640px) 33vw, 50vw"
+                          className={`object-contain ${useFilter ? "grayscale contrast-200 brightness-0" : ""}`}
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-center text-[14px] font-medium leading-[22px] text-nh-ink">{name}</span>
+                    )}
                   </Link>
                 </GlareHover>
               </article>

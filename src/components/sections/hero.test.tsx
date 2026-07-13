@@ -5,6 +5,10 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ children, href }: { readonly children: React.ReactNode; readonly href: string }) => <a href={href}>{children}</a>,
+}));
+
 vi.mock("next/image", () => ({
   default: ({ alt, fetchPriority, preload, priority, sizes, src }: { readonly alt: string; readonly fetchPriority?: string; readonly preload?: boolean; readonly priority?: boolean; readonly sizes?: string; readonly src: string }) => (
     <div aria-label={alt} data-fetch-priority={fetchPriority ?? "auto"} data-hero-image={src.startsWith("/images/home/hero/") || undefined} data-preload={preload || priority ? "true" : "false"} data-sizes={sizes} data-src={src} />

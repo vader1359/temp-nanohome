@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type QueryResult = { readonly data: readonly Record<string, unknown>[] | null; readonly error: Error | null };
 type QueryMock = PromiseLike<QueryResult> & {
   readonly eq: ReturnType<typeof vi.fn>;
+  readonly neq: ReturnType<typeof vi.fn>;
+  readonly not: ReturnType<typeof vi.fn>;
   readonly in: ReturnType<typeof vi.fn>;
   readonly order: ReturnType<typeof vi.fn>;
   readonly range: ReturnType<typeof vi.fn>;
@@ -13,6 +15,8 @@ const state = vi.hoisted(() => {
   const calls: Array<readonly [string, string]> = [];
   const brandQuery: QueryMock = {
     eq: vi.fn(() => brandQuery),
+    neq: vi.fn(() => brandQuery),
+    not: vi.fn(() => brandQuery),
     in: vi.fn(() => brandQuery),
     order: vi.fn(() => brandQuery),
     range: vi.fn(() => brandQuery),
@@ -21,6 +25,8 @@ const state = vi.hoisted(() => {
   };
   const productQuery: QueryMock = {
     eq: vi.fn(() => productQuery),
+    neq: vi.fn(() => productQuery),
+    not: vi.fn(() => productQuery),
     in: vi.fn(() => productQuery),
     order: vi.fn(() => productQuery),
     range: vi.fn(() => productQuery),

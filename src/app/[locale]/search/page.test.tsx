@@ -19,6 +19,7 @@ vi.mock("next-intl/server", () => ({
 vi.mock("next/navigation", () => ({ notFound: vi.fn() }));
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ children }: { readonly children: React.ReactNode }) => <>{children}</>,
+  useRouter: () => ({ push: vi.fn() }),
 }));
 
 import SearchPage from "./page";

@@ -32,6 +32,10 @@ export default async function BrandDetailPage({ params }: Readonly<{ params: Pro
 
   const products = await getProductsByBrandAirtableId(textValue(brand.airtable_id, brand.id), { pageSize: 3 });
   const name = textValue(brand.name, t("fallbackName"));
+  const isUsm = brand.slug === "usm";
+  const isVolta = brand.slug === "volta";
+  const logoSrc = isUsm ? "/images/usm_logo.png" : brand.logo_url;
+  const useFilter = !isUsm && !isVolta;
   const description = localizedText({ ko: brand.description_ko, vi: brand.description_vi, en: brand.description }, locale, t("fallbackDescription"));
   const origin = localizedText({ ko: brand.origin_ko, vi: brand.origin_vi, en: brand.origin }, locale);
   const notionLink = localizedNotionLink(brand.raw, locale);
@@ -46,8 +50,18 @@ export default async function BrandDetailPage({ params }: Readonly<{ params: Pro
   return (
     <main className="bg-[#faf9f8] pb-24 text-nh-ink">
       <section className="mx-auto grid max-w-[1116px] gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[360px_1fr] lg:px-0">
-        <div className="relative flex aspect-[204/160] items-center justify-center bg-[#e1e1e1] p-12">
-          {brand.logo_url ? <Image src={brand.logo_url} alt={name} fill sizes="360px" className="p-12 object-contain grayscale contrast-200 brightness-0" /> : <span className="text-center text-[24px] font-medium leading-8">{name}</span>}
+        <div className={`relative flex aspect-[204/160] items-center justify-center p-12 ${isVolta || isUsm ? "bg-white" : "bg-[#e1e1e1]"}`}>
+          {logoSrc ? (
+            <Image
+              src={logoSrc}
+              alt={name}
+              fill
+              sizes="360px"
+              className={`p-12 object-contain ${useFilter ? "grayscale contrast-200 brightness-0" : ""}`}
+            />
+          ) : (
+            <span className="text-center text-[24px] font-medium leading-8">{name}</span>
+          )}
         </div>
         <article className="flex flex-col justify-center">
           <p className="text-[14px] font-medium uppercase leading-5 tracking-[0.08em] text-nh-muted">{t("detailLabel")}</p>

@@ -167,7 +167,7 @@ function toRelatedProduct(variant: RelatedVariant | VariantProductListItem, loca
     name: localizedVariantText(variant, locale, "Sản phẩm"),
     brand: variantText(variant.brand_name_denorm, "nanoHome"),
     category: [localizedFinish(variant, locale), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
-    price: formatPrice(variant, variant.price),
+    price: formatPrice(variant, discounted ? variant.compare_at_price : variant.price),
     oldPrice: discounted ? formatPrice(variant, variant.compare_at_price) : null,
     discount: discounted ? `-${variant.discount_percent}%` : null,
     image: getVariantPackshotUrl(variant) || getImageUrl(getGalleryUrls(variant.gallery_urls)[0]) || FALLBACK_PRODUCT_IMAGE,

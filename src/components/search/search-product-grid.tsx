@@ -18,16 +18,15 @@ function localizedVariantName(variant: VariantProductListItem, locale: Locale): 
   return variantText(variant.name, variantText(variant.name_vi, "nanoHome"));
 }
 
-function variantStatus(variant: VariantProductListItem): ProductStatusKind {
-  if (variant.on_sale) {
-    return "sale";
-  }
-  return variant.in_stock ? "in_stock" : "out_of_stock";
-}
+const CONTACT_LABELS: Record<string, string> = {
+  vi: "Liên hệ",
+  ko: "가격 문의",
+  en: "Contact for price",
+};
 
 function formatPrice(value: number | null, locale: Locale): string {
   if (value === null || value === 0) {
-    return "Contact for price";
+    return CONTACT_LABELS[locale] ?? "Contact for price";
   }
   return new Intl.NumberFormat(locale === "ko" ? "ko-KR" : locale === "vi" ? "vi-VN" : "en-US", {
     currency: "VND",
@@ -36,8 +35,67 @@ function formatPrice(value: number | null, locale: Locale): string {
   }).format(value);
 }
 
+const VIETNAMESE_FACET_LABELS: Record<string, string> = {
+  chairs: "Ghế",
+  decor: "Trang trí",
+  desks: "Bàn làm việc",
+  easy: "Ghế bành",
+  floor: "Đèn sàn",
+  "floor-lamps": "Đèn sàn",
+  furniture: "Nội thất",
+  lighting: "Đèn",
+  lounges: "Ghế thư giãn",
+  outdoor: "Ngoài trời",
+  pendants: "Đèn treo thả",
+  sofas: "Ghế sofa",
+  "table-lamps": "Đèn bàn",
+  tables: "Bàn",
+  usm: "USM",
+  "wall-lamps": "Đèn tường",
+};
+
+function titleizeSlug(value: string): string {
+  const special: Record<string, string> = {
+    hay: "HAY",
+    usm: "USM",
+    flos: "FLOS",
+    vitra: "VITRA",
+    "and-tradition": "&Tradition",
+    "bd-barcelona-design": "BD Barcelona Design",
+  };
+  if (special[value] !== undefined) return special[value];
+  return value
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatSubtitle(rawSubtitle: string | null, locale: Locale): string {
+  if (!rawSubtitle) return "Loại sản phẩm";
+  const slug = rawSubtitle.toLowerCase().trim();
+  if (locale === "vi" && VIETNAMESE_FACET_LABELS[slug]) {
+    return VIETNAMESE_FACET_LABELS[slug];
+  }
+  return titleizeSlug(rawSubtitle);
+}
+
 function toProductGridItem(variant: VariantProductListItem, locale: Locale): ProductGridItem {
-  const isContactPrice = variant.price === null || variant.price === 0;
+  const useContactPrice = variant.price === null || variant.price === 0;
+
+  const rawComparePrice = variant.compare_at_price !== null ? Number(variant.compare_at_price) : 0;
+  const rawPrice = variant.price !== null ? Number(variant.price) : 0;
+  const hasValidDiscount = !useContactPrice && rawPrice > 0 && rawComparePrice > rawPrice;
+
+  const status: ProductStatusKind = (variant.on_sale && hasValidDiscount)
+    ? "sale"
+    : variant.in_stock
+      ? "in_stock"
+      : "out_of_stock";
+
+  const rawSubtitle = variantText(variant.filter_sub_category, variantText(variant.filter_category));
+  const subtitle = formatSubtitle(rawSubtitle, locale);
+
   return {
     id: variant.id,
     brand: variantText(variant.brand_name_denorm, "nanoHome"),
@@ -48,8 +106,8 @@ function toProductGridItem(variant: VariantProductListItem, locale: Locale): Pro
     rooms: variant.filter_room ?? [],
     searchVariantId: variant.id,
     subCategory: variant.filter_sub_category ?? undefined,
-    subtitle: variantText(variant.filter_sub_category, variantText(variant.filter_category)),
-    status: variantStatus(variant),
+    subtitle,
+    status,
     imageUrl: firstCloudinaryImage([
       variant.packshot_url,
       ...variant.gallery_urls,
@@ -59,13 +117,18 @@ function toProductGridItem(variant: VariantProductListItem, locale: Locale): Pro
       variant.media_closeup,
     ]) || "/images/p_lc2.png",
     href: variantDetailHref(variant, locale),
-    oldPrice: isContactPrice ? null : formatPrice(variant.compare_at_price, locale),
-    discount: isContactPrice || variant.discount_percent === null ? null : `-${variant.discount_percent}%`,
+    oldPrice: hasValidDiscount ? formatPrice(variant.compare_at_price, locale) : null,
+    discount: hasValidDiscount && variant.discount_percent !== null ? `-${variant.discount_percent}%` : null,
     price: formatPrice(variant.price, locale),
     swatches: [],
   };
 }
 
 export function SearchProductGrid({ locale, variants }: Readonly<{ readonly locale: Locale; readonly variants: readonly VariantProductListItem[] }>) {
-  return <ProductGrid products={variants.map((variant) => toProductGridItem(variant, locale))} />;
+  return (
+    <ProductGrid
+      products={variants.map((variant) => toProductGridItem(variant, locale))}
+      gridClassName="grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4"
+    />
+  );
 }

@@ -237,7 +237,12 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
   function toGridItem(variant: VariantProductListItem): ProductGridItem {
     const brand = variant.brand_id ? brandById.get(variant.brand_id) : undefined;
     const useContactPrice = isUsmContactVariant(variant);
-    const status: ProductStatusKind = variant.on_sale
+
+    const rawComparePrice = variant.compare_at_price !== null ? Number(variant.compare_at_price) : 0;
+    const rawPrice = variant.price !== null ? Number(variant.price) : 0;
+    const hasValidDiscount = !useContactPrice && rawPrice > 0 && rawComparePrice > rawPrice;
+
+    const status: ProductStatusKind = (variant.on_sale && hasValidDiscount)
       ? "sale"
       : variant.in_stock
         ? "in_stock"
@@ -262,8 +267,8 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
       status,
       imageUrl: getImageUrl(variant),
       href: variantDetailHref(variant, supportedLocale),
-      oldPrice: useContactPrice || variant.compare_at_price === null ? null : formatPrice(variant, variant.compare_at_price),
-      discount: useContactPrice || variant.discount_percent === null ? null : `-${variant.discount_percent}%`,
+      oldPrice: hasValidDiscount ? formatPrice(variant, variant.compare_at_price) : null,
+      discount: hasValidDiscount && variant.discount_percent !== null ? `-${variant.discount_percent}%` : null,
       price: formatPrice(variant, variant.price),
       swatches: [],
     };

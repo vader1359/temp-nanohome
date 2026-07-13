@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
@@ -68,6 +69,30 @@ const heroImages = [
   "/images/home/hero/hero-2.webp",
   "/images/home/hero/hero-3.webp",
 ] as const;
+
+const heroSlidesData = [
+  {
+    brand: "Cassina",
+    logoUrl: "https://res.cloudinary.com/nanohome-web/image/upload/website/auto/46/1760616000000/BYb8Z70enjeBnPAm8_EYVw/X5TiDEWs4RhsRqO95IYKfPS9miF3G4yK97ZfD73ec6TfwErMPvL1uTaNt5kdOGNEqo42x2cjUJneze7SzTxxFnE0PwfwO2_MQwzlABzERUZcQvxYg89GS3s0SVCxzLSD-mtoQoFtqzzUGSu1k6y41g/Tmq1AeOM8RE1GS2cTaeng_-HOWa5AKZYBwGOwputCpQ",
+    link: "/products?brand=cassina",
+    titleKey1: "slide0_titleLine1" as const,
+    titleKey2: "slide0_titleLine2" as const,
+  },
+  {
+    brand: "B&B Italia",
+    logoUrl: "https://res.cloudinary.com/nanohome-web/image/upload/website/auto/52/1775455200000/ne3jm3UdZK00u8UhdNmxrg/zEZGc738wiffb-yOFd9cuXsih1lTMd-LHlLM7nbESvcXdB1Vo5leB7yxBBv3X8rpTIwSqUurcNfel_UM8jxEPgCGZukVqRIrOqydFYfInsMSaTqponXxenGw8lW_Vm6qNyUXBFYsHUx46bF7N3Xvcg/l1kcfTLVCnEJO5XnjuKt0NmXBVTSRj4SVkvYLw2A7mg",
+    link: "/products?brand=b-b-italia",
+    titleKey1: "slide1_titleLine1" as const,
+    titleKey2: "slide1_titleLine2" as const,
+  },
+  {
+    brand: "Maxalto",
+    logoUrl: "https://res.cloudinary.com/nanohome-web/image/upload/website/auto/52/1775455200000/1rDGe21New9SZk_rYBvq-Q/XLHr52wgGYVgPOij5XApYwGdUYTkilvUYfATLsTXrFM1m4LXVJIK-HNuD1mKyQGg9Q3nos_kFnorg-Z9pl4kkCLQnKkcZ_VQpf0oyOA4vudjEBOKVurc05U-HhQJw8zY7sCGUpB2jE8Lw2A05ejZ-g/p6-kNaMiSjgcwXRX5yJex9l4k26rnm0XrHLtR4DuK38",
+    link: "/products?brand=maxalto",
+    titleKey1: "slide2_titleLine1" as const,
+    titleKey2: "slide2_titleLine2" as const,
+  },
+];
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -152,20 +177,35 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
       <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/35" />
 
       {/* Brand logo */}
-      <div className="site-shell absolute inset-x-0 bottom-[250px] z-20 sm:bottom-[310px] lg:bottom-[340px]">
-        <Image src="/images/brand_logo_hero.png" alt="NanoHome" width={148} height={48} className="h-auto w-[110px] object-contain sm:w-[130px] lg:w-[156px]" />
+      <div
+        style={{ opacity: fadeState === "in" ? 1 : 0 }}
+        className="site-shell absolute inset-x-0 bottom-[250px] z-20 sm:bottom-[310px] lg:bottom-[340px] transition-opacity duration-300 ease-in-out motion-reduce:transition-none"
+      >
+        <Image
+          src={heroSlidesData[activeIndex].logoUrl}
+          alt={heroSlidesData[activeIndex].brand}
+          width={148}
+          height={48}
+          className="h-auto w-[110px] object-contain sm:w-[130px] lg:w-[156px] brightness-0 invert"
+        />
       </div>
 
       {/* Title + CTA */}
-      <div className="absolute inset-x-0 bottom-16 z-10 lg:bottom-20">
+      <div
+        style={{ opacity: fadeState === "in" ? 1 : 0 }}
+        className="absolute inset-x-0 bottom-16 z-10 lg:bottom-20 transition-opacity duration-300 ease-in-out motion-reduce:transition-none"
+      >
         <div className="site-shell">
           <h1 className="break-words text-3xl font-normal leading-9 text-white sm:text-4xl sm:leading-10 lg:text-[48px] lg:leading-[56px]">
-            <span className="block">{t("titleLine1")}</span>
-            <span className="block">{t("titleLine2")}</span>
+            <span className="block">{t(heroSlidesData[activeIndex].titleKey1)}</span>
+            <span className="block">{t(heroSlidesData[activeIndex].titleKey2)}</span>
           </h1>
-          <button className="mt-8 rounded-none border border-white bg-white px-5 py-2.5 text-xs font-medium uppercase leading-4 tracking-wider text-[#111111] transition-colors hover:bg-[#111111] hover:text-white">
+          <Link
+            href={heroSlidesData[activeIndex].link}
+            className="mt-8 inline-block rounded-none border border-white bg-white px-5 py-2.5 text-xs font-medium uppercase leading-4 tracking-wider text-[#111111] transition-colors hover:bg-[#111111] hover:text-white"
+          >
             {t("cta")}
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -180,7 +220,7 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
           ref={(el) => {
             hotspotRefs.current[index] = el;
           }}
-          className={cn("absolute z-30", hotspot.position)}
+          className={cn("absolute z-30 hidden", hotspot.position)}
         >
           {/* Concentric-circle hotspot button */}
           <button

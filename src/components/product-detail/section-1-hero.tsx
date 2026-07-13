@@ -138,13 +138,19 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
           {/* Product Summary */}
           <div className="flex flex-col gap-4">
             {/* Brand logo */}
-            <Image
-              src={product.brandLogoUrl ?? "/images/nanohome-logo.svg"}
-              alt={product.brand}
-              width={120}
-              height={24}
-              className="h-[24px] w-auto self-start object-contain object-left"
-            />
+            {(() => {
+              const isUsm = product.brand.toLowerCase() === "usm";
+              const logoUrl = isUsm ? "/images/usm_logo.png" : (product.brandLogoUrl ?? "/images/nanohome-logo.svg");
+              return (
+                <Image
+                  src={logoUrl}
+                  alt={product.brand}
+                  width={120}
+                  height={24}
+                  className="h-[24px] w-auto self-start object-contain object-left"
+                />
+              );
+            })()}
 
             {/* Title */}
             <h1 className="break-words text-[20px] font-medium leading-[28px] text-[#444] [overflow-wrap:break-word] sm:text-[24px] sm:leading-[32px]">
@@ -157,22 +163,11 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
             </p>
 
             {/* SALE badge */}
-            {product.onSale ? (
-              <span className={cn("w-fit px-2 py-1 text-[12px] font-semibold uppercase leading-4", "bg-[#FBECEC] text-nh-red")}>
-                SALE
-              </span>
-            ) : null}
 
             {/* Price */}
             <div className="flex flex-col items-start gap-1">
-              {product.oldPrice ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-[12px] font-normal leading-4 text-nh-muted line-through">{product.oldPrice}</span>
-                  {product.discount ? <span className="bg-nh-red px-1.5 py-0.5 text-[12px] font-medium leading-4 text-white">{product.discount}</span> : null}
-                </div>
-              ) : null}
               <span className="text-[15px] font-semibold leading-[20px] text-[#111]">
-                {product.newPrice}
+                {product.oldPrice || product.newPrice}
               </span>
             </div>
 

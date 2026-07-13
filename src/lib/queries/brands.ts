@@ -9,6 +9,7 @@ export async function getBrands(): Promise<readonly Brand[]> {
     .from("brands")
     .select("*")
     .eq("validated", true)
+    .neq("slug", "moooi")
     .order("name", { ascending: true });
 
   if (error !== null) {
@@ -74,6 +75,7 @@ export async function getProductFilterBrands(): Promise<readonly Brand[]> {
     .from("brands")
     .select("*")
     .not("slug", "is", null)
+    .neq("slug", "moooi")
     .order("name", { ascending: true });
 
   if (error !== null) {

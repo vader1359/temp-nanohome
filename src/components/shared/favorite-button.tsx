@@ -55,7 +55,7 @@ export function FavoriteButton({
           className,
         )}
       >
-        <Heart className={cn(iconSize, active ? "fill-nh-ink text-nh-ink" : "text-nh-ink")} />
+        <Heart className={cn(iconSize, active ? "fill-nh-red text-nh-red" : "text-nh-ink")} />
       </button>
     )
   }
@@ -67,7 +67,7 @@ export function FavoriteButton({
       onClick={onToggle}
       className={cn("transition-colors", className)}
     >
-      <Heart className={cn(iconSize, active ? "fill-nh-ink text-nh-ink" : "text-nh-muted")} />
+      <Heart className={cn(iconSize, active ? "fill-nh-red text-nh-red" : "text-nh-muted")} />
     </button>
   )
 }

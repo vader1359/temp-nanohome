@@ -5,8 +5,24 @@ import { Heart } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { type ProductGridItem, type ProductStatusKind } from "@/components/products/ProductGrid";
+import { type WishlistItem } from "@/components/wishlist/wishlist-context";
 
 export type { ProductGridItem } from "@/components/products/ProductGrid";
+
+export function toWishlistItem(product: ProductGridItem): WishlistItem {
+  return {
+    id: product.id,
+    name: product.name,
+    category: product.subtitle,
+    price: product.price,
+    originalPrice: product.oldPrice,
+    discount: product.discount,
+    badge: product.status === "sale" ? "Sale" : product.status === "in_stock" ? "Còn hàng" : "Hết hàng",
+    badgeTone: product.status === "sale" ? "sale" : product.status === "in_stock" ? "stock" : "out",
+    image: product.imageUrl,
+    href: product.href,
+  };
+}
 
 const STATUS_LABEL: Record<ProductStatusKind, string> = {
   in_stock: "CÓ SẴN",
@@ -51,18 +67,20 @@ export function ProductCard({
           <Heart
             className={cn(
               "size-4 text-nh-ink transition-transform duration-200 group-hover:scale-110",
-              isFavorite && "fill-nh-ink",
+              isFavorite && "fill-nh-red text-nh-red",
             )}
           />
         </button>
-        <span
-          className={cn(
-            "absolute left-1 top-1 z-10 px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-3 sm:left-1.5 sm:top-1.5 sm:px-2 sm:py-1 sm:text-[12px] sm:leading-4",
-            getStatusClass(product.status),
-          )}
-        >
-          {STATUS_LABEL[product.status]}
-        </span>
+        {product.status !== "sale" && (
+          <span
+            className={cn(
+              "absolute left-1 top-1 z-10 px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-3 sm:left-1.5 sm:top-1.5 sm:px-2 sm:py-1 sm:text-[12px] sm:leading-4",
+              getStatusClass(product.status),
+            )}
+          >
+            {STATUS_LABEL[product.status]}
+          </span>
+        )}
         <Link
           aria-label={`Xem chi tiết ${product.name}`}
           className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[6px] transition-transform duration-300 group-hover:scale-[1.03]"
@@ -80,17 +98,26 @@ export function ProductCard({
       </div>
 
       <div className="flex flex-col items-start gap-2 px-3 pb-3 text-left sm:px-4 sm:pb-4">
-        {product.brandLogoUrl ? (
-          <div className="relative h-3 w-[76px] sm:h-3.5 sm:w-[84px]">
-            <Image
-              alt={product.brand}
-              className="object-contain object-left grayscale contrast-200 brightness-0"
-              fill
-              sizes="84px"
-              src={product.brandLogoUrl}
-            />
-          </div>
-        ) : (
+        {product.brandLogoUrl ? (() => {
+          const isUsm = product.brand.toLowerCase() === "usm";
+          const isVolta = product.brand.toLowerCase() === "volta";
+          const logoUrl = isUsm ? "/images/usm_logo.png" : product.brandLogoUrl;
+
+          return (
+            <div className="relative h-[18px] w-[114px] sm:h-[21px] sm:w-[126px]">
+              <Image
+                alt={product.brand}
+                className={cn(
+                  "object-contain object-left",
+                  !(isUsm || isVolta) && "grayscale contrast-200 brightness-0"
+                )}
+                fill
+                sizes="126px"
+                src={logoUrl}
+              />
+            </div>
+          );
+        })() : (
           <div className="text-[11px] font-medium leading-3 text-nh-ink sm:text-[12px] sm:leading-4">
             {product.brand}
           </div>
@@ -104,20 +131,8 @@ export function ProductCard({
           {product.subtitle}
         </p>
         <div className="mt-2 flex flex-col items-center gap-1">
-          {sale && product.oldPrice ? (
-            <div className="flex items-center gap-2">
-              <span className="text-[12px] font-normal leading-4 text-nh-muted line-through">
-                {product.oldPrice}
-              </span>
-              {product.discount ? (
-                <span className="bg-nh-red px-1.5 py-0.5 text-[12px] font-medium leading-4 text-white">
-                  {product.discount}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
           <span className="text-[15px] font-semibold leading-5 text-nh-ink">
-            {product.price}
+            {product.oldPrice || product.price}
           </span>
         </div>
       </div>

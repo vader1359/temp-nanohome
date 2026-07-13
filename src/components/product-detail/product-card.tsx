@@ -19,14 +19,16 @@ export function ProductCard({ p }: { p: RelatedProduct }) {
         {/* tags - top left */}
         {p.tags && p.tags.length > 0 && (
           <div className="absolute left-3 top-3 flex flex-col gap-1">
-            {p.tags.map((tag) => (
-              <span
-                key={tag}
-                className="w-fit rounded-sm bg-white/90 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.04em] text-[#111] shadow-sm"
-              >
-                {tag}
-              </span>
-            ))}
+            {p.tags
+              .filter((tag) => tag.toLowerCase() !== "sale")
+              .map((tag) => (
+                <span
+                  key={tag}
+                  className="w-fit rounded-sm bg-white/90 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.04em] text-[#111] shadow-sm"
+                >
+                  {tag}
+                </span>
+              ))}
           </div>
         )}
 

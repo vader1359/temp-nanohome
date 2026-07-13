@@ -5,8 +5,9 @@ import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.css";
-import { ProductCard, type ProductGridItem } from "@/components/products/product-card";
+import { ProductCard, toWishlistItem, type ProductGridItem } from "@/components/products/product-card";
 import { recommended as fallbackRecommended, type RelatedProduct } from "./mock-data";
+import { useWishlist } from "@/components/wishlist/wishlist-context";
 
 interface Section6RecommendedProps {
   products?: RelatedProduct[];
@@ -30,7 +31,7 @@ function toProductGridItem(product: RelatedProduct, index: number): ProductGridI
 
 export function Section6Recommended({ products = fallbackRecommended }: Section6RecommendedProps) {
   const t = useTranslations("ProductDetail");
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const { hasItem, toggleItem } = useWishlist();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const items = products.slice(0, 8).map(toProductGridItem);
@@ -54,17 +55,9 @@ export function Section6Recommended({ products = fallbackRecommended }: Section6
   const canPrev = loaded && currentSlide > 0;
   const canNext = loaded && currentSlide < maxIdx;
 
-  function toggleFavorite(id: string) {
-    setFavorites((current) => {
-      const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }
+  const toggleFavorite = (product: ProductGridItem) => {
+    toggleItem(toWishlistItem(product));
+  };
 
   return (
     <section className="bg-white py-12 md:py-16">
@@ -77,8 +70,8 @@ export function Section6Recommended({ products = fallbackRecommended }: Section6
               <div className="keen-slider__slide" key={product.id}>
                 <ProductCard
                   product={product}
-                  isFavorite={favorites.has(product.id)}
-                  onToggleFavorite={toggleFavorite}
+                  isFavorite={hasItem(product.id)}
+                  onToggleFavorite={() => toggleFavorite(product)}
                 />
               </div>
             ))}

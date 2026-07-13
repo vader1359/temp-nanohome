@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useLayoutEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import {
   ChevronDown,
   Heart,
@@ -39,6 +39,11 @@ export function Header() {
   const [cartOpen, setCartOpen] = useState(false);
   const [hasOpenedCart, setHasOpenedCart] = useState(false);
   const [cartTab, setCartTab] = useState<CartSidebarTab>("cart");
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const { items, addItem, clearCart, getItemCount, removeItem, updateQuantity } = useCart();
   const { items: wishlistItems, clearWishlist, getItemCount: getWishlistCount, removeItem: removeWishlistItem } = useWishlist();
   const { isAuthenticated, openAuth } = useAuthContext();
@@ -172,8 +177,8 @@ export function Header() {
   }, [cartOpen]);
 
   return (
-    <header className="relative z-30 min-h-[80px] bg-white lg:h-[150px]">
-      <div className="site-shell py-4">
+    <header className="relative z-30 min-h-[80px] bg-white lg:h-auto">
+      <div className="site-shell pt-4 pb-2 relative">
         {/* Top bar — desktop only */}
         <div className="hidden items-center justify-between border-b border-[#cfc9c0] pb-4 lg:flex">
           <div className="flex gap-5">
@@ -225,10 +230,10 @@ export function Header() {
             </Link>
           </div>
 
-          {/* Logo — centered on mobile, static on desktop */}
+          {/* Logo — absolute centered on all screens */}
           <Link
             href={`/${locale}`}
-            className="absolute left-1/2 -translate-x-1/2 lg:static lg:mt-4 lg:mb-3 lg:transform-none"
+            className="absolute left-1/2 -translate-x-1/2 top-[14px] lg:top-[66px]"
           >
             <Image
               src="/images/nanohome-logo.svg"
@@ -247,7 +252,7 @@ export function Header() {
             className="relative flex items-center lg:hidden"
           >
             <ShoppingCart className="size-5 stroke-[1.4]" />
-            {cartCount > 0 ? (
+            {isMounted && cartCount > 0 ? (
               <span className="absolute -top-1 -right-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
                 {cartCount}
               </span>
@@ -255,7 +260,7 @@ export function Header() {
           </button>
 
           {/* Desktop full navigation row */}
-          <div className="hidden lg:flex w-full items-center justify-between">
+          <div className="hidden lg:flex w-full items-center justify-between lg:mt-16 lg:mb-2">
             {/* Desktop category nav */}
             <nav className="flex items-center gap-4 2xl:gap-6">
               {nav.map((key) => (
@@ -280,7 +285,7 @@ export function Header() {
               </Link>
               <button aria-label={t("wishlist")} type="button" onClick={openWishlist} className="relative" data-wishlist-target>
                 <Heart className="size-5 stroke-[1.4]" />
-                {wishlistCount > 0 ? (
+                {isMounted && wishlistCount > 0 ? (
                   <span className="absolute -top-1 -right-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
                     {wishlistCount}
                   </span>
@@ -288,7 +293,7 @@ export function Header() {
               </button>
               <button aria-label={t("cart")} type="button" onClick={openCart} className="relative" data-cart-target>
                 <ShoppingCart className="size-5 stroke-[1.4]" />
-                {cartCount > 0 ? (
+                {isMounted && cartCount > 0 ? (
                   <span className="absolute -top-1 -right-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
                     {cartCount}
                   </span>

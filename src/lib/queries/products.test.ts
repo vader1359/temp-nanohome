@@ -4,6 +4,7 @@ type QueryResult = { readonly data: readonly Record<string, never>[] | null; rea
 type QueryMock = PromiseLike<QueryResult> & {
   readonly select: ReturnType<typeof vi.fn>;
   readonly eq: ReturnType<typeof vi.fn>;
+  readonly neq: ReturnType<typeof vi.fn>;
   readonly ilike: ReturnType<typeof vi.fn>;
   readonly in: ReturnType<typeof vi.fn>;
   readonly order: ReturnType<typeof vi.fn>;
@@ -23,6 +24,7 @@ const state = vi.hoisted(() => {
       eqCalls.push([column, value]);
       return chain;
     }),
+    neq: vi.fn(() => chain),
     ilike: vi.fn(() => chain),
     in: vi.fn((column: string, value: readonly string[]) => {
       inCalls.push([column, value]);

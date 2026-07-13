@@ -9,7 +9,7 @@ import { ProductsGrid } from "@/components/sections/products-grid";
 import { Rooms } from "@/components/sections/rooms";
 import { variantToProductGridItem } from "@/lib/products/mapper";
 import { getBrands } from "@/lib/queries/brands";
-import { getVariantProducts } from "@/lib/queries/products";
+import { getVariantProducts, getVariantProductsBySkus } from "@/lib/queries/products";
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -21,61 +21,113 @@ export default async function Page({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [fritzHansenVariants, chairVariants, lampVariants, brands] = await Promise.all([
+  const [trendingRaw, bestSellerRaw, newArrivalRaw, chairVariants, lampVariants, brands, featuredRaw] = await Promise.all([
     getVariantProducts({
-      brand: ["fritz-hansen"],
-      pageSize: 8,
+      pageSize: 36,
       sort: "priority",
-      subCategory: ["chairs", "accessories"],
+    }),
+    getVariantProducts({
+      pageSize: 36,
+      sort: "priority",
+    }),
+    getVariantProducts({
+      pageSize: 36,
+      status: "new_arrival",
     }),
     getVariantProducts({ pageSize: 12, sort: "priority", subCategory: ["chairs"] }),
     getVariantProducts({ pageSize: 12, sort: "priority", subCategory: ["table-lamps", "floor-lamps", "pendants", "wall-lamps", "lighting"] }),
     getBrands(),
+    getVariantProductsBySkus(["USMUS00087", "ACCFH00004"]),
   ]);
 
+  let finalNewArrivalRaw = newArrivalRaw;
+  if (finalNewArrivalRaw.length === 0) {
+    finalNewArrivalRaw = await getVariantProducts({
+      pageSize: 36,
+      status: "new_arrival",
+    });
+  }
+  if (finalNewArrivalRaw.length === 0) {
+    finalNewArrivalRaw = trendingRaw;
+  }
+
   const brandById = new Map(brands.map((brand) => [brand.id, brand]));
-  const toGridItem = (variant: (typeof fritzHansenVariants)[number], options: { packshotOnly?: boolean } = {}) => {
+  const toGridItem = (variant: (typeof trendingRaw)[number], options: { packshotOnly?: boolean } = {}) => {
     const brand = variant.brand_id ? brandById.get(variant.brand_id) : undefined;
 
     return variantToProductGridItem(variant, {
       ...options,
       brandLogoUrl: brand?.logo_url ?? null,
       brandName: brand?.name ?? null,
+      locale,
     });
   };
 
-  const packshotProducts = fritzHansenVariants
-    .map((v) => toGridItem(v, { packshotOnly: true }))
-    .filter((p) => p.imageUrl !== "");
-  const gridProducts =
-    packshotProducts.length > 0
-      ? packshotProducts
-      : fritzHansenVariants.map((v) => toGridItem(v));
+  const getRandomSubset = <T,>(arr: readonly T[], n: number): readonly T[] => {
+    const shuffled = [...arr].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, n);
+  };
 
-  const heroProducts = gridProducts.slice(0, 3).map((product) => ({
+  const trendingSelected = getRandomSubset(trendingRaw, Math.min(8, trendingRaw.length));
+  const trendingSelectedIds = new Set(trendingSelected.map((v) => v.id));
+
+  const bestSellerCandidates = bestSellerRaw.filter((v) => !trendingSelectedIds.has(v.id));
+  const bestSellerSelected = getRandomSubset(
+    bestSellerCandidates.length > 0 ? bestSellerCandidates : bestSellerRaw,
+    Math.min(8, bestSellerRaw.length)
+  );
+
+  const newArrivalSelected = getRandomSubset(finalNewArrivalRaw, Math.min(8, finalNewArrivalRaw.length));
+
+  const mapToGridItems = (variants: readonly (typeof trendingRaw)[number][]) => {
+    const packshot = variants
+      .map((v) => toGridItem(v, { packshotOnly: true }))
+      .filter((p) => p.imageUrl !== "");
+    return packshot.length > 0 ? packshot : variants.map((v) => toGridItem(v));
+  };
+
+  const trendingProducts = mapToGridItems(trendingSelected);
+  const bestSellerProducts = mapToGridItems(bestSellerSelected);
+  const newArrivalProducts = mapToGridItems(newArrivalSelected);
+
+  const heroProducts = trendingProducts.slice(0, 3).map((product) => ({
     image: product.imageUrl,
     brand: product.brand,
     name: product.name,
-    price: product.price,
+    price: product.oldPrice || product.price,
   }));
 
-  const featuredSlice = [
-    chairVariants[0] ?? fritzHansenVariants[0],
-    lampVariants[0] ?? fritzHansenVariants[1] ?? fritzHansenVariants[0],
-  ].filter((variant): variant is (typeof fritzHansenVariants)[number] => variant !== undefined);
-  const featuredPackshot = featuredSlice
-    .map((v) => toGridItem(v, { packshotOnly: true }))
-    .filter((p) => p.imageUrl !== "");
-  const featuredProducts =
-    featuredPackshot.length >= 2
-      ? featuredPackshot
-      : featuredSlice.map((v) => toGridItem(v));
+  const usmVariant = featuredRaw.find((v) => v.sku === "USMUS00087");
+  const ikebanaVariant = featuredRaw.find((v) => v.sku === "ACCFH00004");
+
+  let featuredProducts = [
+    usmVariant ? toGridItem(usmVariant) : undefined,
+    ikebanaVariant ? toGridItem(ikebanaVariant) : undefined,
+  ].filter((p): p is ReturnType<typeof toGridItem> => p !== undefined);
+
+  if (featuredProducts.length < 2) {
+    const featuredSlice = [
+      chairVariants[0] ?? trendingRaw[0],
+      lampVariants[0] ?? trendingRaw[1] ?? trendingRaw[0],
+    ].filter((variant): variant is (typeof trendingRaw)[number] => variant !== undefined);
+    const featuredPackshot = featuredSlice
+      .map((v) => toGridItem(v, { packshotOnly: true }))
+      .filter((p) => p.imageUrl !== "");
+    featuredProducts =
+      featuredPackshot.length >= 2
+        ? featuredPackshot
+        : featuredSlice.map((v) => toGridItem(v));
+  }
 
   return (
     <main className="min-h-screen bg-white">
       <Hero products={heroProducts} />
       <DeferredInstagramGallery />
-      <ProductsGrid products={gridProducts} />
+      <ProductsGrid
+        trendingProducts={trendingProducts}
+        bestSellerProducts={bestSellerProducts}
+        newArrivalProducts={newArrivalProducts}
+      />
       <About />
       <FeaturedProducts products={featuredProducts} />
       <Rooms />

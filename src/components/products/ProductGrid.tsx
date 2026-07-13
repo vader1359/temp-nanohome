@@ -18,6 +18,7 @@ const STATUS_LABEL_KEY: Record<ProductStatusKind, "inStock" | "outOfStock" | "sa
 
 interface ProductGridProps {
   products: readonly ProductGridItem[];
+  gridClassName?: string;
 }
 
 function getStatusClass(status: ProductStatusKind) {
@@ -136,7 +137,7 @@ function playAddToWishlistAnimation(imageSrc: string, origin: HTMLElement) {
   animation.oncancel = () => image.remove();
 }
 
-export function ProductGrid({ products }: ProductGridProps) {
+export function ProductGrid({ products, gridClassName }: ProductGridProps) {
   const t = useTranslations("Products");
   const { hasItem, toggleItem } = useWishlist();
 
@@ -149,7 +150,7 @@ export function ProductGrid({ products }: ProductGridProps) {
   }
 
   return (
-    <section className="grid grid-cols-2 gap-4 sm:gap-9 xl:grid-cols-3">
+    <section className={cn("grid grid-cols-2 gap-4 sm:gap-9 xl:grid-cols-3", gridClassName)}>
       {products.map((product, index) => {
         const sale = product.status === "sale";
         const priorityImage = index < 6;
@@ -189,14 +190,16 @@ export function ProductGrid({ products }: ProductGridProps) {
                     )}
                   />
                 </button>
-                <span
-                  className={cn(
-                    "absolute left-1 top-1 z-10 px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-3 sm:left-1.5 sm:top-1.5 sm:px-2 sm:py-1 sm:text-[12px] sm:leading-4",
-                    getStatusClass(product.status),
-                  )}
-                >
-                  {t(STATUS_LABEL_KEY[product.status])}
-                </span>
+                {product.status !== "sale" && (
+                  <span
+                    className={cn(
+                      "absolute left-1 top-1 z-10 px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-3 sm:left-1.5 sm:top-1.5 sm:px-2 sm:py-1 sm:text-[12px] sm:leading-4",
+                      getStatusClass(product.status),
+                    )}
+                  >
+                    {t(STATUS_LABEL_KEY[product.status])}
+                  </span>
+                )}
                 <Link
                   aria-label={t("viewDetailAria", { name: product.name })}
                   className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[6px] transition-transform duration-300 group-hover:scale-[1.03]"
@@ -216,17 +219,26 @@ export function ProductGrid({ products }: ProductGridProps) {
               </div>
 
               <div className="mx-1 flex flex-col items-start gap-2 text-left sm:mx-1.5">
-                {product.brandLogoUrl ? (
-                  <div className="relative h-3 w-[76px] sm:h-3.5 sm:w-[84px]">
-                    <Image
-                      alt={product.brand}
-                      className="object-contain object-left grayscale contrast-200 brightness-0"
-                      fill
-                      sizes="84px"
-                      src={product.brandLogoUrl}
-                    />
-                  </div>
-                ) : (
+                {product.brandLogoUrl ? (() => {
+                  const isUsm = product.brand.toLowerCase() === "usm";
+                  const isVolta = product.brand.toLowerCase() === "volta";
+                  const logoUrl = isUsm ? "/images/usm_logo.png" : product.brandLogoUrl;
+
+                  return (
+                    <div className="relative h-[18px] w-[114px] sm:h-[21px] sm:w-[126px]">
+                      <Image
+                        alt={product.brand}
+                        className={cn(
+                          "object-contain object-left",
+                          !(isUsm || isVolta) && "grayscale contrast-200 brightness-0"
+                        )}
+                        fill
+                        sizes="126px"
+                        src={logoUrl}
+                      />
+                    </div>
+                  );
+                })() : (
                   <div className="text-[11px] font-medium leading-3 text-nh-ink sm:text-[12px] sm:leading-4">
                     {product.brand}
                   </div>
@@ -240,20 +252,8 @@ export function ProductGrid({ products }: ProductGridProps) {
                 {product.subtitle}
               </p>
               <div className="mt-2 flex flex-col items-start gap-1 text-left">
-                {sale && product.oldPrice ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[12px] font-normal leading-4 text-nh-muted line-through">
-                      {product.oldPrice}
-                    </span>
-                    {product.discount ? (
-                      <span className="bg-nh-red px-1.5 py-0.5 text-[12px] font-medium leading-4 text-white">
-                        {product.discount}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
                 <span className="text-[15px] font-semibold leading-5 text-nh-ink">
-                  {product.price}
+                  {product.oldPrice || product.price}
                 </span>
               </div>
             </div>

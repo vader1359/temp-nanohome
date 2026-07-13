@@ -63,7 +63,7 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
   }, [sortOpen]);
 
   return (
-    <section className={`sticky top-0 z-20 w-full overflow-hidden bg-white transition-all ${hidden ? "h-0 border-y-0" : "border-y border-nh-ink"}`}>
+    <section className={`sticky top-0 z-20 w-full bg-white transition-all ${hidden ? "h-0 border-y-0 overflow-hidden" : "border-y border-nh-ink"}`}>
       <div className="site-shell flex flex-col items-start gap-2 py-1.5 sm:py-1">
         <div className={hidden ? "hidden" : "flex w-full items-center justify-between gap-3"}>
           <h1 className="text-left text-[16px] font-medium leading-6 text-nh-ink">

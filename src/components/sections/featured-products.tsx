@@ -4,18 +4,17 @@ import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useState } from "react";
 import { useKeenSlider } from "keen-slider/react";
-import { ProductCard, type ProductGridItem } from "@/components/products/product-card";
+import { ProductCard, toWishlistItem, type ProductGridItem } from "@/components/products/product-card";
 import "keen-slider/keen-slider.css";
+import { useWishlist } from "@/components/wishlist/wishlist-context";
 
 const lifestylePairs = [
   {
-    lifestyleImage: "/images/feat_egg_1.png",
-    lifestyleImage2: "/images/feat_egg_2.png",
+    lifestyleImage: "/images/usm_haller_bedside.webp",
     reverse: false,
   },
   {
-    lifestyleImage: "/images/featured-living-room.png",
-    lifestyleImage2: "/images/feat_husk_2.png",
+    lifestyleImage: "/images/ikebana.webp",
     reverse: true,
   },
 ] as const;
@@ -26,7 +25,7 @@ interface FeaturedProductsProps {
 
 export function FeaturedProducts({ products }: FeaturedProductsProps) {
   const t = useTranslations("Featured");
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const { hasItem, toggleItem } = useWishlist();
   const [slideIdx, setSlideIdx] = useState(0);
   const [sliderLoaded, setSliderLoaded] = useState(false);
 
@@ -45,16 +44,8 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
     },
   });
 
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+  const toggleFavorite = (product: ProductGridItem) => {
+    toggleItem(toWishlistItem(product));
   };
 
   return (
@@ -86,13 +77,6 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
                     sizes="calc(100vw - 32px)"
                     className="object-cover"
                   />
-                  <Image
-                    src={pair.lifestyleImage2}
-                    alt=""
-                    fill
-                    sizes="calc(100vw - 32px)"
-                    className="absolute inset-0 object-cover"
-                  />
                 </div>
               );
 
@@ -101,8 +85,8 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
                   <div className="w-full max-w-[500px]">
                     <ProductCard
                       product={product}
-                      isFavorite={favorites.has(product.id)}
-                      onToggleFavorite={toggleFavorite}
+                      isFavorite={hasItem(product.id)}
+                      onToggleFavorite={() => toggleFavorite(product)}
                     />
                   </div>
                 </div>
@@ -148,13 +132,6 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
                   sizes="(min-width: 768px) 660px, 100vw"
                   className="object-cover"
                 />
-                <Image
-                  src={pair.lifestyleImage2}
-                  alt=""
-                  fill
-                  sizes="(min-width: 768px) 660px, 100vw"
-                  className="absolute inset-0 object-cover"
-                />
               </div>
             );
 
@@ -163,8 +140,8 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
                 <div className="w-full max-w-[500px]">
                   <ProductCard
                     product={product}
-                    isFavorite={favorites.has(product.id)}
-                    onToggleFavorite={toggleFavorite}
+                    isFavorite={hasItem(product.id)}
+                    onToggleFavorite={() => toggleFavorite(product)}
                   />
                 </div>
               </div>

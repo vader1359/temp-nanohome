@@ -78,7 +78,29 @@ export function SearchResults({ copy, locale, results }: Readonly<{
           const name = textValue(brand.name, "");
           const id = textValue(brand.airtable_id, brand.id);
           const href = `/brands/${encodeURIComponent(id)}/${detailSlug(brand.slug, brand.id)}`;
-          return <li key={brand.id} data-search-result="brand" className="min-w-0"><Link href={href} aria-label={name} className="flex aspect-[4/3] items-center justify-center border border-nh-border bg-[#F5F3F0] p-6 transition-colors hover:border-nh-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent">{brand.logo_url ? <Image alt={name} className="h-full w-full object-contain grayscale contrast-200 brightness-0" height={120} width={180} src={brand.logo_url} /> : <span className="text-center text-[14px] font-medium leading-5 text-nh-ink"><HighlightedText text={name} query={query} /></span>}</Link></li>;
+          const isUsm = brand.slug === "usm";
+          const isVolta = brand.slug === "volta";
+          const logoSrc = isUsm ? "/images/usm_logo.png" : brand.logo_url;
+          const useFilter = !isUsm && !isVolta;
+          return (
+            <li key={brand.id} data-search-result="brand" className="min-w-0">
+              <Link href={href} aria-label={name} className={`flex aspect-[4/3] items-center justify-center border border-nh-border ${isUsm || isVolta ? "bg-white" : "bg-[#F5F3F0]"} p-6 transition-colors hover:border-nh-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent`}>
+                {logoSrc ? (
+                  <Image
+                    alt={name}
+                    className={`h-full w-full object-contain ${useFilter ? "grayscale contrast-200 brightness-0" : ""}`}
+                    height={120}
+                    width={180}
+                    src={logoSrc}
+                  />
+                ) : (
+                  <span className="text-center text-[14px] font-medium leading-5 text-nh-ink">
+                    <HighlightedText text={name} query={query} />
+                  </span>
+                )}
+              </Link>
+            </li>
+          );
         })}</ul> : <p className="mt-5 text-[14px] leading-[22px] text-nh-muted">{copy.emptyBrands}</p>}
       </SearchSection>
 

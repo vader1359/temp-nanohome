@@ -5,12 +5,13 @@ import { useState } from "react";
 import Image from "next/image";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.css";
+import { Link } from "@/i18n/navigation";
 
 const rooms = [
-  { id: 1, image: "/images/room-living.png", glow: "rgba(103,70,20,.8)" },
-  { id: 2, image: "/images/room-dining.png", glow: "rgba(103,20,20,.8)" },
-  { id: 3, image: "/images/room-bedroom.png", glow: "rgba(20,103,31,.8)" },
-  { id: 4, image: "/images/room-outdoor.png", glow: "rgba(20,88,103,.8)" },
+  { id: 1, image: "/images/room-living.png", glow: "rgba(103,70,20,.8)", slug: "living-room" },
+  { id: 2, image: "/images/room-dining.png", glow: "rgba(103,20,20,.8)", slug: "dining-room" },
+  { id: 3, image: "/images/room-bedroom.png", glow: "rgba(20,103,31,.8)", slug: "bedroom" },
+  { id: 4, image: "/images/room-outdoor.png", glow: "rgba(20,88,103,.8)", slug: "outdoor" },
 ] as const;
 
 export function Rooms() {
@@ -44,7 +45,7 @@ export function Rooms() {
         {/* Mobile carousel — visible below md */}
         <div className="mt-[60px] block md:hidden">
           <div ref={sliderRef} className="keen-slider">
-            {rooms.map(({ id, image, glow }) => (
+            {rooms.map(({ id, image, glow, slug }) => (
               <div key={id} className="keen-slider__slide">
                 <article className="relative aspect-[4/5] overflow-hidden">
                   <Image src={image} alt={t(`title${id}`)} fill sizes="100vw" className="object-cover" />
@@ -53,7 +54,12 @@ export function Rooms() {
                     <p className="text-xs font-medium leading-4">{t(`sub${id}`)}</p>
                     <h3 className="mt-1 text-[32px] font-medium capitalize leading-10">{t(`title${id}`)}</h3>
                     <p className="mt-4 max-w-[390px] text-base leading-6 text-[#f1f1f1]">{t(`desc${id}`)}</p>
-                    <button className="mt-6 h-[52px] border border-white bg-white px-8 text-sm font-medium uppercase text-[#111] transition-colors hover:bg-[#111] hover:text-white">{t("cta")}</button>
+                    <Link
+                      href={`/products?room=${slug}`}
+                      className="mt-6 inline-flex items-center justify-center h-[52px] border border-white bg-white px-8 text-sm font-medium uppercase text-[#111] transition-colors hover:bg-[#111] hover:text-white"
+                    >
+                      {t("cta")}
+                    </Link>
                   </div>
                 </article>
               </div>
@@ -78,7 +84,7 @@ export function Rooms() {
 
         {/* Desktop grid — visible at md and above */}
         <div className="mt-[60px] hidden gap-6 md:grid md:grid-cols-2">
-          {rooms.map(({ id, image, glow }) => (
+          {rooms.map(({ id, image, glow, slug }) => (
             <article key={id} className="relative aspect-[4/5] overflow-hidden">
               <Image src={image} alt={t(`title${id}`)} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
               <div className="absolute left-1/2 top-1/2 h-[262px] w-[510px] -translate-x-1/2 -translate-y-1/2 blur-[56px]" style={{ background: glow }} />
@@ -86,7 +92,12 @@ export function Rooms() {
                 <p className="text-xs font-medium leading-4">{t(`sub${id}`)}</p>
                 <h3 className="mt-1 text-[32px] font-medium capitalize leading-10">{t(`title${id}`)}</h3>
                 <p className="mt-4 max-w-[390px] text-base leading-6 text-[#f1f1f1]">{t(`desc${id}`)}</p>
-                <button className="mt-6 h-[52px] border border-white bg-white px-8 text-sm font-medium uppercase text-[#111] transition-colors hover:bg-[#111] hover:text-white">{t("cta")}</button>
+                <Link
+                  href={`/products?room=${slug}`}
+                  className="mt-6 inline-flex items-center justify-center h-[52px] border border-white bg-white px-8 text-sm font-medium uppercase text-[#111] transition-colors hover:bg-[#111] hover:text-white"
+                >
+                  {t("cta")}
+                </Link>
               </div>
             </article>
           ))}
