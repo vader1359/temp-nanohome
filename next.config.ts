@@ -23,6 +23,7 @@ function ignoredEntries(ignored: WatchIgnored | undefined): string[] {
 const nextConfig: NextConfig = {
   reactCompiler: true,
   webpack(config) {
+    config.infrastructureLogging = { level: "error" };
     return {
       ...config,
       watchOptions: {
