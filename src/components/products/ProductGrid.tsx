@@ -5,38 +5,15 @@ import { Heart } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useWishlist, type WishlistItem } from "@/components/wishlist/wishlist-context";
+import type { ProductGridItem, ProductStatusKind } from "./product-grid-item";
 import { cn } from "@/lib/utils";
 
-/**
- * Stable, locale-agnostic status kinds. The user-facing label is rendered
- * via the `Products` i18n namespace, so the badge color comparison must use
- * these enum values — never Vietnamese literal strings.
- */
-export type ProductStatusKind = "in_stock" | "out_of_stock" | "sale";
+export type { ProductGridItem, ProductStatusKind } from "./product-grid-item";
 
 const STATUS_LABEL_KEY: Record<ProductStatusKind, "inStock" | "outOfStock" | "saleLabel"> = {
   in_stock: "inStock",
   out_of_stock: "outOfStock",
   sale: "saleLabel",
-};
-
-export type ProductGridItem = {
-  id: string;
-  brand: string;
-  brandLogoUrl?: string | null;
-  brandSlug?: string;
-  category?: string;
-  name: string;
-  rooms?: readonly string[];
-  subCategory?: string;
-  subtitle: string;
-  status: ProductStatusKind;
-  imageUrl: string;
-  href: string;
-  oldPrice: string | null;
-  discount: string | null;
-  price: string;
-  swatches: readonly string[];
 };
 
 interface ProductGridProps {
@@ -187,8 +164,10 @@ export function ProductGrid({ products }: ProductGridProps) {
               data-product-category={product.category ?? ""}
               data-product-name={product.name}
               data-product-rooms={(product.rooms ?? []).join("|")}
-              data-product-status={product.status}
-              data-product-subcategory={product.subCategory ?? ""}
+               data-product-status={product.status}
+               data-product-subcategory={product.subCategory ?? ""}
+               data-search-result={product.searchVariantId === undefined ? undefined : "product"}
+               data-variant-id={product.searchVariantId}
             >
               <div className="relative flex min-h-0 w-full flex-1 items-end justify-center bg-white px-2 pb-2 pt-8 sm:px-5 sm:pb-9 sm:pt-16">
                 <button

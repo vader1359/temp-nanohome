@@ -12,6 +12,7 @@ import {
   type VariantProductQueryOptions,
 } from "@/lib/queries/products";
 import { variantDetailHref } from "@/lib/queries/variant-url";
+import { normalizeSearchQuery } from "@/lib/queries/search-input";
 import { firstCloudinaryImage } from "@/lib/image";
 import { isUsmContactVariant, isUsmVariant } from "@/lib/products/usm";
 import type { Variant } from "@/types/db";
@@ -188,13 +189,14 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
   const filters = parsed.success ? parsed.data : {};
 
   const normalizedRooms = normalizeRooms(filters.room);
+  const normalizedQuery = filters.q === undefined ? undefined : normalizeSearchQuery(filters.q);
   const queryOptions: VariantProductQueryOptions = {
     brand: filters.brand,
     category: filters.category,
     subCategory: filters.subCategory,
     room: normalizedRooms,
     status: filters.status ?? undefined,
-    search: filters.q,
+    search: normalizedQuery === "" ? undefined : normalizedQuery,
     sort: filters.sort ?? "priority",
     page: filters.page ?? 1,
     pageSize: PAGE_SIZE,
@@ -202,7 +204,8 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
   const shouldPreferFritzHansen =
     queryOptions.sort === "priority" &&
     queryOptions.page === 1 &&
-    queryOptions.brand === undefined;
+    queryOptions.brand === undefined &&
+    queryOptions.search === undefined;
   const preferredBrandQueryOptions: VariantProductQueryOptions = {
     ...queryOptions,
     brand: [FEATURED_FIRST_BRAND],

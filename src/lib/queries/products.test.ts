@@ -157,6 +157,7 @@ describe("getVariantProducts", () => {
     expect(state.chain.order).toHaveBeenNthCalledWith(1, "in_stock", { ascending: false, nullsFirst: false });
     expect(state.chain.order).toHaveBeenNthCalledWith(2, "filter_is_new_arrival", { ascending: false, nullsFirst: false });
     expect(state.chain.order).toHaveBeenNthCalledWith(3, "priority", { ascending: true, nullsFirst: false });
+    expect(state.chain.order).toHaveBeenNthCalledWith(4, "id", { ascending: true });
   });
 
   it("keeps USM variants in the in-stock result and count", async () => {

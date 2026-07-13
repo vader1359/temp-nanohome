@@ -1,14 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
-  searchDesigners: vi.fn(async () => []),
-  searchNews: vi.fn(async () => []),
-  searchProducts: vi.fn(async () => []),
+  unifiedSearch: vi.fn(async () => ({
+    brands: { hasError: false, items: [] },
+    categories: { hasError: false, items: [] },
+    designers: { hasError: false, items: [] },
+    news: { hasError: false, items: [] },
+    products: { hasError: false, items: [] },
+    query: "",
+  })),
 }));
 
-vi.mock("@/lib/queries/search", () => ({ searchProducts: state.searchProducts }));
-vi.mock("@/lib/queries/news", () => ({ searchNews: state.searchNews }));
-vi.mock("@/lib/queries/designers", () => ({ searchDesigners: state.searchDesigners }));
+vi.mock("@/lib/queries/unified-search", () => ({ unifiedSearch: state.unifiedSearch }));
 vi.mock("next-intl/server", () => ({
   getTranslations: vi.fn(async () => (key: string, values?: { readonly query: string }) => values ? `${key}:${values.query}` : key),
   setRequestLocale: vi.fn(),
@@ -21,18 +24,36 @@ vi.mock("@/i18n/navigation", () => ({
 import SearchPage from "./page";
 
 describe("localized aggregate search route", () => {
-  it("does not query sources for a blank term", async () => {
+  it("delegates even a blank route query to the normalization boundary", async () => {
     // Given: an empty search request.
     // When: the localized route renders.
-    const page = await SearchPage({
+    await SearchPage({
       params: Promise.resolve({ locale: "ko" }),
       searchParams: Promise.resolve({ q: "   " }),
     });
 
-    // Then: no data source is queried for the initial search state.
+    // Then: only the coordinator owns blank-query behavior.
+    expect(state.unifiedSearch).toHaveBeenCalledWith("   ", "ko");
+  });
+
+  it("renders resilient results from the unified coordinator", async () => {
+    // Given: products succeeded while news failed.
+    state.unifiedSearch.mockResolvedValueOnce({
+      brands: { hasError: false, items: [] },
+      categories: { hasError: false, items: [] },
+      designers: { hasError: false, items: [] },
+      news: { hasError: true, items: [] },
+      products: { hasError: false, items: [] },
+      query: "Ikebana",
+    });
+
+    // When: the route renders the aggregate result.
+    const page = await SearchPage({
+      params: Promise.resolve({ locale: "en" }),
+      searchParams: Promise.resolve({ q: "Ikebana" }),
+    });
+
+    // Then: a partial result remains renderable.
     expect(page).toBeDefined();
-    expect(state.searchProducts).not.toHaveBeenCalled();
-    expect(state.searchNews).not.toHaveBeenCalled();
-    expect(state.searchDesigners).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { News } from "@/types/db";
 
 import { productRange } from "./products";
-import { postgrestFilterValue, type ProductSearchLocale } from "./search";
+import { postgrestFilterValue, type SearchLocale } from "./search-input";
 
 export async function getNewsList(page = 1, pageSize = 12): Promise<readonly News[]> {
   const supabase = await createClient();
@@ -25,11 +25,11 @@ const localeSearchColumns = {
   vi: ["title_vi", "title", "title_ko", "description"],
   en: ["title", "title_vi", "title_ko", "description"],
   ko: ["title_ko", "title", "title_vi", "description"],
-} satisfies Record<ProductSearchLocale, readonly string[]>;
+} satisfies Record<SearchLocale, readonly string[]>;
 
 export async function searchNews(
   query: string,
-  locale: ProductSearchLocale,
+  locale: SearchLocale,
   options: Readonly<{ pageSize?: number }> = {},
 ): Promise<readonly News[]> {
   const searchTerm = query.trim();
@@ -40,14 +40,23 @@ export async function searchNews(
   const supabase = await createClient();
   const pageSize = options.pageSize ?? 6;
   const filterValue = postgrestFilterValue(searchTerm);
-  const { data, error } = await supabase
+  const queryBuilder = supabase
     .from("news")
     .select("*")
     .eq("validated", true)
     .or(localeSearchColumns[locale].map((column) => `${column}.ilike.*${filterValue}*`).join(","))
-    .order("source_created_at", { ascending: false, nullsFirst: false })
-    .range(0, pageSize - 1);
+    .order("source_created_at", { ascending: false, nullsFirst: false });
 
+  if (locale === "ko") {
+    const { data, error } = await queryBuilder;
+    if (error !== null) {
+      throw error;
+    }
+
+    return (data ?? []).filter((item) => typeof item.title_ko === "string" && item.title_ko.trim() !== "").slice(0, pageSize);
+  }
+
+  const { data, error } = await queryBuilder.range(0, pageSize - 1);
   if (error !== null) {
     throw error;
   }
