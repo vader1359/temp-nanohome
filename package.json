@@ -11,7 +11,9 @@
     "korean-backfill:drafts": "tsx scripts/korean-backfill-drafts.ts",
     "korean-backfill:apply": "tsx scripts/apply-korean-backfill.ts",
     "korean-backfill:export": "tsx scripts/export-korean-backfill.ts",
-    "test:ui-merge-guard": "node scripts/ui-merge-guard.mjs"
+    "test:ui-merge-guard": "node scripts/ui-merge-guard.mjs",
+    "test:e2e": "playwright test",
+    "test:visual": "percy exec -- playwright test e2e/visual.spec.ts"
   },
   "dependencies": {
     "@axiomhq/js": "^1.0.0",
@@ -46,6 +48,8 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@percy/cli": "^1.32.3",
+    "@percy/playwright": "^1.1.0",
     "@playwright/test": "^1.49.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",

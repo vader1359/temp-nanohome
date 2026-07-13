@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useState, useSyncExternalStore } from "react";
 import {
   ChevronDown,
   Heart,
@@ -37,6 +37,7 @@ export function Header() {
   );
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [hasOpenedCart, setHasOpenedCart] = useState(false);
   const [cartTab, setCartTab] = useState<CartSidebarTab>("cart");
   const { items, addItem, clearCart, getItemCount, removeItem, updateQuantity } = useCart();
   const { items: wishlistItems, clearWishlist, getItemCount: getWishlistCount, removeItem: removeWishlistItem } = useWishlist();
@@ -135,12 +136,14 @@ export function Header() {
 
   const openWishlist = () => {
     setCartTab("wishlist");
+    setHasOpenedCart(true);
     setCartOpen(true);
     setDrawerOpen(false);
   };
 
   const openCart = () => {
     setCartTab("cart");
+    setHasOpenedCart(true);
     setCartOpen(true);
   };
 
@@ -149,15 +152,21 @@ export function Header() {
     openAuth("login");
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!cartOpen) return;
 
     const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyPaddingRight = document.body.style.paddingRight;
     const previousHtmlOverflow = document.documentElement.style.overflow;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
+    document.body.style.paddingRight = `${scrollbarWidth}px`;
+
     return () => {
       document.body.style.overflow = previousBodyOverflow;
+      document.body.style.paddingRight = previousBodyPaddingRight;
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
   }, [cartOpen]);
@@ -193,7 +202,7 @@ export function Header() {
         </div>
 
         {/* Mobile bar: navigation utilities, centered wordmark, cart */}
-        <div className="flex items-center justify-between gap-4 pt-2 lg:h-[83px] lg:gap-0 lg:pt-0">
+        <div className="flex items-center justify-between gap-4 pt-2 lg:flex-wrap lg:justify-center lg:gap-0 lg:pt-0 lg:flex-col lg:items-center">
           <div className="flex items-center gap-1 lg:hidden">
             <button
               type="button"
@@ -219,15 +228,14 @@ export function Header() {
           {/* Logo — centered on mobile, static on desktop */}
           <Link
             href={`/${locale}`}
-            className="absolute left-1/2 -translate-x-1/2 lg:absolute lg:left-1/2 lg:-translate-x-1/2"
+            className="absolute left-1/2 -translate-x-1/2 lg:static lg:mt-4 lg:mb-3 lg:transform-none"
           >
             <Image
               src="/images/nanohome-logo.svg"
               alt="nanoHome"
               width={154}
               height={32}
-              priority
-              className="h-auto w-[100px] lg:w-auto"
+               className="h-auto w-[100px] lg:w-auto"
             />
           </Link>
 
@@ -239,61 +247,68 @@ export function Header() {
             className="relative flex items-center lg:hidden"
           >
             <ShoppingCart className="size-5 stroke-[1.4]" />
-            <span className="absolute -bottom-1 -left-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
-              {cartCount}
-            </span>
-          </button>
-
-          {/* Desktop category nav */}
-          <nav className="hidden items-center gap-4 lg:flex 2xl:gap-6">
-            {nav.map((key) => (
-              <Link
-                key={key}
-                href={navHref(key)}
-                className="whitespace-nowrap text-xs font-normal uppercase leading-5 2xl:text-sm"
-              >
-                {t(key)}
-              </Link>
-            ))}
-          </nav>
-
-          {/* Desktop full icons row */}
-          <div className="hidden lg:ml-auto lg:flex lg:items-center lg:gap-3 2xl:gap-5">
-            <Link
-              href={searchPath}
-              aria-label={t("search")}
-              className="flex size-8 items-center justify-center text-nh-ink transition-colors duration-150 ease-out hover:text-nh-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent"
-            >
-              <Search className="size-[18px]" strokeWidth={1.5} />
-            </Link>
-            <button aria-label={t("wishlist")} type="button" onClick={openWishlist} className="relative" data-wishlist-target>
-              <Heart className="size-5 stroke-[1.4]" />
-              {wishlistCount > 0 ? (
-                <span className="absolute -bottom-1 -left-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
-                  {wishlistCount}
-                </span>
-              ) : null}
-            </button>
-            <button aria-label={t("cart")} type="button" onClick={openCart} className="relative" data-cart-target>
-              <ShoppingCart className="size-5 stroke-[1.4]" />
-              <span className="absolute -bottom-1 -left-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
+            {cartCount > 0 ? (
+              <span className="absolute -top-1 -right-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
                 {cartCount}
               </span>
-            </button>
-            {isAuthenticated ? (
-              <form action="/auth/sign-out" method="POST">
-                <input type="hidden" name="locale" value={locale} />
-                <input type="hidden" name="redirectTo" value={`/${locale}`} />
-                <button aria-label={t("signOut")} type="submit">
-                  <LogOut className="size-5 stroke-[1.4]" />
-                </button>
-              </form>
-            ) : (
-              <button aria-label={t("account")} type="button" onClick={openLogin} data-auth-trigger>
-                <User className="size-5 stroke-[1.4]" />
+            ) : null}
+          </button>
+
+          {/* Desktop full navigation row */}
+          <div className="hidden lg:flex w-full items-center justify-between">
+            {/* Desktop category nav */}
+            <nav className="flex items-center gap-4 2xl:gap-6">
+              {nav.map((key) => (
+                <Link
+                  key={key}
+                  href={navHref(key)}
+                  className="whitespace-nowrap text-xs font-normal uppercase leading-5 2xl:text-sm"
+                >
+                  {t(key)}
+                </Link>
+              ))}
+            </nav>
+
+            {/* Desktop full icons row */}
+            <div className="flex items-center gap-3 2xl:gap-5">
+              <Link
+                href={searchPath}
+                aria-label={t("search")}
+                className="flex size-8 items-center justify-center text-nh-ink transition-colors duration-150 ease-out hover:text-nh-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent"
+              >
+                <Search className="size-[18px]" strokeWidth={1.5} />
+              </Link>
+              <button aria-label={t("wishlist")} type="button" onClick={openWishlist} className="relative" data-wishlist-target>
+                <Heart className="size-5 stroke-[1.4]" />
+                {wishlistCount > 0 ? (
+                  <span className="absolute -top-1 -right-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
+                    {wishlistCount}
+                  </span>
+                ) : null}
               </button>
-            )}
-            {localeSwitcher}
+              <button aria-label={t("cart")} type="button" onClick={openCart} className="relative" data-cart-target>
+                <ShoppingCart className="size-5 stroke-[1.4]" />
+                {cartCount > 0 ? (
+                  <span className="absolute -top-1 -right-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
+                    {cartCount}
+                  </span>
+                ) : null}
+              </button>
+              {isAuthenticated ? (
+                <form action="/auth/sign-out" method="POST">
+                  <input type="hidden" name="locale" value={locale} />
+                  <input type="hidden" name="redirectTo" value={`/${locale}`} />
+                  <button aria-label={t("signOut")} type="submit">
+                    <LogOut className="size-5 stroke-[1.4]" />
+                  </button>
+                </form>
+              ) : (
+                <button aria-label={t("account")} type="button" onClick={openLogin} data-auth-trigger>
+                  <User className="size-5 stroke-[1.4]" />
+                </button>
+              )}
+              {localeSwitcher}
+            </div>
           </div>
         </div>
 
@@ -321,7 +336,7 @@ export function Header() {
                 <button aria-label={t("wishlist")} type="button" onClick={openWishlist} className="relative" data-wishlist-target>
                   <Heart className="size-5 stroke-[1.4]" />
                   {wishlistCount > 0 ? (
-                    <span className="absolute -bottom-1 -left-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
+                    <span className="absolute -top-1 -right-1 grid size-3 place-items-center rounded-full bg-[#930000] text-[8px] text-white">
                       {wishlistCount}
                     </span>
                   ) : null}
@@ -369,8 +384,9 @@ export function Header() {
           </div>
         </div>
       </div>
-      {cartOpen ? (
+      {hasOpenedCart ? (
         <CartSidebar
+          isOpen={cartOpen}
           activeTab={cartTab}
           onClose={() => setCartOpen(false)}
           onTabChange={setCartTab}

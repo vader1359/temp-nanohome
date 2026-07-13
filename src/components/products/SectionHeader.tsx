@@ -1,9 +1,9 @@
 "use client";
 
-import { ArrowUpDown, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpDown, Check, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
-import { UnderlineTabs, type TabItem } from "@/components/shared";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import type { ProductSort } from "@/lib/queries/products";
 
 interface SectionHeaderProps {
@@ -19,12 +19,14 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
   const t = useTranslations("Products");
   const [hidden, setHidden] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
-  const sortTabs: TabItem[] = [
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const sortTabs = [
     { key: "priority", label: t("sortPriority") },
     { key: "price_asc", label: t("sortPriceAsc") },
     { key: "price_desc", label: t("sortPriceDesc") },
-    { key: "newest", label: t("sortNewest") },
-  ];
+  ] as const;
   const sortLabel = sortTabs.find((tab) => tab.key === sortBy)?.label ?? t("sortPriority");
 
   useEffect(() => {
@@ -33,6 +35,32 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
     window.addEventListener("scroll", updateHidden, { passive: true });
     return () => window.removeEventListener("scroll", updateHidden);
   }, []);
+
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setSortOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSortOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [sortOpen]);
 
   return (
     <section className={`sticky top-0 z-20 w-full overflow-hidden bg-white transition-all ${hidden ? "h-0 border-y-0" : "border-y border-nh-ink"}`}>
@@ -43,8 +71,11 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
           </h1>
           <div className="relative flex items-center gap-1">
             <button
-              aria-label={`${t("sortBy")} ${sortLabel}`}
-              className="flex min-h-[44px] items-center gap-2 bg-white px-2 text-nh-ink"
+              ref={buttonRef}
+               aria-label={`${t("sortBy")} ${sortLabel}`}
+               aria-controls="product-sort-menu"
+               aria-expanded={sortOpen}
+               className="flex min-h-[44px] items-center gap-2 bg-white px-2 text-nh-ink"
               type="button"
               onClick={() => setSortOpen((value) => !value)}
             >
@@ -55,15 +86,36 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
               </span>
             </button>
             {sortOpen ? (
-              <div className="absolute right-12 top-full z-30 w-[360px] max-w-[80vw] border border-nh-border bg-white p-3 shadow-lg">
-                <UnderlineTabs
-                  activeKey={sortBy}
-                  tabs={sortTabs}
-                  onChange={(key) => {
-                    onSortChange(key as ProductSort);
-                    setSortOpen(false);
-                  }}
-                />
+              <div
+                ref={dropdownRef}
+                id="product-sort-menu"
+                role="menu"
+                className="absolute right-0 top-full z-30 mt-1 w-[240px] max-w-[80vw] border border-nh-border bg-white p-1 shadow-lg"
+              >
+                <div className="flex flex-col py-1">
+                  {sortTabs.map((tab) => {
+                    const active = sortBy === tab.key;
+                    return (
+                      <button
+                         key={tab.key}
+                         role="menuitemradio"
+                         aria-checked={active}
+                         onClick={() => {
+                          onSortChange(tab.key as ProductSort);
+                          setSortOpen(false);
+                        }}
+                        className={cn(
+                          "flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-neutral-50",
+                          active ? "font-medium text-nh-ink" : "text-neutral-600",
+                        )}
+                        type="button"
+                      >
+                        <span>{tab.label}</span>
+                        {active && <Check className="size-4 text-nh-ink" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ) : null}
             <button

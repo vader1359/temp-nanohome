@@ -122,10 +122,11 @@
     "subCategory": "Danh mục con",
     "classifyInStock": "Đang có hàng",
     "classifyOnSale": "Đang giảm giá",
+    "classifyNewArrival": "Hàng mới về",
     "roomsHeading": "Theo phòng",
     "sortPriority": "Đề xuất",
-    "sortPriceAsc": "Giá: Thấp → Cao",
-    "sortPriceDesc": "Giá: Cao → Thấp",
+    "sortPriceAsc": "Giá Thấp → Cao",
+    "sortPriceDesc": "Giá Cao → Thấp",
     "sortNewest": "Mới nhất",
     "filterWarningEmpty": "Đang cập nhật",
     "clearAll": "Xóa tất cả",
@@ -389,6 +390,11 @@
     "col6Heading": "Liên hệ",
     "phone": "(+84) 33 948 7632",
     "email": "info@nanohome.vn",
-    "website": "nanohome.vn"
+    "website": "nanohome.vn",
+    "followUs": "Kết nối",
+    "socialFacebook": "Facebook",
+    "socialInstagram": "Instagram",
+    "socialYoutube": "YouTube",
+    "socialTiktok": "TikTok"
   }
 }

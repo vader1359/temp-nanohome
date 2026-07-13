@@ -57,7 +57,7 @@ export function SearchResults({
   return (
     <div className="flex flex-col gap-12">
       <SearchSection title={copy.products} empty={products.length === 0 ? copy.emptyProducts : ""}>
-        {products.length > 0 ? <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {products.length > 0 ? <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => {
             const name = localizedText({ en: product.name, ko: product.name_ko, vi: product.name_vi }, locale, product.name);
             const description = localizedText({ en: product.description, ko: product.description_ko, vi: product.description_vi }, locale);
@@ -73,7 +73,7 @@ export function SearchResults({
       </SearchSection>
 
       <SearchSection title={copy.news} empty={visibleNews.length === 0 ? copy.emptyNews : ""}>
-        {visibleNews.length > 0 ? <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {visibleNews.length > 0 ? <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {visibleNews.map((item) => {
             const title = localizedText({ en: item.title, ko: item.title_ko, vi: item.title_vi }, locale, item.title);
             const description = locale === "ko" ? null : localizedNewsDescription(item.raw, item.description, locale);
@@ -89,7 +89,7 @@ export function SearchResults({
       </SearchSection>
 
       <SearchSection title={copy.designers} empty={designers.length === 0 ? copy.emptyDesigners : ""}>
-        {designers.length > 0 ? <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
+        {designers.length > 0 ? <div className="mt-6 grid grid-cols-2 gap-4 sm:gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
           {designers.map((designer) => {
             const name = textValue(designer.name, "");
             const portrait = localizedRawString(designer.raw, "cldr_portrait", "cldr_portrait", locale) ?? designer.portrait_url;

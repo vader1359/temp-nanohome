@@ -122,10 +122,11 @@
     "subCategory": "하위 카테고리",
     "classifyInStock": "재고 있음",
     "classifyOnSale": "세일 중",
+    "classifyNewArrival": "신상품",
     "roomsHeading": "공간별",
     "sortPriority": "추천",
-    "sortPriceAsc": "가격: 낮은순",
-    "sortPriceDesc": "가격: 높은순",
+    "sortPriceAsc": "가격 낮은순",
+    "sortPriceDesc": "가격 높은순",
     "sortNewest": "최신순",
     "filterWarningEmpty": "업데이트 중",
     "clearAll": "전체 지우기",
@@ -389,6 +390,11 @@
     "col6Heading": "문의",
     "phone": "(+84) 33 948 7632",
     "email": "info@nanohome.vn",
-    "website": "nanohome.vn"
+    "website": "nanohome.vn",
+    "followUs": "팔로우",
+    "socialFacebook": "Facebook",
+    "socialInstagram": "Instagram",
+    "socialYoutube": "YouTube",
+    "socialTiktok": "TikTok"
   }
 }

@@ -63,11 +63,11 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
       className="flex flex-col items-center gap-10 bg-white py-12 sm:gap-[60px] sm:py-16 lg:py-20"
     >
       <div className="site-shell">
-        <div className="mx-auto flex w-full max-w-[802px] flex-col items-center gap-4 text-center">
+        <div className="mx-auto mb-10 flex w-full max-w-[802px] flex-col items-center gap-4 text-center sm:mb-12">
           <p className="w-full text-sm font-medium uppercase leading-5 text-[#444]">
             {t("eyebrow")}
           </p>
-          <h2 className="flex h-[54.4px] w-full items-center justify-center text-[32px] font-medium leading-10 text-[#111]">
+          <h2 className="flex w-full items-center justify-center text-[32px] font-medium leading-10 text-[#111]">
             {t("heading")}
           </h2>
         </div>
@@ -135,7 +135,7 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
           )}
         </div>
 
-        <div className="hidden w-full flex-col gap-10 sm:gap-[60px] md:flex">
+        <div className="hidden w-full flex-col gap-6 md:flex">
           {products.map((product, index) => {
             const pair = lifestylePairs[index] ?? lifestylePairs[index % lifestylePairs.length];
 

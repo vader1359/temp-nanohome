@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next-intl", () => ({
@@ -14,6 +14,8 @@ vi.mock("next/image", () => ({
 import { Hero } from "./hero";
 
 describe("Hero", () => {
+  vi.useFakeTimers();
+
   it("preloads only the initial full-bleed slide", () => {
     // Given: the hero carousel starts on its first slide.
     render(<Hero />);
@@ -26,11 +28,21 @@ describe("Hero", () => {
     expect(image).toHaveAttribute("data-preload", "true");
     expect(image).toHaveAttribute("data-fetch-priority", "auto");
     expect(document.querySelectorAll("[data-preload=true]")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Next slide" }));
 
-    // Then: only the active image changes and later slides are not preloaded.
-    expect(image).toHaveAttribute("data-src", "/images/home/hero/hero-2.webp");
-    expect(image).toHaveAttribute("data-preload", "false");
-    expect(image).toHaveAttribute("data-fetch-priority", "auto");
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Next slide" }));
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(300); // Advance timer to allow fade state to swap index
+    });
+
+    // We must query the DOM again because the element reference might be stale or updated by React
+    const updatedImage = document.querySelector<HTMLElement>("[data-hero-image]");
+    if (updatedImage === null) throw new Error("The hero image was not rendered");
+
+    expect(updatedImage).toHaveAttribute("data-src", "/images/home/hero/hero-2.webp");
+    expect(updatedImage).toHaveAttribute("data-preload", "false");
+    expect(updatedImage).toHaveAttribute("data-fetch-priority", "auto");
   });
 });

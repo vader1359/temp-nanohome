@@ -35,7 +35,7 @@ export function BrandSelector({ brandOptions, selectedBrands, toggleBrand }: Bra
             return (
               <button
                 className={cn(
-                  "group flex h-7 min-w-[68px] items-center justify-center border border-nh-ink bg-transparent px-1.5 transition-colors hover:bg-nh-ink",
+                  "group flex h-12 w-[144px] items-center justify-center border border-nh-ink bg-transparent px-3 transition-colors hover:bg-nh-ink",
                   active && "bg-nh-ink",
                 )}
                 data-filter-brand=""
@@ -48,7 +48,7 @@ export function BrandSelector({ brandOptions, selectedBrands, toggleBrand }: Bra
                 onClick={() => toggleBrand(brand.slug)}
               >
                 {brand.logoUrl ? (
-                  <span className="relative h-3.5 w-[72px]">
+                  <span className="relative h-6 w-[120px]">
                     <Image
                       alt={brand.name}
                       className={cn(
@@ -59,7 +59,7 @@ export function BrandSelector({ brandOptions, selectedBrands, toggleBrand }: Bra
                         active && !preserveLogoColor && "brightness-0 invert",
                       )}
                       fill
-                      sizes="72px"
+                      sizes="120px"
                       src={brand.logoUrl}
                     />
                   </span>

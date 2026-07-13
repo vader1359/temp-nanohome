@@ -124,7 +124,7 @@ export async function getProducts(options: ProductListOptions = {}): Promise<rea
   return data ?? [];
 }
 
-export type VariantProductStatus = "in_stock" | "sale" | "out_of_stock";
+export type VariantProductStatus = "in_stock" | "sale" | "out_of_stock" | "new_arrival";
 
 export type VariantProductQueryOptions = Pick<ProductListOptions, "page" | "pageSize" | "search" | "sort"> & {
   readonly brand?: readonly string[];
@@ -274,6 +274,9 @@ export async function getVariantProducts(options: VariantProductQueryOptions = {
     case "out_of_stock":
       query = query.eq("in_stock", false);
       break;
+    case "new_arrival":
+      query = query.eq("filter_is_new_arrival", true);
+      break;
     case null:
     case undefined:
       break;
@@ -361,6 +364,9 @@ export async function getVariantProductCount(options: Omit<VariantProductQueryOp
       break;
     case "out_of_stock":
       query = query.eq("in_stock", false);
+      break;
+    case "new_arrival":
+      query = query.eq("filter_is_new_arrival", true);
       break;
     case null:
     case undefined:
