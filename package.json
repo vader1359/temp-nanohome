@@ -32,6 +32,7 @@
     "next": "16.2.7",
     "next-intl": "^4.13.2",
     "notion-client": "^7.10.0",
+    "pdfjs-dist": "^6.1.200",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-hook-form": "^7.54.2",
