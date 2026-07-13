@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 import { specColumns as fallbackSpecColumns } from "./mock-data";
 
 interface Section2SpecsProps {
   specColumns?: typeof fallbackSpecColumns;
   description?: string | null;
   designerDescription?: string | null;
+  designerPortraitUrl?: string | null;
 }
 
-export function Section2Specs({ specColumns = fallbackSpecColumns, description, designerDescription }: Section2SpecsProps) {
+export function Section2Specs({ specColumns = fallbackSpecColumns, description, designerDescription, designerPortraitUrl }: Section2SpecsProps) {
   const t = useTranslations("ProductDetail");
   const [activeTab, setActiveTab] = useState(0);
   const tabs = [t("specificationsTab"), t("introductionTab"), t("designerTab")];
@@ -71,7 +73,7 @@ export function Section2Specs({ specColumns = fallbackSpecColumns, description, 
       )}
 
       {activeTab === 1 && (
-        <div className="site-shell max-w-[800px] text-[14px] leading-relaxed text-[#666]">
+        <div className="mx-auto max-w-[1024px] w-full px-4 text-[14px] leading-relaxed text-[#666]">
           <p>
             {description ??
               t("descriptionFallback")}
@@ -80,7 +82,17 @@ export function Section2Specs({ specColumns = fallbackSpecColumns, description, 
       )}
 
       {activeTab === 2 && (
-        <div className="site-shell flex max-w-[800px] flex-col gap-6 text-[14px] text-[#666]">
+        <div className="mx-auto flex w-full max-w-[1024px] flex-col gap-6 text-[14px] text-[#666] md:flex-row md:items-start md:gap-8 px-4">
+          {designerPortraitUrl && designerPortraitUrl.startsWith("http") && (
+            <div className="relative aspect-square w-32 shrink-0 overflow-hidden rounded-full bg-white">
+              <Image
+                src={designerPortraitUrl}
+                alt={t("designerHeading")}
+                fill
+                className="object-cover"
+              />
+            </div>
+          )}
           <div>
             <h3 className="mb-2 text-[16px] font-medium text-[#111]">{t("designerHeading")}</h3>
             <p>{designerDescription ?? t("designerFallback")}</p>

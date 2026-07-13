@@ -102,7 +102,7 @@ export function Header() {
       case "brandFurniture":
         return `/${locale}`;
       case "brandLighting":
-        return `${productsPath}?category=lighting`;
+        return `${productsPath}?filter_category=den-trang-tri`;
     }
   };
 

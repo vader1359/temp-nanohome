@@ -35,7 +35,7 @@ export function FavoriteButton({
         aria-label="Toggle favorite"
         onClick={onToggle}
         className={cn(
-          "flex h-8 w-8 items-center justify-center rounded-full bg-white/90 transition-colors hover:bg-white",
+          "flex items-center justify-center rounded-full bg-white/90 transition-colors hover:bg-white h-8 w-8",
           className,
         )}
       >
@@ -51,7 +51,7 @@ export function FavoriteButton({
         aria-label="Toggle favorite"
         onClick={onToggle}
         className={cn(
-          "flex h-10 w-10 items-center justify-center border border-nh-border rounded-full transition-colors hover:bg-nh-muted/10",
+          "flex items-center justify-center border border-nh-border transition-colors hover:bg-nh-muted/10 h-10 w-10 rounded-none",
           className,
         )}
       >

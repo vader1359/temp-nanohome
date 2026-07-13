@@ -126,6 +126,22 @@ export async function getDesignerBySlug(slug: string): Promise<Designer | null> 
   return data;
 }
 
+export async function getDesignerById(id: string): Promise<Designer | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("designers")
+    .select("*")
+    .eq("id", id)
+    .eq("validated", true)
+    .maybeSingle();
+
+  if (error !== null) {
+    throw error;
+  }
+
+  return data;
+}
+
 export async function getDesignerByAirtableId(airtableId: string): Promise<Designer | null> {
   const supabase = await createClient();
   const { data, error } = await supabase

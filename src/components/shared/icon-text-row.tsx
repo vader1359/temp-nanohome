@@ -43,7 +43,7 @@ function IconTextRow({
 
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      <div className="flex h-12 w-12 items-center justify-center rounded-full">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
         {icon}
       </div>
       <div className="flex min-w-0 items-center gap-2">

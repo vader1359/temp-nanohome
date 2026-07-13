@@ -87,11 +87,11 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
       </div>
 
       {/* Content row — gallery left, purchase panel right */}
-      <div className="site-shell max-w-[1280px] flex flex-col items-center gap-10 overflow-hidden pb-16 lg:flex-row lg:items-start lg:gap-12">
+      <div className="mx-auto flex w-full max-w-[1024px] flex-col items-center gap-10 overflow-hidden pb-16 lg:flex-row lg:items-start lg:gap-12 px-4">
         {/* ─── Gallery ─── */}
         <div className="flex min-w-0 w-full flex-col gap-0 lg:basis-1/2 lg:px-0">
           {/* Main image */}
-          <div ref={productImageRef} className="relative aspect-[4/3] w-full overflow-hidden bg-white">
+          <div ref={productImageRef} className="relative aspect-[1/1] w-full overflow-hidden bg-white">
             <Image
               src={product.gallery[activeThumb]}
               alt={product.title}
@@ -106,6 +106,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
           <div className="mt-10 flex w-full min-w-0 items-center justify-center gap-1 overflow-x-auto bg-white px-2 pb-1 text-center [scrollbar-width:none]">
             {product.gallery.slice(0, 5).map((src, i) => {
               const active = activeThumb === i;
+              const hasMoreImages = product.gallery.length > 5;
               return (
                 <button
                   key={i}
@@ -122,9 +123,9 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
                     sizes="80px"
                     className="max-w-full object-cover"
                   />
-                  {i === 4 && !active && (
+                  {i === 4 && !active && hasMoreImages && (
                     <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-[18px] font-medium leading-[26px] text-white">
-                      +3
+                      +{product.gallery.length - 5}
                     </span>
                   )}
                 </button>
@@ -177,11 +178,11 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
 
           {/* CTA row */}
           <div className="flex gap-4">
-            <DarkCTAButton type="button" onClick={handleAddToCart} variant="solid" className="grow gap-2 leading-[20px]">
-              <ShoppingCart className="h-4 w-4" />
+            <DarkCTAButton type="button" onClick={handleAddToCart} variant="solid" className="grow gap-2 leading-[20px] h-12 md:h-14 py-0 text-sm md:text-base">
+              <ShoppingCart className="h-4 w-4 md:h-5 md:w-5" />
               {t("addToCart")}
             </DarkCTAButton>
-            <FavoriteButton variant="bordered" className="aspect-square h-auto min-h-full rounded-none px-0" />
+            <FavoriteButton variant="bordered" className="h-12 w-12 md:h-14 md:w-14 flex-none border-[#CFC9C0] bg-transparent" />
           </div>
 
           {/* Size info box */}
@@ -195,34 +196,34 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
           </div>
 
           {/* Contact Service List */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             <IconTextRow
-              iconVariant="round"
+              iconVariant="inline"
               icon={<Calendar className="h-4 w-4" strokeWidth={1.5} />}
               value={t("appointment")}
               href="#"
             />
             <IconTextRow
-              iconVariant="round"
+              iconVariant="inline"
               icon={<MessageCircle className="h-4 w-4" strokeWidth={1.5} />}
               label={t("contact")}
               value={t("consultation")}
             />
             <IconTextRow
-              iconVariant="round"
+              iconVariant="inline"
               icon={<Phone className="h-4 w-4" strokeWidth={1.5} />}
               label={t("phoneOrder")}
-              value="1800-1003"
-              href="#"
+              value="(+84) 33 948 7632"
+              href="tel:+84339487632"
             />
             <IconTextRow
-              iconVariant="round"
+              iconVariant="inline"
               icon={<MapPin className="h-4 w-4" strokeWidth={1.5} />}
               label={t("availableAt")}
               value="Cassina Store"
               href="#"
             />
-            <span className="pl-[62px] text-sm text-nh-accent">nanoHome Gallery Saigon</span>
+            <span className="pl-[28px] text-sm text-nh-accent -mt-1">nanoHome Gallery Saigon</span>
           </div>
         </div>
       </div>

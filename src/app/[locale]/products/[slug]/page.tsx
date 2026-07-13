@@ -11,6 +11,7 @@ import { COLORS } from "@/components/product-detail/mock-data";
 import { getVariantProducts, type VariantProductListItem } from "@/lib/queries/products";
 import { variantDetailHref } from "@/lib/queries/variant-url";
 import { getVariantBySlug, getVariantsByProductId } from "@/lib/queries/variants";
+import { getDesignerById } from "@/lib/queries/designers";
 import { localizedText } from "@/lib/i18n/content";
 import { isUsmContactVariant, isUsmVariant } from "@/lib/products/usm";
 import type { Variant } from "@/types/db";
@@ -227,7 +228,6 @@ function buildSpecColumns(variant: Variant, locale: Locale, labels: ProductSpecL
       { label: labels.size, value: variantText(variant.size, labels.updating) },
       { label: labels.price, value: formatPrice(variant, variant.price) },
       { label: labels.discount, value: hasValidDiscount(variant) ? `${variant.discount_percent}%` : labels.noDiscount },
-      { label: labels.productId, value: variant.id },
     ],
   ];
 }
@@ -260,6 +260,9 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
     notFound();
   }
 
+  const designer = variant.designer_id !== null ? await getDesignerById(variant.designer_id) : null;
+  const designerPortraitUrl = designer?.portrait_url ?? variant.designer_cldr_id_portrait ?? null;
+
   const [siblingVariants, similarCategoryVariants, recommendedVariants] = await Promise.all([
     variant.product_id !== null ? getVariantsByProductId(variant.product_id) : Promise.resolve([]),
     getVariantProducts({ categoryId: variant.category_id, excludeId: variant.id, pageSize: 8 }),
@@ -277,6 +280,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
         specColumns={buildSpecColumns(variant, locale, specLabels)}
         description={localizedText({ ko: variant.meta_description_ko, vi: variant.meta_description_vi, en: variant.meta_description }, locale)}
         designerDescription={localizedText({ ko: variant.designer_description_ko, vi: variant.designer_description_vi, en: variant.designer_description }, locale, t("designerFallback"))}
+        designerPortraitUrl={designerPortraitUrl}
       />
       <Section3Related products={related} collectionName={localizedFinish(variant, locale, "Cùng dòng")} />
       <Section4Gallery galleryImages={galleryImages.length > 0 ? galleryImages : undefined} />
