@@ -1,0 +1,9 @@
+allowBuilds:
+  '@parcel/watcher': true
+  '@percy/core': true
+  '@swc/core': true
+  canvas: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
