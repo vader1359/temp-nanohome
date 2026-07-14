@@ -60,16 +60,29 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
   return (
     <section
       className={cn(
-        "sticky z-20 w-full bg-white border-y border-nh-ink transition-all duration-300 ease-in-out motion-reduce:transition-none",
+        "sticky z-20 w-full border-y border-nh-ink bg-white transform-gpu transition-[top,opacity,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[top,opacity,transform] motion-reduce:transition-none",
         isCompact ? "lg:opacity-0 lg:pointer-events-none lg:-translate-y-4" : "opacity-100 translate-y-0"
       )}
-      style={{ top: "var(--header-height, 80px)" }}
+      // On mobile the header has a fixed compact height. Using the same target
+      // lets this sticky bar animate in lockstep instead of waiting for the
+      // ResizeObserver height update after the header has already shrunk.
+      style={{ top: isCompact ? "var(--compact-header-height, 48px)" : "var(--header-height, 80px)" }}
       aria-hidden={isCompact}
       inert={isCompact ? true : undefined}
     >
-      <div className="site-shell flex flex-col items-start gap-2 py-1.5 sm:py-1">
-        <div className="flex w-full items-center justify-between gap-3">
-          <h1 className="text-left text-[16px] font-medium leading-6 text-nh-ink">
+      <div
+        className={cn(
+          "site-shell flex flex-col items-start gap-2 transform-gpu transition-[padding,gap] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          isCompact ? "gap-0 py-0 sm:gap-0 sm:py-0" : "gap-2 py-1.5 sm:gap-2 sm:py-1",
+        )}
+      >
+        <div className="flex w-full items-center justify-between gap-3 transition-[min-height] duration-200 ease-out motion-reduce:transition-none">
+          <h1 className={cn(
+            "text-left font-medium text-nh-ink transition-[font-size,line-height] duration-150 ease-out motion-reduce:transition-none",
+            isCompact
+              ? "text-[13px] leading-4 sm:text-[14px] sm:leading-5"
+              : "text-[14px] leading-5 sm:text-[16px] sm:leading-6",
+          )}>
             {t("title")}
           </h1>
           <div className="relative flex items-center gap-1">
@@ -78,7 +91,10 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
                aria-label={`${t("sortBy")} ${sortLabel}`}
                aria-controls="product-sort-menu"
                aria-expanded={sortOpen}
-               className="flex min-h-[44px] items-center gap-2 bg-white px-2 text-nh-ink"
+               className={cn(
+                 "flex items-center gap-2 bg-white px-2 text-nh-ink transition-[height,min-height] duration-200 ease-out motion-reduce:transition-none",
+                 isCompact ? "h-8 min-h-8" : "h-11 min-h-11",
+               )}
               type="button"
               onClick={() => setSortOpen((value) => !value)}
             >
@@ -123,7 +139,10 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
             ) : null}
             <button
                aria-label={t("filterDialogLabel")}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center bg-white text-nh-ink lg:hidden"
+              className={cn(
+                "flex items-center justify-center bg-white text-nh-ink transition-[height,min-height,min-width] duration-200 ease-out motion-reduce:transition-none lg:hidden",
+                isCompact ? "h-8 min-h-8 min-w-8" : "h-11 min-h-11 min-w-11",
+              )}
               onClick={onOpenFilters}
               type="button"
             >

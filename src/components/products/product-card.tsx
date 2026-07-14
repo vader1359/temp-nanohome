@@ -59,7 +59,7 @@ export function ProductCard({
     <article className="group flex min-w-0 flex-col gap-3 bg-white p-2 sm:gap-4 sm:p-4">
       <div className="relative flex aspect-[4/5] w-full items-end justify-center bg-white px-6 pb-8 pt-14 sm:px-5 sm:pb-7 sm:pt-10">
         <button
-          className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 sm:right-1.5 sm:top-1.5"
+          className="absolute right-1 top-1 z-10 flex h-4 w-4 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 sm:right-1.5 sm:top-1.5 sm:h-5 sm:w-5"
           type="button"
           onClick={() => onToggleFavorite(product.id)}
           aria-label={`Yêu thích ${product.name}`}
@@ -106,7 +106,7 @@ export function ProductCard({
           const logoUrl = isUsm ? "/images/usm_logo.png" : product.brandLogoUrl;
 
           return (
-            <div className="relative h-[18px] w-[114px] sm:h-[21px] sm:w-[126px]">
+            <div className="relative h-[14px] w-[90px] sm:h-[21px] sm:w-[126px]">
               <Image
                 alt={product.brand}
                 className={cn(
@@ -120,16 +120,16 @@ export function ProductCard({
             </div>
           );
         })() : (
-          <div className="text-[11px] font-medium leading-3 text-nh-ink sm:text-[12px] sm:leading-4">
+          <div className="text-[9px] font-medium leading-3 text-nh-ink sm:text-[12px] sm:leading-4">
             {product.brand}
           </div>
         )}
-        <h3 className="line-clamp-2 min-h-8 text-[11px] font-light leading-4 text-nh-ink sm:min-h-9 sm:text-[12px] sm:leading-[18px]">
+        <h3 className="line-clamp-2 min-h-8 text-[9px] font-light leading-4 text-nh-ink sm:min-h-9 sm:text-[12px] sm:leading-[18px]">
           <Link className="transition-colors hover:text-nh-red" href={product.href}>
             {product.name}
           </Link>
         </h3>
-        <p className="text-[12px] font-medium leading-4 text-nh-muted">
+        <p className="text-[10px] font-medium leading-4 text-nh-muted">
           {product.subtitle}
         </p>
         <div className="mt-2 flex flex-col items-start gap-1">
@@ -137,7 +137,7 @@ export function ProductCard({
             <>
               <div className="flex items-center gap-2">
                 {product.oldPrice && (
-                  <span className="text-[13px] text-nh-muted line-through">
+                  <span className="text-[11px] text-nh-muted line-through">
                     {product.oldPrice}
                   </span>
                 )}
@@ -145,12 +145,12 @@ export function ProductCard({
                   {product.discount ? product.discount : "SALE"}
                 </span>
               </div>
-              <span className="text-[15px] font-semibold leading-5 text-nh-ink">
+              <span className="text-[13px] font-semibold leading-5 text-nh-ink">
                 {product.price}
               </span>
             </>
           ) : (
-            <span className="text-[15px] font-semibold leading-5 text-nh-ink">
+            <span className="text-[13px] font-semibold leading-5 text-nh-ink">
               {product.price}
             </span>
           )}

@@ -188,6 +188,10 @@
     color: var(--foreground);
     font-family: var(--font-libre-franklin), ui-sans-serif, system-ui, sans-serif;
   }
+
+  :root {
+    --compact-header-height: 48px;
+  }
 }
 
 .locale-shell:lang(ko) {
@@ -215,6 +219,8 @@
 }
 
 @media (min-width: 1024px) {
+  :root { --compact-header-height: 64px; }
+
   .site-shell {
     max-width: 960px;
     padding-inline: 0;

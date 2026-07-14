@@ -198,14 +198,14 @@ export function FilterSidebar({
 
           {variant === "modal" && brandOptions.length > 0 ? (
              <CardSection title={t("brandHeading")}>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {brandOptions.map((brand) => {
                   const checked = selectedBrands.has(brand.slug);
                   const preserveLogoColor = keepsOriginalLogoColor(brand);
                   return (
                     <button
                       className={cn(
-                        "group flex h-11 w-[132px] items-center justify-center border border-nh-ink bg-transparent px-3 transition-colors hover:bg-nh-ink",
+                        "group flex h-9 w-full items-center justify-center border border-nh-ink bg-transparent px-1 transition-colors hover:bg-nh-ink",
                         checked && "bg-nh-ink"
                       )}
                       aria-label={brand.name}
@@ -219,7 +219,7 @@ export function FilterSidebar({
                       onClick={() => toggleBrand(brand.slug)}
                     >
                       {brand.logoUrl ? (
-                          <span className="relative h-5 w-[108px]">
+                          <span className="relative h-4 w-[80px]">
                           <Image
                             alt={brand.name}
                             className={cn(
@@ -230,7 +230,7 @@ export function FilterSidebar({
                               checked && !preserveLogoColor && "brightness-0 invert"
                             )}
                             fill
-                            sizes="108px"
+                            sizes="80px"
                             src={brand.logoUrl}
                           />
                         </span>

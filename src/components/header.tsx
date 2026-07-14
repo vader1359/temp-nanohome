@@ -203,11 +203,11 @@ export function Header() {
   return (
     <header
       ref={headerRef}
-      className="sticky top-0 z-30 min-h-[80px] data-[compact=true]:min-h-12 bg-white lg:h-auto lg:data-[compact=true]:min-h-[64px] border-b border-[#cfc9c0] transition-[min-height] duration-200 ease-out will-change-[min-height] motion-reduce:transition-none"
+      className="sticky top-0 z-30 min-h-[80px] data-[compact=true]:min-h-12 bg-white lg:h-auto lg:data-[compact=true]:min-h-[64px] border-b border-[#cfc9c0] transform-gpu transition-[min-height] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[min-height] motion-reduce:transition-none"
       data-compact={isCompact}
     >
       <div
-        className="site-shell relative py-4 transition-[padding] duration-200 ease-out will-change-[padding] data-[compact=true]:py-0 lg:data-[compact=true]:py-2 motion-reduce:transition-none"
+        className="site-shell relative py-4 transform-gpu transition-[padding] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[padding] data-[compact=true]:py-0 lg:data-[compact=true]:py-2 motion-reduce:transition-none"
         data-compact={isCompact}
       >
         {/* Top bar — desktop only */}
@@ -244,7 +244,7 @@ export function Header() {
 
         {/* Mobile bar: navigation utilities, centered wordmark, cart */}
         <div
-          className="flex w-full items-center justify-between gap-4 pt-2 transition-[min-height,padding] duration-200 ease-out will-change-[min-height,padding] data-[compact=true]:min-h-12 data-[compact=true]:pt-0 lg:data-[compact=true]:min-h-0 motion-reduce:transition-none lg:flex-wrap lg:justify-center lg:gap-0 lg:pt-0 lg:flex-col lg:items-center"
+          className="flex w-full items-center justify-between gap-4 pt-2 transform-gpu transition-[min-height,padding] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[min-height,padding] data-[compact=true]:min-h-12 data-[compact=true]:pt-0 lg:data-[compact=true]:min-h-0 motion-reduce:transition-none lg:flex-wrap lg:justify-center lg:gap-0 lg:pt-0 lg:flex-col lg:items-center"
           data-compact={isCompact}
         >
           <div className="flex items-center gap-1 lg:hidden">
@@ -272,7 +272,7 @@ export function Header() {
           {/* Logo — absolute centered on all screens */}
           <Link
             href={`/${locale}`}
-            className="absolute left-1/2 top-[30px] -translate-x-1/2 transition-[top,transform] duration-200 ease-out will-change-[top,transform] motion-reduce:transition-none data-[compact=true]:top-[15px] data-[compact=true]:scale-90 lg:top-[66px] lg:data-[compact=true]:top-[18px] lg:data-[compact=true]:scale-90"
+            className="absolute left-1/2 top-[14px] -translate-x-1/2 transform-gpu transition-[top,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[top,transform] motion-reduce:transition-none data-[compact=true]:top-[15px] data-[compact=true]:scale-90 lg:top-[14px] lg:data-[compact=true]:top-[7px] lg:data-[compact=true]:scale-75"
             data-compact={isCompact}
           >
             <Image
@@ -301,7 +301,7 @@ export function Header() {
 
           {/* Desktop full navigation row */}
           <div
-            className="hidden lg:flex w-full items-center justify-between transition-[margin] duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:mt-0 data-[compact=true]:mb-0 data-[compact=false]:mt-16 data-[compact=false]:mb-2"
+            className="hidden w-full items-center justify-between transition-[margin,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none lg:flex lg:data-[compact=true]:translate-y-[7px] data-[compact=true]:mt-0 data-[compact=true]:mb-0 data-[compact=false]:mt-16 data-[compact=false]:mb-2"
             data-compact={isCompact}
           >
             {/* Desktop category nav */}
