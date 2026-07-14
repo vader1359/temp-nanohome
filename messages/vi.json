@@ -235,7 +235,21 @@
     "successTitle": "Cảm ơn bạn đã đặt hàng",
     "successDescription": "nanoHome đã nhận được thông tin và sẽ liên hệ với bạn sớm.",
     "total": "Tổng cộng",
-    "required": "Bắt buộc"
+    "required": "Bắt buộc",
+    "validationSelectItems": "Vui lòng chọn ít nhất một sản phẩm để tiếp tục.",
+    "comingSoon": "Sắp ra mắt",
+    "paymentUnavailable": "Phương thức thanh toán chưa khả dụng.",
+    "couponUnavailable": "Mã giảm giá chưa khả dụng.",
+    "vatInvoice": "Xuất hóa đơn VAT",
+    "selectAll": "Chọn tất cả",
+    "deleteSelected": "Xoá mục đã chọn",
+    "provisional": "Tạm tính",
+    "savings": "Tiết kiệm",
+    "shipping": "Phí vận chuyển",
+    "calculatedNextStep": "Tính ở bước tiếp theo",
+    "vatIncluded": "Đã bao gồm VAT",
+    "decreaseQuantity": "Giảm số lượng",
+    "increaseQuantity": "Tăng số lượng"
   },
   "Auth": {
     "common": {
