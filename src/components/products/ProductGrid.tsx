@@ -152,7 +152,6 @@ export function ProductGrid({ products, gridClassName }: ProductGridProps) {
   return (
     <section className={cn("grid grid-cols-2 gap-4 sm:gap-9 xl:grid-cols-3", gridClassName)}>
       {products.map((product, index) => {
-        const sale = product.status === "sale";
         const priorityImage = index < 6;
         const favorited = hasItem(product.id);
 
@@ -190,16 +189,14 @@ export function ProductGrid({ products, gridClassName }: ProductGridProps) {
                     )}
                   />
                 </button>
-                {product.status !== "sale" && (
-                  <span
-                    className={cn(
-                      "absolute left-1 top-1 z-10 px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-3 sm:left-1.5 sm:top-1.5 sm:px-2 sm:py-1 sm:text-[12px] sm:leading-4",
-                      getStatusClass(product.status),
-                    )}
-                  >
-                    {t(STATUS_LABEL_KEY[product.status])}
-                  </span>
-                )}
+                <span
+                  className={cn(
+                    "absolute left-1 top-1 z-10 px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-3 sm:left-1.5 sm:top-1.5 sm:px-2 sm:py-1 sm:text-[12px] sm:leading-4",
+                    getStatusClass(product.status),
+                  )}
+                >
+                  {t(STATUS_LABEL_KEY[product.status])}
+                </span>
                 <Link
                   aria-label={t("viewDetailAria", { name: product.name })}
                   className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[6px] transition-transform duration-300 group-hover:scale-[1.03]"
@@ -209,7 +206,10 @@ export function ProductGrid({ products, gridClassName }: ProductGridProps) {
                 >
                   <Image
                     alt={product.name}
-                    className="object-contain object-bottom"
+                    className={cn(
+                      "object-contain object-bottom",
+                      product.status === "out_of_stock" && "opacity-50 blur-[2px] grayscale transition-all duration-300 group-hover:blur-0 group-hover:grayscale-0 group-hover:opacity-100"
+                    )}
                     fill
                     priority={priorityImage}
                     sizes="(min-width: 1280px) 360px, (min-width: 640px) 45vw, 90vw"
@@ -252,9 +252,27 @@ export function ProductGrid({ products, gridClassName }: ProductGridProps) {
                 {product.subtitle}
               </p>
               <div className="mt-2 flex flex-col items-start gap-1 text-left">
-                <span className="text-[15px] font-semibold leading-5 text-nh-ink">
-                  {product.oldPrice || product.price}
-                </span>
+                {product.status === "sale" ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      {product.oldPrice && (
+                        <span className="text-[13px] text-nh-muted line-through">
+                          {product.oldPrice}
+                        </span>
+                      )}
+                      <span className="rounded bg-nh-red px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        {product.discount ? product.discount : "SALE"}
+                      </span>
+                    </div>
+                    <span className="text-[15px] font-semibold leading-5 text-nh-ink">
+                      {product.price}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[15px] font-semibold leading-5 text-nh-ink">
+                    {product.price}
+                  </span>
+                )}
               </div>
             </div>
           </article>

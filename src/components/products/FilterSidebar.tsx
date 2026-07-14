@@ -82,8 +82,8 @@ export function FilterSidebar({
 }: FilterSidebarProps) {
   const t = useTranslations("Products");
   const classifyItems = [
-    { label: t("classifyInStock"), value: "in_stock" as const },
     { label: t("classifyOnSale"), value: "sale" as const },
+    { label: t("classifyInStock"), value: "in_stock" as const },
     { label: t("classifyNewArrival"), value: "new_arrival" as const },
   ];
 

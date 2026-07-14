@@ -157,6 +157,12 @@ function variantSearchFilter(searchTerm: string): string {
   return VARIANT_SEARCH_COLUMNS.map((column) => `${column}.ilike.%${filterValue}%`).join(",");
 }
 
+function hasValidSalePrice(variant: Pick<Variant, "price" | "compare_at_price">): boolean {
+  const price = Number(variant.price);
+  const compareAtPrice = Number(variant.compare_at_price);
+  return Number.isFinite(price) && Number.isFinite(compareAtPrice) && price > 0 && compareAtPrice > price;
+}
+
 type FuzzySearchRpcClient = {
   readonly rpc: (fn: "search_variant_products_fuzzy", args: FuzzySearchRpcArgs) => Promise<{ readonly data: readonly VariantProductListItem[] | null; readonly error: Error | null }>;
 };
@@ -303,6 +309,17 @@ export async function getVariantProducts(options: VariantProductQueryOptions = {
       break;
   }
 
+  if (options.status === "sale") {
+    // PostgREST cannot compare two columns in this query, so validate the bounded
+    // set of sale candidates before applying the UI page range.
+    const { data, error } = await query.range(0, 999);
+    if (error !== null) {
+      throw error;
+    }
+
+    return (data ?? []).filter(hasValidSalePrice).slice(from, to + 1);
+  }
+
   const { data, error } = await query.range(from, to);
   if (error !== null) {
     throw error;
@@ -375,6 +392,17 @@ export async function getVariantProductCount(options: Omit<VariantProductQueryOp
     case null:
     case undefined:
       break;
+  }
+
+  if (options.status === "sale") {
+    // Keep the count consistent with the listing: only sale candidates with a
+    // genuine lower selling price are displayable as SALE cards.
+    const { data, error } = await query.select("price,compare_at_price").range(0, 999);
+    if (error !== null) {
+      throw error;
+    }
+
+    return (data ?? []).filter(hasValidSalePrice).length;
   }
 
   const { count, error } = await query;
