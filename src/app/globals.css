@@ -201,6 +201,15 @@
   padding-inline: 1rem;
 }
 
+.zalo-widget-shell {
+  position: fixed !important;
+  right: 24px !important;
+  bottom: 24px !important;
+  z-index: 40 !important;
+  transform: scale(0.5);
+  transform-origin: bottom right;
+}
+
 @media (min-width: 640px) {
   .site-shell { padding-inline: 1.5rem; }
 }

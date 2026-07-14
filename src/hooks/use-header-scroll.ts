@@ -45,7 +45,7 @@ export function useHeaderScroll() {
       lastScrollRef.current = currentScroll;
       
       const now = Date.now();
-      if (now - lastStateChangeRef.current < 400) {
+      if (now - lastStateChangeRef.current < 200) {
         scrollAccRef.current = 0;
         rafRef.current = null;
         return;
@@ -94,6 +94,5 @@ export function useHeaderScroll() {
     };
   }, []);
 
-  // Only apply compact mode on desktop (lg breakpoint = 1024px)
-  return { isCompact: isCompact && isDesktop, isDesktop };
+  return { isCompact, isDesktop };
 }

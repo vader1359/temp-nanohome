@@ -10,6 +10,7 @@ import { BrandSelector } from "./BrandSelector";
 import { SearchBar } from "./SearchBar";
 import { ProductGrid, type ProductGridItem } from "./ProductGrid";
 import { Pagination } from "./Pagination";
+import { useProductListScrollRestoration } from "./use-product-list-scroll-restoration";
 
 export type BrandOption = { id: string; slug: string; logoUrl: string | null; name: string };
 export type CategoryOption = {
@@ -70,6 +71,21 @@ export function ProductsPage({
   const selectedCategories = useMemo(() => new Set(optimisticFilters.category), [optimisticFilters.category]);
   const selectedRooms = useMemo(() => new Set(optimisticFilters.room), [optimisticFilters.room]);
   const selectedSubCategories = useMemo(() => new Set(optimisticFilters.subCategory), [optimisticFilters.subCategory]);
+
+  const productListScrollKey = useMemo(
+    () => `nanohome:products-scroll:${JSON.stringify({
+      pathname,
+      brand: optimisticFilters.brand,
+      category: optimisticFilters.category,
+      q: optimisticFilters.q,
+      room: optimisticFilters.room,
+      sort: optimisticFilters.sort,
+      status: optimisticFilters.status,
+      subCategory: optimisticFilters.subCategory,
+    })}`,
+    [optimisticFilters, pathname],
+  );
+  useProductListScrollRestoration(productListScrollKey);
 
   const brandLabel = useMemo(
     () => new Map(brandOptions.map((brand) => [brand.slug, brand.name])),

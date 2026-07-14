@@ -16,6 +16,6 @@ export function ZaloWidget() {
   }, []);
 
   return (
-    <div className="zalo-chat-widget" data-oaid={ZALO_OA_ID} data-welcome-message="Rất vui khi được hỗ trợ bạn!" data-autopopup="4" data-width="350" data-height="420" suppressHydrationWarning />
+    <div className="zalo-chat-widget zalo-widget-shell" data-oaid={ZALO_OA_ID} data-welcome-message="Rất vui khi được hỗ trợ bạn!" data-autopopup="4" data-width="350" data-height="420" suppressHydrationWarning />
   );
 }

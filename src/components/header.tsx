@@ -203,10 +203,13 @@ export function Header() {
   return (
     <header
       ref={headerRef}
-      className="sticky top-0 z-30 min-h-[80px] lg:data-[compact=true]:min-h-[64px] bg-white lg:h-auto border-b border-[#cfc9c0] transition-all duration-300 motion-reduce:transition-none"
+      className="sticky top-0 z-30 min-h-[80px] data-[compact=true]:min-h-12 bg-white lg:h-auto lg:data-[compact=true]:min-h-[64px] border-b border-[#cfc9c0] transition-[min-height] duration-200 ease-out will-change-[min-height] motion-reduce:transition-none"
       data-compact={isCompact}
     >
-      <div className="site-shell py-4 relative">
+      <div
+        className="site-shell relative py-4 transition-[padding] duration-200 ease-out will-change-[padding] data-[compact=true]:py-0 lg:data-[compact=true]:py-2 motion-reduce:transition-none"
+        data-compact={isCompact}
+      >
         {/* Top bar — desktop only */}
         <div
           className="hidden items-center justify-between border-b border-[#cfc9c0] lg:flex overflow-hidden transition-[max-height,opacity,padding] duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:max-h-0 data-[compact=true]:opacity-0 data-[compact=true]:pb-0 data-[compact=false]:max-h-[50px] data-[compact=false]:opacity-100 data-[compact=false]:pb-4"
@@ -240,7 +243,10 @@ export function Header() {
         </div>
 
         {/* Mobile bar: navigation utilities, centered wordmark, cart */}
-        <div className="flex w-full items-center justify-between gap-4 pt-2 lg:flex-wrap lg:justify-center lg:gap-0 lg:pt-0 lg:flex-col lg:items-center">
+        <div
+          className="flex w-full items-center justify-between gap-4 pt-2 transition-[min-height,padding] duration-200 ease-out will-change-[min-height,padding] data-[compact=true]:min-h-12 data-[compact=true]:pt-0 lg:data-[compact=true]:min-h-0 motion-reduce:transition-none lg:flex-wrap lg:justify-center lg:gap-0 lg:pt-0 lg:flex-col lg:items-center"
+          data-compact={isCompact}
+        >
           <div className="flex items-center gap-1 lg:hidden">
             <button
               type="button"
@@ -266,7 +272,7 @@ export function Header() {
           {/* Logo — absolute centered on all screens */}
           <Link
             href={`/${locale}`}
-            className="absolute left-1/2 -translate-x-1/2 top-[14px] lg:top-[66px] transition-[top,transform] duration-300 ease-in-out motion-reduce:transition-none lg:data-[compact=true]:top-[18px] lg:data-[compact=true]:scale-90"
+            className="absolute left-1/2 top-[30px] -translate-x-1/2 transition-[top,transform] duration-200 ease-out will-change-[top,transform] motion-reduce:transition-none data-[compact=true]:top-[15px] data-[compact=true]:scale-90 lg:top-[66px] lg:data-[compact=true]:top-[18px] lg:data-[compact=true]:scale-90"
             data-compact={isCompact}
           >
             <Image
@@ -274,7 +280,7 @@ export function Header() {
               alt="nanoHome"
               width={154}
               height={32}
-               className="h-auto w-[100px] lg:w-auto"
+              className="h-auto w-[100px] lg:w-auto"
             />
           </Link>
 

@@ -51,7 +51,10 @@ function PageButton({ active, page, setCurrentPage }: { active: boolean; page: n
       )}
       data-page={page}
       type="button"
-      onClick={() => setCurrentPage(page)}
+      onClick={() => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }}
     >
       {page}
     </button>

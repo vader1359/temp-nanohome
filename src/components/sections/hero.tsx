@@ -179,14 +179,14 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
       {/* Brand logo */}
       <div
         style={{ opacity: fadeState === "in" ? 1 : 0 }}
-        className="site-shell absolute inset-x-0 bottom-[250px] z-20 sm:bottom-[310px] lg:bottom-[340px] transition-opacity duration-300 ease-in-out motion-reduce:transition-none"
+        className="site-shell absolute inset-x-0 bottom-[220px] z-20 sm:bottom-[310px] lg:bottom-[340px] transition-opacity duration-300 ease-in-out motion-reduce:transition-none"
       >
         <Image
           src={heroSlidesData[activeIndex].logoUrl}
           alt={heroSlidesData[activeIndex].brand}
           width={148}
           height={48}
-          className="h-auto w-[110px] object-contain sm:w-[130px] lg:w-[156px] brightness-0 invert"
+          className="h-auto w-[90px] object-contain sm:w-[130px] lg:w-[156px] brightness-0 invert"
         />
       </div>
 
@@ -196,7 +196,7 @@ export function Hero({ products = hotspotData.map((hotspot) => hotspot.product) 
         className="absolute inset-x-0 bottom-16 z-10 lg:bottom-20 transition-opacity duration-300 ease-in-out motion-reduce:transition-none"
       >
         <div className="site-shell">
-          <h1 className="break-words text-3xl font-normal leading-9 text-white sm:text-4xl sm:leading-10 lg:text-[48px] lg:leading-[56px]">
+          <h1 className="break-words text-2xl font-normal leading-8 text-white sm:text-4xl sm:leading-10 lg:text-[48px] lg:leading-[56px]">
             <span className="block">{t(heroSlidesData[activeIndex].titleKey1)}</span>
             <span className="block">{t(heroSlidesData[activeIndex].titleKey2)}</span>
           </h1>
