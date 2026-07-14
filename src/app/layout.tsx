@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Libre_Franklin, Noto_Sans_KR } from "next/font/google";
 import Script from "next/script";
+import { TrackingProvider } from "@/components/analytics/tracking-provider";
+import { ZaloWidget } from "@/components/zalo-widget";
 import "./globals.css";
 
 const libreFranklin = Libre_Franklin({
@@ -62,6 +64,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
       </head>
       <body className={`${libreFranklin.variable} ${notoSansKr.variable} antialiased font-[family-name:var(--font-libre-franklin)]`}>
         {children}
+        <ZaloWidget />
+        <TrackingProvider />
+        <Script src="https://sp.zalo.me/plugins/sdk.js" strategy="afterInteractive" />
       </body>
     </html>
   );

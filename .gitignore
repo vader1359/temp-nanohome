@@ -47,3 +47,8 @@ entities.json
 
 # Draft-only Korean translation review output
 /artifacts/korean-backfill/
+
+# BEGIN oh-my-opencode-slim worktrees
+.slim/worktrees/
+.slim/worktrees.json
+# END oh-my-opencode-slim worktrees
