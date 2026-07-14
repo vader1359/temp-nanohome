@@ -208,13 +208,20 @@ export async function POST(request: NextRequest) {
   const source = asTrimmedString(body.source) ?? "nanohome-cart";
   const pageUrl = asTrimmedString(body.pageUrl) ?? "";
   const total = asFiniteNumber(body.total);
-  const cartItems = buildCartItemsString(body.cartItems, total);
 
-  if (!cartItems) {
+  const isHomeSource = source === "nanohome-home";
+
+  const hasItems = Array.isArray(body.cartItems)
+    ? body.cartItems.length > 0
+    : asTrimmedString(body.cartItems) !== null;
+
+  if (!isHomeSource && !hasItems) {
     return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
   }
 
-  const name = asTrimmedString(body.name);
+  const cartItems = buildCartItemsString(body.cartItems, total);
+
+  const name = asTrimmedString(body.name) ?? (isHomeSource ? "Khách hàng" : null);
   const phone = asTrimmedString(body.phone);
   const email = asTrimmedString(body.email);
 

@@ -37,14 +37,15 @@ vi.mock("next/navigation", () => ({ notFound: vi.fn() }));
 
 import CatalogsPage from "./page";
 
-function catalogLinks(node: React.ReactNode): readonly React.ReactElement[] {
+function catalogLinks(node: React.ReactNode): readonly React.ReactElement<{ readonly href?: string }>[] {
   if (node === null || node === undefined || typeof node === "boolean" || typeof node === "string" || typeof node === "number") return [];
   if (Array.isArray(node)) return node.flatMap(catalogLinks);
 
   const element = node as React.ReactElement<{ readonly children?: React.ReactNode; readonly href?: string; readonly cards?: readonly { readonly url: string }[] }>;
-  const cardLinks = element.props.cards?.map((card) => <a key={card.url} href={card.url} />) ?? [];
-  const children = catalogLinks(element.props.children);
-  return element.props.href?.includes("res.cloudinary.com") ? [element, ...cardLinks, ...children] : [...cardLinks, ...children];
+  const cardLinks = element.props?.cards?.map((card) => <a key={card.url} href={card.url} />) ?? [];
+  const children = catalogLinks(element.props?.children);
+  const href = element.props?.href;
+  return href?.includes("res.cloudinary.com") ? [element as React.ReactElement<{ readonly href?: string }>, ...cardLinks, ...children] : [...cardLinks, ...children];
 }
 
 describe("catalogs page", () => {
