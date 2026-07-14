@@ -22,7 +22,12 @@ function ignoredEntries(ignored: WatchIgnored | undefined): string[] {
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  experimental: {
+    webpackMemoryOptimizations: true,
+    preloadEntriesOnStart: false,
+  },
   webpack(config) {
+    config.infrastructureLogging = { level: "error" };
     return {
       ...config,
       watchOptions: {
