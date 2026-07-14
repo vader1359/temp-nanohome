@@ -13,6 +13,9 @@ type SubmissionRequest = {
   pageUrl?: unknown;
   cartItems?: unknown;
   total?: unknown;
+  vatRequested?: unknown;
+  zaloPayRequested?: unknown;
+  vnPayRequested?: unknown;
 };
 
 type FilloutQuestion = {
@@ -108,7 +111,18 @@ function getCartFormId(): string {
   return process.env.FILLOUT_CART_FORM_ID ?? process.env.NEXT_PUBLIC_FILLOUT_CART_FORM_ID ?? process.env.NEXT_PUBLIC_FILLOUT_FORM_ID ?? DEFAULT_CART_FORM_ID;
 }
 
-async function postToFillout(data: { name: string; phone: string; email: string; source: string; pageUrl: string; cartItems: string; total: number | null }) {
+async function postToFillout(data: {
+  name: string;
+  phone: string;
+  email: string;
+  source: string;
+  pageUrl: string;
+  cartItems: string;
+  total: number | null;
+  vatRequested: boolean;
+  zaloPayRequested: boolean;
+  vnPayRequested: boolean;
+}) {
   const apiKey = process.env.FILLOUT_API_KEY;
   const formId = getCartFormId();
 
@@ -124,6 +138,10 @@ async function postToFillout(data: { name: string; phone: string; email: string;
   const sourceParamId = process.env.FILLOUT_CART_PARAM_SOURCE_ID ?? process.env.FILLOUT_PARAM_SOURCE_ID ?? "source";
   const pageUrlParamId = process.env.FILLOUT_CART_PARAM_PAGE_URL_ID ?? process.env.FILLOUT_PARAM_PAGE_URL_ID ?? "page_url";
 
+  const vatRequestedId = process.env.FILLOUT_CART_QUESTION_VAT_REQUESTED_ID;
+  const zaloPayRequestedId = process.env.FILLOUT_CART_QUESTION_ZALOPAY_REQUESTED_ID;
+  const vnPayRequestedId = process.env.FILLOUT_CART_QUESTION_VNPAY_REQUESTED_ID;
+
   const questions: FilloutQuestion[] = [
     { id: nameId, value: data.name },
     { id: phoneId, value: data.phone },
@@ -133,6 +151,18 @@ async function postToFillout(data: { name: string; phone: string; email: string;
 
   if (totalId && data.total !== null) {
     questions.push({ id: totalId, value: data.total });
+  }
+
+  if (vatRequestedId) {
+    questions.push({ id: vatRequestedId, value: data.vatRequested });
+  }
+
+  if (zaloPayRequestedId) {
+    questions.push({ id: zaloPayRequestedId, value: data.zaloPayRequested });
+  }
+
+  if (vnPayRequestedId) {
+    questions.push({ id: vnPayRequestedId, value: data.vnPayRequested });
   }
 
   const submission: FilloutSubmission = {
@@ -192,5 +222,43 @@ export async function POST(request: NextRequest) {
   if (!phone || !isValidPhone(phone)) return NextResponse.json({ error: "Phone is invalid" }, { status: 400 });
   if (!email || !isValidEmail(email)) return NextResponse.json({ error: "Email is invalid" }, { status: 400 });
 
-  return postToFillout({ name, phone, email, source, pageUrl, cartItems, total });
+  let vatRequested = false;
+  if ("vatRequested" in body) {
+    if (typeof body.vatRequested === "boolean") {
+      vatRequested = body.vatRequested;
+    } else {
+      return NextResponse.json({ error: "vatRequested must be a boolean" }, { status: 400 });
+    }
+  }
+
+  let zaloPayRequested = false;
+  if ("zaloPayRequested" in body) {
+    if (typeof body.zaloPayRequested === "boolean") {
+      zaloPayRequested = body.zaloPayRequested;
+    } else {
+      return NextResponse.json({ error: "zaloPayRequested must be a boolean" }, { status: 400 });
+    }
+  }
+
+  let vnPayRequested = false;
+  if ("vnPayRequested" in body) {
+    if (typeof body.vnPayRequested === "boolean") {
+      vnPayRequested = body.vnPayRequested;
+    } else {
+      return NextResponse.json({ error: "vnPayRequested must be a boolean" }, { status: 400 });
+    }
+  }
+
+  return postToFillout({
+    name,
+    phone,
+    email,
+    source,
+    pageUrl,
+    cartItems,
+    total,
+    vatRequested,
+    zaloPayRequested,
+    vnPayRequested,
+  });
 }

@@ -235,7 +235,21 @@
     "successTitle": "Thank you for your order",
     "successDescription": "nanoHome received your details and will contact you soon.",
     "total": "Total",
-    "required": "Required"
+    "required": "Required",
+    "validationSelectItems": "Select at least one item to continue.",
+    "comingSoon": "Coming soon",
+    "paymentUnavailable": "Payment methods are not available yet.",
+    "couponUnavailable": "Coupons are not available yet.",
+    "vatInvoice": "Request a VAT invoice",
+    "selectAll": "Select all",
+    "deleteSelected": "Delete selected",
+    "provisional": "Provisional total",
+    "savings": "Savings",
+    "shipping": "Shipping",
+    "calculatedNextStep": "Calculated at the next step",
+    "vatIncluded": "VAT included",
+    "decreaseQuantity": "Decrease quantity",
+    "increaseQuantity": "Increase quantity"
   },
   "Auth": {
     "common": {

@@ -31,7 +31,21 @@ const CART_STORAGE_KEY = "nanohome.cart.items";
 const emptyCartItems: CartItem[] = [];
 let cartItems = emptyCartItems;
 let cartStorageRead = false;
+let cartVersion = 0;
 const cartListeners = new Set<() => void>();
+
+// Exported purely for testing setup/cleanup
+export const __test_cart_state__ = {
+  reset() {
+    cartItems = emptyCartItems;
+    cartStorageRead = false;
+    cartVersion = 0;
+    cartListeners.clear();
+  },
+  getListenersCount() {
+    return cartListeners.size;
+  }
+};
 
 function getCartItems(): CartItem[] {
   return cartItems;
@@ -41,9 +55,13 @@ function subscribeToCart(listener: () => void): () => void {
   cartListeners.add(listener);
   if (!cartStorageRead) {
     cartStorageRead = true;
+    const initialVersion = cartVersion;
     setTimeout(() => {
-      cartItems = readStoredCartItems();
-      listener();
+      if (cartVersion === initialVersion) {
+        cartItems = readStoredCartItems();
+        cartVersion++;
+        cartListeners.forEach((l) => l());
+      }
     }, 0);
   }
   return () => cartListeners.delete(listener);
@@ -51,6 +69,7 @@ function subscribeToCart(listener: () => void): () => void {
 
 function updateCartItems(update: (items: CartItem[]) => CartItem[]): void {
   cartItems = update(getCartItems());
+  cartVersion++;
   try {
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
   } catch {

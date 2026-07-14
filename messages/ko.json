@@ -235,7 +235,21 @@
     "successTitle": "주문해 주셔서 감사합니다",
     "successDescription": "nanoHome에서 정보를 확인했으며 곧 연락드리겠습니다.",
     "total": "합계",
-    "required": "필수"
+    "required": "필수",
+    "validationSelectItems": "계속하려면 상품을 하나 이상 선택해 주세요.",
+    "comingSoon": "출시 예정",
+    "paymentUnavailable": "결제 수단은 아직 사용할 수 없습니다.",
+    "couponUnavailable": "쿠폰은 아직 사용할 수 없습니다.",
+    "vatInvoice": "VAT 세금계산서 요청",
+    "selectAll": "전체 선택",
+    "deleteSelected": "선택 항목 삭제",
+    "provisional": "임시 합계",
+    "savings": "절약 금액",
+    "shipping": "배송비",
+    "calculatedNextStep": "다음 단계에서 계산됩니다",
+    "vatIncluded": "VAT 포함",
+    "decreaseQuantity": "수량 줄이기",
+    "increaseQuantity": "수량 늘리기"
   },
   "Auth": {
     "common": {
