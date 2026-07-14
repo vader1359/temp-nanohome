@@ -71,16 +71,14 @@ export function ProductCard({
             )}
           />
         </button>
-        {product.status !== "sale" && (
-          <span
-            className={cn(
-              "absolute left-1 top-1 z-10 px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-3 sm:left-1.5 sm:top-1.5 sm:px-2 sm:py-1 sm:text-[12px] sm:leading-4",
-              getStatusClass(product.status),
-            )}
-          >
-            {STATUS_LABEL[product.status]}
-          </span>
-        )}
+        <span
+          className={cn(
+            "absolute left-1 top-1 z-10 px-1.5 py-0.5 text-center text-[9px] font-semibold uppercase leading-3 sm:left-1.5 sm:top-1.5 sm:px-2 sm:py-1 sm:text-[12px] sm:leading-4",
+            getStatusClass(product.status),
+          )}
+        >
+          {STATUS_LABEL[product.status]}
+        </span>
         <Link
           aria-label={`Xem chi tiết ${product.name}`}
           className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[6px] transition-transform duration-300 group-hover:scale-[1.03]"
@@ -88,7 +86,10 @@ export function ProductCard({
         >
           <Image
             alt={product.name}
-            className="object-contain object-bottom"
+            className={cn(
+              "object-contain object-bottom",
+              product.status === "out_of_stock" && "opacity-50 blur-[2px] grayscale transition-all duration-300 group-hover:blur-0 group-hover:grayscale-0 group-hover:opacity-100"
+            )}
             fill
             fetchPriority={fetchPriority}
             sizes="(min-width: 1280px) 300px, (min-width: 640px) 45vw, 90vw"
@@ -130,10 +131,28 @@ export function ProductCard({
         <p className="text-[12px] font-medium leading-4 text-nh-muted">
           {product.subtitle}
         </p>
-        <div className="mt-2 flex flex-col items-center gap-1">
-          <span className="text-[15px] font-semibold leading-5 text-nh-ink">
-            {product.oldPrice || product.price}
-          </span>
+        <div className="mt-2 flex flex-col items-start gap-1">
+          {sale ? (
+            <>
+              <div className="flex items-center gap-2">
+                {product.oldPrice && (
+                  <span className="text-[13px] text-nh-muted line-through">
+                    {product.oldPrice}
+                  </span>
+                )}
+                <span className="rounded bg-nh-red px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {product.discount ? product.discount : "SALE"}
+                </span>
+              </div>
+              <span className="text-[15px] font-semibold leading-5 text-nh-ink">
+                {product.price}
+              </span>
+            </>
+          ) : (
+            <span className="text-[15px] font-semibold leading-5 text-nh-ink">
+              {product.price}
+            </span>
+          )}
         </div>
       </div>
     </article>
