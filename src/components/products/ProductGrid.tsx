@@ -208,7 +208,8 @@ export function ProductGrid({ products, gridClassName }: ProductGridProps) {
                     alt={product.name}
                     className={cn(
                       "object-contain object-bottom",
-                      product.status === "out_of_stock" && "opacity-50 blur-[2px] grayscale transition-all duration-300 group-hover:blur-0 group-hover:grayscale-0 group-hover:opacity-100"
+                      product.status === "out_of_stock" &&
+                        "opacity-75 grayscale-[35%] transition-opacity duration-300 group-hover:opacity-85",
                     )}
                     fill
                     priority={priorityImage}

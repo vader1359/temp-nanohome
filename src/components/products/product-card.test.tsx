@@ -1,15 +1,15 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-const imageProps: { fetchPriority?: "auto" | "high" }[] = [];
+const imageProps: { className?: string; fetchPriority?: "auto" | "high" }[] = [];
 
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ children, href }: Readonly<{ children: React.ReactNode; href: string }>) => <a href={href}>{children}</a>,
 }));
 
 vi.mock("next/image", () => ({
-  default: ({ fetchPriority }: Readonly<{ fetchPriority?: "auto" | "high" }>) => {
-    imageProps.push({ fetchPriority });
+  default: ({ className, fetchPriority }: Readonly<{ className?: string; fetchPriority?: "auto" | "high" }>) => {
+    imageProps.push({ className, fetchPriority });
     return null;
   },
 }));
@@ -42,5 +42,20 @@ describe("ProductCard", () => {
     rerender(<ProductCard product={product} isFavorite={false} onToggleFavorite={vi.fn()} />);
 
     expect(imageProps[0]?.fetchPriority).toBe("auto");
+  });
+
+  it("keeps sold-out product images lightly muted without blur", () => {
+    imageProps.length = 0;
+    render(
+      <ProductCard
+        product={{ ...product, status: "out_of_stock" }}
+        isFavorite={false}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+
+    expect(imageProps[0]?.className).toContain("opacity-75");
+    expect(imageProps[0]?.className).toContain("grayscale-[35%]");
+    expect(imageProps[0]?.className).not.toContain("blur");
   });
 });

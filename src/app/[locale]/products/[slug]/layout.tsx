@@ -7,7 +7,7 @@ interface ProductLayoutProps {
 }
 
 export const metadata: Metadata = {
-  title: "Fauteuil Grand Confort, petit modèle (LC2) — nanoHome",
+  title: "Fauteuil Grand Confort, petit modèle (LC2)",
   description: "Sản phẩm chi tiết — nanoHome",
 };
 
