@@ -2,6 +2,13 @@ import "@testing-library/jest-dom";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 
+// Mock ResizeObserver for test environment
+globalThis.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 Object.assign(process.env, {
   AMIS_API_BASE_URL: "https://amis.test",
   CRON_SECRET: "cron-secret-test",

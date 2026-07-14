@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   ChevronDown,
   Heart,
@@ -20,6 +20,7 @@ import { useCart } from "@/components/cart/cart-context";
 import { useWishlist } from "@/components/wishlist/wishlist-context";
 import { useAuthContext } from "@/components/auth/auth-provider";
 import type { CartSidebarTab } from "./cart-sidebar";
+import { useHeaderScroll } from "@/hooks/use-header-scroll";
 
 const CartSidebar = dynamic(
   () => import("./cart-sidebar").then((module) => module.CartSidebar),
@@ -40,9 +41,32 @@ export function Header() {
   const [hasOpenedCart, setHasOpenedCart] = useState(false);
   const [cartTab, setCartTab] = useState<CartSidebarTab>("cart");
   const [isMounted, setIsMounted] = useState(false);
+  const { isCompact } = useHeaderScroll();
+  const headerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    /* eslint-disable-next-line react-hooks/set-state-in-effect */
     setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        document.documentElement.style.setProperty(
+          "--header-height",
+          `${entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height}px`
+        );
+      }
+    });
+
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty("--header-height");
+    };
   }, []);
   const { items, addItem, clearCart, getItemCount, removeItem, updateQuantity } = useCart();
   const { items: wishlistItems, clearWishlist, getItemCount: getWishlistCount, removeItem: removeWishlistItem } = useWishlist();
@@ -177,10 +201,19 @@ export function Header() {
   }, [cartOpen]);
 
   return (
-    <header className="relative z-30 min-h-[80px] bg-white lg:h-auto">
-      <div className="site-shell pt-4 pb-2 relative">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-30 min-h-[80px] lg:data-[compact=true]:min-h-[64px] bg-white lg:h-auto border-b border-[#cfc9c0] transition-all duration-300 motion-reduce:transition-none"
+      data-compact={isCompact}
+    >
+      <div className="site-shell py-4 relative">
         {/* Top bar — desktop only */}
-        <div className="hidden items-center justify-between border-b border-[#cfc9c0] pb-4 lg:flex">
+        <div
+          className="hidden items-center justify-between border-b border-[#cfc9c0] lg:flex overflow-hidden transition-[max-height,opacity,padding] duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:max-h-0 data-[compact=true]:opacity-0 data-[compact=true]:pb-0 data-[compact=false]:max-h-[50px] data-[compact=false]:opacity-100 data-[compact=false]:pb-4"
+          data-compact={isCompact}
+          aria-hidden={isCompact}
+          inert={isCompact ? true : undefined}
+        >
           <div className="flex gap-5">
             {topLeft.map((key) => (
               <Link
@@ -207,7 +240,7 @@ export function Header() {
         </div>
 
         {/* Mobile bar: navigation utilities, centered wordmark, cart */}
-        <div className="flex items-center justify-between gap-4 pt-2 lg:flex-wrap lg:justify-center lg:gap-0 lg:pt-0 lg:flex-col lg:items-center">
+        <div className="flex w-full items-center justify-between gap-4 pt-2 lg:flex-wrap lg:justify-center lg:gap-0 lg:pt-0 lg:flex-col lg:items-center">
           <div className="flex items-center gap-1 lg:hidden">
             <button
               type="button"
@@ -233,7 +266,8 @@ export function Header() {
           {/* Logo — absolute centered on all screens */}
           <Link
             href={`/${locale}`}
-            className="absolute left-1/2 -translate-x-1/2 top-[14px] lg:top-[66px]"
+            className="absolute left-1/2 -translate-x-1/2 top-[14px] lg:top-[66px] transition-[top,transform] duration-300 ease-in-out motion-reduce:transition-none lg:data-[compact=true]:top-[18px] lg:data-[compact=true]:scale-90"
+            data-compact={isCompact}
           >
             <Image
               src="/images/nanohome-logo.svg"
@@ -260,9 +294,17 @@ export function Header() {
           </button>
 
           {/* Desktop full navigation row */}
-          <div className="hidden lg:flex w-full items-center justify-between lg:mt-16 lg:mb-2">
+          <div
+            className="hidden lg:flex w-full items-center justify-between transition-[margin] duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:mt-0 data-[compact=true]:mb-0 data-[compact=false]:mt-16 data-[compact=false]:mb-2"
+            data-compact={isCompact}
+          >
             {/* Desktop category nav */}
-            <nav className="flex items-center gap-4 2xl:gap-6">
+            <nav
+              className="flex items-center gap-3 xl:gap-4 2xl:gap-6 overflow-hidden transition-[max-width,opacity] duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:max-w-0 data-[compact=true]:opacity-0 data-[compact=false]:max-w-[900px] data-[compact=false]:opacity-100"
+              data-compact={isCompact}
+              aria-hidden={isCompact}
+              inert={isCompact ? true : undefined}
+            >
               {nav.map((key) => (
                 <Link
                   key={key}
@@ -275,7 +317,7 @@ export function Header() {
             </nav>
 
             {/* Desktop full icons row */}
-            <div className="flex items-center gap-3 2xl:gap-5">
+            <div className="flex items-center gap-3 2xl:gap-5 ml-auto">
               <Link
                 href={searchPath}
                 aria-label={t("search")}

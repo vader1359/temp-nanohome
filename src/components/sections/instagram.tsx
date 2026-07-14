@@ -153,6 +153,22 @@ export function InstagramGallery() {
             </button>
           </>
         )}
+
+        {loaded && images.length > 1 && (
+          <div className="mt-6 flex items-center justify-center gap-2 sm:hidden">
+            {images.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => slider.current?.moveToIdx(idx)}
+                aria-label={`Go to Instagram slide ${idx + 1}`}
+                className={`size-1.5 shrink-0 rounded-full transition-colors ${
+                  currentSlide === idx ? "bg-[#111]" : "border border-[#111]/30"
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
       </div>
 

@@ -3,6 +3,7 @@
 import { ArrowUpDown, Check, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { useHeaderScroll } from "@/hooks/use-header-scroll";
 import { cn } from "@/lib/utils";
 import type { ProductSort } from "@/lib/queries/products";
 
@@ -17,10 +18,11 @@ interface SectionHeaderProps {
 
 export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, onResetFilters, onSortChange, sortBy }: SectionHeaderProps) {
   const t = useTranslations("Products");
-  const [hidden, setHidden] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const { isCompact } = useHeaderScroll();
 
   const sortTabs = [
     { key: "priority", label: t("sortPriority") },
@@ -28,13 +30,6 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
     { key: "price_desc", label: t("sortPriceDesc") },
   ] as const;
   const sortLabel = sortTabs.find((tab) => tab.key === sortBy)?.label ?? t("sortPriority");
-
-  useEffect(() => {
-    const updateHidden = () => setHidden(window.scrollY > 120);
-    updateHidden();
-    window.addEventListener("scroll", updateHidden, { passive: true });
-    return () => window.removeEventListener("scroll", updateHidden);
-  }, []);
 
   useEffect(() => {
     if (!sortOpen) return;
@@ -63,9 +58,17 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
   }, [sortOpen]);
 
   return (
-    <section className={`sticky top-0 z-20 w-full bg-white transition-all ${hidden ? "h-0 border-y-0 overflow-hidden" : "border-y border-nh-ink"}`}>
+    <section
+      className={cn(
+        "sticky z-20 w-full bg-white border-y border-nh-ink transition-all duration-300 ease-in-out motion-reduce:transition-none",
+        isCompact ? "lg:opacity-0 lg:pointer-events-none lg:-translate-y-4" : "opacity-100 translate-y-0"
+      )}
+      style={{ top: "var(--header-height, 80px)" }}
+      aria-hidden={isCompact}
+      inert={isCompact ? true : undefined}
+    >
       <div className="site-shell flex flex-col items-start gap-2 py-1.5 sm:py-1">
-        <div className={hidden ? "hidden" : "flex w-full items-center justify-between gap-3"}>
+        <div className="flex w-full items-center justify-between gap-3">
           <h1 className="text-left text-[16px] font-medium leading-6 text-nh-ink">
             {t("title")}
           </h1>
@@ -128,7 +131,7 @@ export function SectionHeader({ appliedFilters, onOpenFilters, onRemoveFilter, o
             </button>
           </div>
         </div>
-        {!hidden && appliedFilters.length > 0 ? (
+        {!isCompact && appliedFilters.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2 py-1.5">
             <span className="text-[12px] font-normal leading-4 text-nh-muted">
               {t("appliedFilters")}

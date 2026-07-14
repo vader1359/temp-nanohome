@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useHeaderScroll } from "@/hooks/use-header-scroll";
 import {
   ChevronDown,
   Heart,
@@ -60,11 +61,46 @@ export function CatalogHeader() {
   const locale = useLocale();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const { isCompact } = useHeaderScroll();
+  const headerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        document.documentElement.style.setProperty(
+          "--header-height",
+          `${entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height}px`
+        );
+      }
+    });
+
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty("--header-height");
+    };
+  }, []);
+
   return (
-    <header className="bg-white py-4">
-      <div className="site-shell flex flex-col items-center gap-4">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-30 bg-white py-4 border-b border-nh-border transition-all duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:py-2"
+      data-compact={isCompact}
+    >
+      <div
+        className="site-shell flex flex-col items-center gap-4 transition-all duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:gap-2"
+        data-compact={isCompact}
+      >
         {/* Top subnav row — desktop only */}
-        <div className="hidden w-full items-center justify-between gap-8 lg:flex">
+        <div
+          className="hidden w-full items-center justify-between gap-8 lg:flex overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:max-h-0 data-[compact=true]:opacity-0 data-[compact=false]:max-h-[30px] data-[compact=false]:opacity-100"
+          data-compact={isCompact}
+          aria-hidden={isCompact}
+          inert={isCompact ? true : undefined}
+        >
           <nav className="flex items-center gap-5" aria-label="Sub navigation">
             {SUBNAV_LEFT_KEYS.map((key) => (
               <span
@@ -97,7 +133,12 @@ export function CatalogHeader() {
         </div>
 
         {/* Divider */}
-        <div className="h-px w-full bg-nh-border" />
+        <div
+          className={cn(
+            "w-full bg-nh-border transition-[height,opacity] duration-300 ease-in-out motion-reduce:transition-none",
+            isCompact ? "lg:h-0 lg:opacity-0" : "h-px"
+          )}
+        />
 
         {/* Logo + mobile hamburger + utility icons */}
         <div className="flex w-full items-center justify-between gap-4">
@@ -207,8 +248,11 @@ export function CatalogHeader() {
 
         {/* Desktop category nav row */}
         <nav
-          className="hidden w-full items-center gap-6 lg:flex"
+          className="hidden w-full items-center gap-3 xl:gap-4 2xl:gap-6 lg:flex overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:max-h-0 data-[compact=true]:opacity-0 data-[compact=false]:max-h-[30px] data-[compact=false]:opacity-100"
           aria-label="Categories"
+          data-compact={isCompact}
+          aria-hidden={isCompact}
+          inert={isCompact ? true : undefined}
         >
           {CATEGORY_KEYS.map((key) => (
             <span

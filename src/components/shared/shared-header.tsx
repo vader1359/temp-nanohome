@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ComponentType, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ComponentType, type ReactNode } from "react";
+import { useHeaderScroll } from "@/hooks/use-header-scroll";
 import Image from "next/image";
 import { ChevronDown, Heart, Menu, Minus, Plus, Search, ShoppingCart, UserRound, X } from "lucide-react";
 import { useCart, type CartItem } from "@/components/cart/cart-context";
@@ -154,11 +155,46 @@ export function SharedHeader({
   const inkClassName = isCatalog ? "text-nh-ink" : "text-[#111]";
   const openCart = () => setCartOpen(true);
 
+  const { isCompact } = useHeaderScroll();
+  const headerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        document.documentElement.style.setProperty(
+          "--header-height",
+          `${entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height}px`
+        );
+      }
+    });
+
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty("--header-height");
+    };
+  }, []);
+
   if (isCatalog) {
     return (
-      <header className="bg-white py-4">
-        <div className="site-shell flex flex-col items-center gap-4">
-          <div className="hidden w-full items-center justify-between gap-8 lg:flex">
+      <header
+        ref={headerRef}
+        className="sticky top-0 z-30 bg-white py-4 border-b border-nh-border transition-all duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:py-2"
+        data-compact={isCompact}
+      >
+        <div
+          className="site-shell flex flex-col items-center gap-4 transition-all duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:gap-2"
+          data-compact={isCompact}
+        >
+          <div
+            className="hidden w-full items-center justify-between gap-8 lg:flex overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:max-h-0 data-[compact=true]:opacity-0 data-[compact=false]:max-h-[30px] data-[compact=false]:opacity-100"
+            data-compact={isCompact}
+            aria-hidden={isCompact}
+            inert={isCompact ? true : undefined}
+          >
             <nav className="flex items-center gap-5" aria-label="Sub navigation">
               {topLeft.map((item) => (
                 <HeaderLinkItem key={item.key} item={item} className="text-[12px] font-normal leading-[18px] text-nh-muted" />
@@ -170,7 +206,12 @@ export function SharedHeader({
               ))}
             </nav>
           </div>
-          <div className="h-px w-full bg-nh-border" />
+          <div
+            className={cn(
+              "w-full bg-nh-border transition-[height,opacity] duration-300 ease-in-out motion-reduce:transition-none",
+              isCompact ? "lg:h-0 lg:opacity-0" : "h-px"
+            )}
+          />
           <HeaderMainRow
             drawerOpen={drawerOpen}
             onToggleDrawer={onToggleDrawer}
@@ -184,7 +225,13 @@ export function SharedHeader({
             variant={variant}
             accountIcon={AccountIcon}
           />
-          <nav className="hidden w-full items-center gap-6 lg:flex" aria-label="Categories">
+          <nav
+            className="hidden w-full items-center gap-3 xl:gap-4 2xl:gap-6 lg:flex overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:max-h-0 data-[compact=true]:opacity-0 data-[compact=false]:max-h-[30px] data-[compact=false]:opacity-100"
+            aria-label="Categories"
+            data-compact={isCompact}
+            aria-hidden={isCompact}
+            inert={isCompact ? true : undefined}
+          >
             {nav.map((item) => (
               <HeaderLinkItem key={item.key} item={item} className="text-[14px] font-normal uppercase leading-5 text-nh-ink" />
             ))}
@@ -210,9 +257,18 @@ export function SharedHeader({
   }
 
   return (
-    <header className="relative z-30 min-h-[80px] bg-white lg:h-[150px]">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-30 min-h-[80px] lg:data-[compact=true]:min-h-[64px] bg-white border-b border-[#cfc9c0] transition-all duration-300 motion-reduce:transition-none"
+      data-compact={isCompact}
+    >
       <div className="site-shell py-4">
-        <div className="hidden items-center justify-between border-b border-[#cfc9c0] pb-4 lg:flex">
+        <div
+          className="hidden items-center justify-between border-b border-[#cfc9c0] lg:flex overflow-hidden transition-[max-height,opacity,padding] duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:max-h-0 data-[compact=true]:opacity-0 data-[compact=true]:pb-0 data-[compact=false]:max-h-[50px] data-[compact=false]:opacity-100 data-[compact=false]:pb-4"
+          data-compact={isCompact}
+          aria-hidden={isCompact}
+          inert={isCompact ? true : undefined}
+        >
           <div className="flex gap-5">
             {topLeft.map((item) => (
               <HeaderLinkItem key={item.key} item={item} className="text-xs leading-[18px] text-[#666]" />
@@ -224,7 +280,10 @@ export function SharedHeader({
             ))}
           </div>
         </div>
-        <div className="flex items-center justify-between gap-4 pt-2 lg:h-[83px] lg:gap-0 lg:pt-0">
+        <div
+          className="flex w-full items-center justify-between gap-4 pt-2 lg:gap-0 lg:pt-0 transition-[height] duration-300 ease-in-out lg:data-[compact=true]:h-[32px] lg:data-[compact=false]:h-[83px]"
+          data-compact={isCompact}
+        >
           <HeaderMainRow
             drawerOpen={drawerOpen}
             onToggleDrawer={onToggleDrawer}
@@ -238,7 +297,12 @@ export function SharedHeader({
             variant={variant}
             accountIcon={AccountIcon}
           />
-          <nav className="hidden items-center gap-6 lg:flex">
+          <nav
+            className="hidden items-center gap-3 xl:gap-4 2xl:gap-6 lg:flex overflow-hidden transition-[max-width,opacity] duration-300 ease-in-out motion-reduce:transition-none data-[compact=true]:max-w-0 data-[compact=true]:opacity-0 data-[compact=false]:max-w-[900px] data-[compact=false]:opacity-100"
+            data-compact={isCompact}
+            aria-hidden={isCompact}
+            inert={isCompact ? true : undefined}
+          >
             {nav.map((item) => (
               <HeaderLinkItem key={item.key} item={item} className="whitespace-nowrap text-sm font-normal uppercase leading-5" />
             ))}
