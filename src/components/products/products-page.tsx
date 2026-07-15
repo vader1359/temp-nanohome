@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { usePathname } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { SectionHeader } from "./SectionHeader";
 import { FilterSidebar } from "./FilterSidebar";
 import { BrandSelector } from "./BrandSelector";
@@ -28,7 +28,6 @@ interface ProductsPageProps {
   brandOptions: readonly BrandOption[];
   categoryOptions: readonly CategoryOption[];
   roomOptions: readonly RoomOption[];
-  initialData: ProductPageData;
   locale: string;
 }
 
@@ -40,11 +39,9 @@ export function ProductsPage({
   brandOptions,
   categoryOptions,
   roomOptions,
-  initialData,
   locale,
 }: ProductsPageProps) {
   const t = useTranslations("Products");
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -53,7 +50,7 @@ export function ProductsPage({
   const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
 
   // Sole source of products/counts is useQuery.
-  const queryKey = useMemo(() => buildQueryKey(filters), [filters]);
+  const queryKey = useMemo(() => buildQueryKey(locale, filters), [locale, filters]);
   const { data } = useQuery<ProductPageData>({
     queryKey,
     queryFn: async () => {
@@ -64,11 +61,11 @@ export function ProductsPage({
       }
       return res.json();
     },
-    initialData,
+    placeholderData: keepPreviousData,
   });
 
-  const products = data.products;
-  const totalCount = data.totalCount;
+  const products = data?.products ?? [];
+  const totalCount = data?.totalCount ?? 0;
   const pageSize = 24;
 
   const selectedBrands = useMemo(() => new Set(filters.brand), [filters.brand]);
@@ -128,7 +125,10 @@ export function ProductsPage({
 
     const qs = buildQueryString(nextFilters);
     // native URL pushState, keep scroll false
-    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    const targetUrl = qs ? `${pathname}?${qs}` : pathname;
+    window.history.pushState(null, "", targetUrl);
+    // Dispatch popstate event so useSearchParams and other hooks react immediately
+    window.dispatchEvent(new PopStateEvent("popstate", { state: null }));
   };
 
   const appliedFilters = useMemo(() => {
@@ -144,7 +144,8 @@ export function ProductsPage({
   }, [brandLabel, categoryLabel, filters, roomLabel]);
 
   const resetFilters = () => {
-    router.push(pathname, { scroll: false });
+    window.history.pushState(null, "", pathname);
+    window.dispatchEvent(new PopStateEvent("popstate", { state: null }));
     setFiltersOpen(false);
   };
 

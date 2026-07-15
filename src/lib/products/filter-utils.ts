@@ -92,9 +92,10 @@ export function parseFilters(input: Record<string, string | string[] | undefined
   return parsed.data;
 }
 
-export function buildQueryKey(filters: CanonicalFilters): unknown[] {
+export function buildQueryKey(locale: string, filters: CanonicalFilters): unknown[] {
   return [
     "products",
+    locale,
     {
       brand: filters.brand,
       category: filters.category,

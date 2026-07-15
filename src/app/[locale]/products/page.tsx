@@ -25,8 +25,14 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
   const pageData = await getProductPage(locale, filters);
 
   // Prefetch & dehydrate query state to pass to Client Components.
-  const queryClient = new QueryClient();
-  const queryKey = buildQueryKey(filters);
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 30 * 1000,
+      },
+    },
+  });
+  const queryKey = buildQueryKey(locale, filters);
   await queryClient.prefetchQuery({
     queryKey,
     queryFn: () => Promise.resolve(pageData),
@@ -38,7 +44,6 @@ export default async function ProductsRoute({ params, searchParams }: PageProps)
         brandOptions={pageData.brandOptions}
         categoryOptions={pageData.categoryOptions}
         roomOptions={pageData.roomOptions}
-        initialData={pageData}
         locale={locale}
       />
     </HydrationBoundary>

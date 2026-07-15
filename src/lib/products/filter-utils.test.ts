@@ -44,9 +44,10 @@ describe("filter-utils", () => {
       category: "chairs",
       q: "table",
     });
-    const key = buildQueryKey(filters);
+    const key = buildQueryKey("en", filters);
     expect(key).toEqual([
       "products",
+      "en",
       {
         brand: ["hay", "usm"],
         category: ["chairs"],
