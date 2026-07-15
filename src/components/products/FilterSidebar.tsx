@@ -5,7 +5,8 @@ import { Check, ChevronRight, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import type { BrandOption, CategoryOption, RoomOption, SelectedProductFilters } from "./products-page";
+import type { BrandOption, CategoryOption, RoomOption } from "./products-page";
+import type { CanonicalFilters } from "@/lib/products/filter-utils";
 
 interface FilterSidebarProps {
   appliedFilters?: readonly string[];
@@ -17,12 +18,12 @@ interface FilterSidebarProps {
   selectedBrands: Set<string>;
   selectedCategories: Set<string>;
   selectedRooms: Set<string>;
-  selectedStatus: SelectedProductFilters["status"];
+  selectedStatus: CanonicalFilters["status"];
   selectedSubCategories: Set<string>;
   toggleBrand: (value: string) => void;
   toggleCategory: (value: string) => void;
   toggleRoom: (value: string) => void;
-  toggleStatus: (value: NonNullable<SelectedProductFilters["status"]>) => void;
+  toggleStatus: (value: NonNullable<CanonicalFilters["status"]>) => void;
   toggleSubCategory: (value: string) => void;
   variant?: "desktop" | "modal";
 }
