@@ -9,7 +9,6 @@ import "keen-slider/keen-slider.css";
 
 const images = [
   "/images/home/instagram/instagram-1.jpg",
-  "/images/home/instagram/instagram-2.jpg",
   "/images/home/instagram/instagram-3.jpg",
   "/images/home/instagram/instagram-4.jpg",
   "/images/home/instagram/instagram-5.jpg",
