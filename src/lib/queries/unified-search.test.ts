@@ -75,6 +75,18 @@ describe("unifiedSearch", () => {
     expect(result.designers.items).toEqual([{ id: "designer-jaime", name: "Jaime Hayon" }]);
   });
 
+  it("prioritizes product-name matches over other matching fields", async () => {
+    state.getVariantProductCount.mockResolvedValue(2);
+    state.getVariantProducts.mockResolvedValue([
+      { id: "variant-sku-match", name: "Chair", sku: "BALCONY-01" },
+      { id: "variant-name-match", name: "Balcony Chair", sku: "CHAIR-01" },
+    ]);
+
+    const result = await unifiedSearch("balcony", "en");
+
+    expect(result.products.items.map((variant) => variant.id)).toEqual(["variant-name-match", "variant-sku-match"]);
+  });
+
   it("isolates each independent source failure while retaining successful sections", async () => {
     // Given: a matching variant and each related source failing in turn.
     const cases = [

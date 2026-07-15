@@ -30,6 +30,17 @@ function searchable(value: string | null | undefined, query: string): boolean {
   return typeof value === "string" && value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
 }
 
+function productNameMatches(variant: VariantProductListItem, query: string): boolean {
+  return [variant.name, variant.name_vi, variant.name_ko].some((value) => searchable(value, query));
+}
+
+function prioritizeProductNameMatches(variants: readonly VariantProductListItem[], query: string): readonly VariantProductListItem[] {
+  return variants
+    .map((variant, index) => ({ index, nameMatch: productNameMatches(variant, query), variant }))
+    .toSorted((left, right) => Number(right.nameMatch) - Number(left.nameMatch) || left.index - right.index)
+    .map(({ variant }) => variant);
+}
+
 function matchCategories(categories: readonly Category[], query: string): readonly Category[] {
   return categories.filter((category) => [category.name, category.name_vi, category.name_ko, category.slug].some((value) => searchable(value, query))).slice(0, SECTION_LIMIT);
 }
@@ -43,7 +54,8 @@ async function getAllMatchingVariantProducts(query: string): Promise<readonly Va
   const count = await getVariantProductCount({ search: query });
   if (count === 0) return [];
 
-  return getVariantProducts({ search: query, page: 1, pageSize: count, sort: "priority" });
+  const variants = await getVariantProducts({ search: query, page: 1, pageSize: count, sort: "priority" });
+  return prioritizeProductNameMatches(variants, query);
 }
 
 export async function unifiedSearch(value: string, locale: Locale): Promise<UnifiedSearchResults> {
