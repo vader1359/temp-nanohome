@@ -9,6 +9,7 @@ import { getVariantProducts, type VariantProductListItem } from "./products";
 import { normalizeSearchQuery } from "./search-input";
 
 const SECTION_LIMIT = 6;
+const PRODUCT_SECTION_LIMIT = 16;
 
 export type SearchSection<T> = Readonly<{
   items: readonly T[];
@@ -47,7 +48,7 @@ export async function unifiedSearch(value: string, locale: Locale): Promise<Unif
   }
 
   const products = await settledSection(
-    getVariantProducts({ search: query, page: 1, pageSize: SECTION_LIMIT, sort: "priority" }),
+    getVariantProducts({ search: query, page: 1, pageSize: PRODUCT_SECTION_LIMIT, sort: "priority" }),
   );
   const brandIds = products.items.flatMap((variant) => variant.brand_id === null ? [] : [variant.brand_id]);
   const productIds = products.items.flatMap((variant) => variant.product_id === null ? [] : [variant.product_id]);

@@ -64,7 +64,7 @@ describe("unifiedSearch", () => {
     const result = await unifiedSearch(" Ikebana ", "ko");
 
     // Then: the catalog query and relationship sections share canonical product identifiers.
-    expect(state.getVariantProducts).toHaveBeenCalledWith({ page: 1, pageSize: 6, search: "Ikebana", sort: "priority" });
+    expect(state.getVariantProducts).toHaveBeenCalledWith({ page: 1, pageSize: 16, search: "Ikebana", sort: "priority" });
     expect(state.getBrandsForVariants).toHaveBeenCalledWith({ productIds: ["product-ikebana"], variantBrandIds: [] });
     expect(state.getDesignersForProducts).toHaveBeenCalledWith({ productIds: ["product-ikebana"], variantDesignerIds: ["designer-jaime"] });
     expect(state.searchNews).toHaveBeenCalledWith("Ikebana", "ko", { pageSize: 6 });
