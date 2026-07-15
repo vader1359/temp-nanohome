@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import {
@@ -14,7 +14,7 @@ import { Breadcrumb, ColorSelector } from "@/components/product-detail";
 import { DarkCTAButton, FavoriteButton, IconTextRow } from "@/components/shared";
 import { product as fallbackProduct, breadcrumbs } from "@/components/product-detail/mock-data";
 import { useCart } from "@/components/cart/cart-context";
-import { cn } from "@/lib/utils";
+import { useWishlist, type WishlistItem } from "@/components/wishlist/wishlist-context";
 
 interface Section1HeroProps {
   product?: typeof fallbackProduct & {
@@ -24,48 +24,199 @@ interface Section1HeroProps {
   };
 }
 
+function getVisibleCartTarget(): HTMLElement | null {
+  const targets = Array.from(document.querySelectorAll<HTMLElement>("[data-cart-target]"));
+  return targets.find((target) => {
+    const rect = target.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }) ?? null;
+}
+
+function getVisibleWishlistTarget(): HTMLElement | null {
+  const targets = Array.from(document.querySelectorAll<HTMLElement>("[data-wishlist-target]"));
+  return targets.find((target) => {
+    const rect = target.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }) ?? null;
+}
+
 export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
   const t = useTranslations("ProductDetail");
   const [activeThumb, setActiveThumb] = useState(0);
   const productImageRef = useRef<HTMLDivElement>(null);
+  const purchasePanelRef = useRef<HTMLDivElement>(null);
+  const cartAnimationRef = useRef<(() => void) | null>(null);
+  const wishlistAnimationRef = useRef<(() => void) | null>(null);
   const { addItem } = useCart();
+  const { hasItem, toggleItem } = useWishlist();
 
-  const playAddToCartAnimation = () => {
-    const imageBox = productImageRef.current;
-    const cartTarget = document.querySelector<HTMLElement>("[data-cart-target]");
-    if (!imageBox || !cartTarget) return;
+  useEffect(() => {
+    return () => {
+      if (cartAnimationRef.current) cartAnimationRef.current();
+      if (wishlistAnimationRef.current) wishlistAnimationRef.current();
+    };
+  }, []);
 
-    const imageRect = imageBox.getBoundingClientRect();
-    const targetRect = cartTarget.getBoundingClientRect();
-    const image = document.createElement("img");
-    image.src = product.gallery[activeThumb] ?? product.gallery[0] ?? "/images/p_lc2.png";
-    image.alt = "";
-    image.className = "pointer-events-none fixed z-[9999] rounded-sm object-contain shadow-2xl";
-    image.style.left = `${imageRect.left}px`;
-    image.style.top = `${imageRect.top}px`;
-    image.style.width = `${imageRect.width}px`;
-    image.style.height = `${imageRect.height}px`;
-    image.style.transformOrigin = "center center";
-    image.style.willChange = "transform, opacity, border-radius";
-    document.body.appendChild(image);
+  const playFlightAnimation = (target: HTMLElement, onAnimationRefCleanup: () => void) => {
+    const productImage = productImageRef.current;
+    if (!productImage || !target) return null;
 
-    const deltaX = targetRect.left + targetRect.width / 2 - (imageRect.left + imageRect.width / 2);
-    const deltaY = targetRect.top + targetRect.height / 2 - (imageRect.top + imageRect.height / 2);
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion) {
+      return null;
+    }
 
-    const animation = image.animate(
+    const imageRect = productImage.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "fixed";
+    wrapper.style.left = `${imageRect.left}px`;
+    wrapper.style.top = `${imageRect.top}px`;
+    wrapper.style.width = `${imageRect.width}px`;
+    wrapper.style.height = `${imageRect.height}px`;
+    wrapper.style.pointerEvents = "none";
+    wrapper.style.zIndex = "9999";
+
+    wrapper.setAttribute("aria-hidden", "true");
+    wrapper.setAttribute("inert", "");
+    if ("inert" in wrapper) {
+      (wrapper as unknown as { inert: boolean }).inert = true;
+    }
+
+    const clone = productImage.cloneNode(true) as HTMLElement;
+    if (clone.id) {
+      clone.removeAttribute("id");
+    }
+    clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+
+    clone.setAttribute("tabindex", "-1");
+    if ("tabIndex" in clone) {
+      clone.tabIndex = -1;
+    }
+    clone.querySelectorAll("*").forEach((el) => {
+      el.setAttribute("tabindex", "-1");
+      if ("tabIndex" in el) {
+        (el as unknown as { tabIndex: number }).tabIndex = -1;
+      }
+    });
+
+    clone.style.backgroundColor = "white";
+    clone.style.overflow = "hidden";
+    clone.style.boxShadow = "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)";
+    clone.style.transformOrigin = "center center";
+    clone.style.pointerEvents = "none";
+    clone.style.width = "100%";
+    clone.style.height = "100%";
+    clone.style.margin = "0";
+    clone.style.padding = "72px";
+    clone.style.border = "1px solid #e2e8f0";
+    clone.style.willChange = "transform, opacity";
+
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    let flightWrapperAnim: Animation | null = null;
+    let flightInnerAnim: Animation | null = null;
+    let targetAnim: Animation | null = null;
+
+    // Initial focus pop
+    const focusAnim = clone.animate(
       [
-        { borderRadius: "2px", opacity: 0.95, transform: "translate3d(0, 0, 0) scale(1) skew(0deg, 0deg)" },
-        { borderRadius: "18px", opacity: 0.75, transform: `translate3d(${deltaX * 0.42}px, ${deltaY * 0.35}px, 0) scale(0.58, 0.82) skew(-10deg, 4deg)` },
-        { borderRadius: "999px", opacity: 0, transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.08, 0.18) skew(-18deg, 8deg)` },
+        { transform: "scale(1)" },
+        { transform: "scale(1.05)", offset: 0.5 },
+        { transform: "scale(1.02)" }
       ],
-      { duration: 760, easing: "cubic-bezier(0.2, 0.9, 0.18, 1)", fill: "forwards" },
+      { duration: 350, easing: "cubic-bezier(0.2, 0, 0.4, 1)", fill: "forwards" }
     );
-    animation.addEventListener("finish", () => image.remove(), { once: true });
-    animation.addEventListener("cancel", () => image.remove(), { once: true });
+
+    let isCleanedUp = false;
+
+    const cancelAll = () => {
+      if (isCleanedUp) return;
+      isCleanedUp = true;
+      wrapper.remove();
+      focusAnim.cancel();
+      if (flightWrapperAnim) flightWrapperAnim.cancel();
+      if (flightInnerAnim) flightInnerAnim.cancel();
+      if (targetAnim) targetAnim.cancel();
+    };
+
+    focusAnim.onfinish = () => {
+      if (isCleanedUp) return;
+      const flightDuration = 760;
+      const deltaX = targetRect.left + targetRect.width / 2 - (imageRect.left + imageRect.width / 2);
+      const deltaY = targetRect.top + targetRect.height / 2 - (imageRect.top + imageRect.height / 2);
+
+      // Wrapper handles horizontal flight (linear-ish for curve effect)
+      flightWrapperAnim = wrapper.animate(
+        [
+          { transform: "translate3d(0, 0, 0)" },
+          { transform: `translate3d(${deltaX}px, 0, 0)` }
+        ],
+        { duration: flightDuration, easing: "cubic-bezier(0.25, 1, 0.5, 1)", fill: "forwards" }
+      );
+
+      // Clone handles vertical drop, scale, rotate, opacity
+      flightInnerAnim = clone.animate(
+        [
+          { opacity: 0.95, transform: "translate3d(0, 0, 0) scale(1.02) rotate(0deg)" },
+          {
+            opacity: 0.85,
+            transform: `translate3d(0, ${deltaY * 0.4}px, 0) scale(0.3) rotate(${deltaX > 0 ? 12 : -12}deg)`,
+            offset: 0.5
+          },
+          { opacity: 0, transform: `translate3d(0, ${deltaY}px, 0) scale(0.05) rotate(0deg)` },
+        ],
+        { duration: flightDuration, easing: "cubic-bezier(0.5, 0, 0.75, 0)", fill: "forwards" },
+      );
+
+      flightInnerAnim.onfinish = () => {
+        if (isCleanedUp) return;
+        cleanup();
+      };
+
+      function cleanup() {
+        wrapper.remove();
+        if (target) {
+          targetAnim = target.animate(
+            [
+              { transform: "scale(1)" },
+              { transform: "scale(1.25) rotate(-5deg)", offset: 0.4 },
+              { transform: "scale(0.9) rotate(3deg)", offset: 0.7 },
+              { transform: "scale(1) rotate(0deg)" }
+            ],
+            { duration: 450, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
+          );
+
+          targetAnim.onfinish = () => {
+            if (isCleanedUp) return;
+            isCleanedUp = true;
+            onAnimationRefCleanup();
+          };
+        } else {
+          isCleanedUp = true;
+          onAnimationRefCleanup();
+        }
+      }
+    };
+
+    return cancelAll;
   };
 
   const handleAddToCart = () => {
-    playAddToCartAnimation();
+    if (cartAnimationRef.current) {
+      cartAnimationRef.current();
+      cartAnimationRef.current = null;
+    }
+    const cartTarget = getVisibleCartTarget();
+    if (cartTarget) {
+      cartAnimationRef.current = playFlightAnimation(cartTarget, () => {
+        if (cartAnimationRef.current) {
+          cartAnimationRef.current = null;
+        }
+      });
+    }
     addItem({
       id: product.id ?? product.sku ?? product.title,
       name: product.title,
@@ -111,6 +262,8 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
                 <button
                   key={i}
                   type="button"
+                  aria-pressed={active}
+                  aria-label={t("thumbnailAlt", { index: i + 1 })}
                   onClick={() => setActiveThumb(i)}
                   className={`relative aspect-square w-16 min-w-0 shrink-0 overflow-hidden transition-opacity md:w-20 ${
                     active ? "opacity-100" : "opacity-50 hover:opacity-75"
@@ -118,7 +271,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
                 >
                   <Image
                     src={src}
-                    alt={t("thumbnailAlt", { index: i + 1 })}
+                    alt={""}
                     fill
                     sizes="80px"
                     className="max-w-full object-cover"
@@ -135,7 +288,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
         </div>
 
         {/* ─── Purchase Panel ─── */}
-        <div className="flex min-w-0 w-full flex-col gap-9 lg:basis-1/2 lg:pl-8">
+        <div ref={purchasePanelRef} className="flex min-w-0 w-full flex-col gap-9 lg:basis-1/2 lg:pl-8">
           {/* Product Summary */}
           <div className="flex flex-col gap-4">
             {/* Brand logo */}
@@ -148,6 +301,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
                   alt={product.brand}
                   width={120}
                   height={24}
+                  unoptimized
                   className="h-[24px] w-auto self-start object-contain object-left"
                 />
               );
@@ -182,7 +336,45 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
               <ShoppingCart className="h-4 w-4 md:h-5 md:w-5" />
               {t("addToCart")}
             </DarkCTAButton>
-            <FavoriteButton variant="bordered" className="h-12 w-12 md:h-14 md:w-14 flex-none border-[#CFC9C0] bg-transparent" />
+            <FavoriteButton
+              variant="bordered"
+              className="h-12 w-12 md:h-14 md:w-14 flex-none border-[#CFC9C0] bg-transparent"
+              active={hasItem(product.id ?? product.sku ?? product.title)}
+              onToggle={() => {
+                const item: WishlistItem = {
+                  id: product.id ?? product.sku ?? product.title,
+                  name: product.title,
+                  category: product.category,
+                  price: product.newPrice,
+                  originalPrice: product.oldPrice || undefined,
+                  discount: product.discount || undefined,
+                  badge: product.onSale ? "Sale" : "Còn hàng",
+                  badgeTone: product.onSale ? "sale" : "stock",
+                  image: product.gallery[0] ?? "/images/p_lc2.png",
+                  href: "#",
+                };
+                if (!hasItem(item.id)) {
+                  if (wishlistAnimationRef.current) {
+                    wishlistAnimationRef.current();
+                    wishlistAnimationRef.current = null;
+                  }
+
+                  const target = getVisibleWishlistTarget();
+
+                  if (target) {
+                    const animCleanup = playFlightAnimation(target, () => {
+                      if (wishlistAnimationRef.current === animCleanup) {
+                        wishlistAnimationRef.current = null;
+                      }
+                    });
+                    if (animCleanup) {
+                      wishlistAnimationRef.current = animCleanup;
+                    }
+                  }
+                }
+                toggleItem(item);
+              }}
+            />
           </div>
 
           {/* Size info box */}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import Image from "next/image";
 import { Heart } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -56,90 +57,165 @@ function getVisibleWishlistTarget(): HTMLElement | null {
   }) ?? null;
 }
 
-function playAddToWishlistAnimation(imageSrc: string, origin: HTMLElement) {
+function playAddToWishlistAnimation(origin: HTMLElement, onComplete: () => void) {
   const target = getVisibleWishlistTarget();
-  if (!target) return;
+  if (!target) return null;
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reducedMotion) {
-    target.animate(
-      [
-        { transform: "scale(1)" },
-        { transform: "scale(1.1)" },
-        { transform: "scale(1)" },
-      ],
-      { duration: 260, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
-    );
-    return;
+    return null;
   }
 
   const originRect = origin.getBoundingClientRect();
   const targetRect = target.getBoundingClientRect();
-  const image = document.createElement("img");
-  image.src = imageSrc;
-  image.alt = "";
-  image.style.position = "fixed";
-  image.style.left = `${originRect.left}px`;
-  image.style.top = `${originRect.top}px`;
-  image.style.width = `${originRect.width}px`;
-  image.style.height = `${originRect.height}px`;
-  image.style.objectFit = "contain";
-  image.style.pointerEvents = "none";
-  image.style.zIndex = "10000";
-  document.body.appendChild(image);
+
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "fixed";
+  wrapper.style.left = `${originRect.left}px`;
+  wrapper.style.top = `${originRect.top}px`;
+  wrapper.style.width = `${originRect.width}px`;
+  wrapper.style.height = `${originRect.height}px`;
+  wrapper.style.pointerEvents = "none";
+  wrapper.style.zIndex = "10000";
+
+  wrapper.setAttribute("aria-hidden", "true");
+  wrapper.setAttribute("inert", "");
+  if ("inert" in wrapper) {
+    (wrapper as unknown as { inert: boolean }).inert = true;
+  }
+
+  // Clone the whole source card DOM node via cloneNode(true)
+  const clone = origin.cloneNode(true) as HTMLElement;
+
+  // Sanitize clone IDs if any
+  if (clone.id) {
+    clone.removeAttribute("id");
+  }
+  clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+
+  clone.setAttribute("tabindex", "-1");
+  if ("tabIndex" in clone) {
+    clone.tabIndex = -1;
+  }
+  clone.querySelectorAll("*").forEach((el) => {
+    el.setAttribute("tabindex", "-1");
+    if ("tabIndex" in el) {
+      (el as unknown as { tabIndex: number }).tabIndex = -1;
+    }
+  });
+
+  // Make it visually self-contained
+  clone.style.backgroundColor = "white";
+  clone.style.overflow = "hidden";
+  clone.style.boxShadow = "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)";
+  clone.style.transformOrigin = "center center";
+  clone.style.pointerEvents = "none";
+  clone.style.width = "100%";
+  clone.style.height = "100%";
+  clone.style.margin = "0";
+  clone.style.willChange = "transform, opacity";
+
+  wrapper.appendChild(clone);
+  document.body.appendChild(wrapper);
 
   const deltaX = targetRect.left + targetRect.width / 2 - (originRect.left + originRect.width / 2);
   const deltaY = targetRect.top + targetRect.height / 2 - (originRect.top + originRect.height / 2);
-  const isUpward = deltaY < 0;
 
-  const animation = image.animate(
+  const focusAnim = clone.animate(
     [
-      {
-        opacity: 1,
-        transform: "translate3d(0, 0, 0) scale(1)",
-        clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)"
-      },
-      {
-        opacity: 0.94,
-        transform: `translate3d(${deltaX * 0.22}px, ${deltaY * 0.16}px, 0) scale(0.78, 0.88)`,
-        clipPath: isUpward ? "polygon(30% 0%, 70% 0%, 92% 100%, 8% 100%)" : "polygon(8% 0%, 92% 0%, 70% 100%, 30% 100%)"
-      },
-      {
-        opacity: 0.8,
-        transform: `translate3d(${deltaX * 0.52}px, ${deltaY * 0.44}px, 0) scale(0.5, 0.68)`,
-        clipPath: isUpward ? "polygon(45% 0%, 55% 0%, 75% 100%, 25% 100%)" : "polygon(25% 0%, 75% 0%, 55% 100%, 45% 100%)"
-      },
-      {
-        opacity: 0.45,
-        transform: `translate3d(${deltaX * 0.82}px, ${deltaY * 0.75}px, 0) scale(0.25, 0.42)`,
-        clipPath: isUpward ? "polygon(48% 0%, 52% 0%, 58% 100%, 42% 100%)" : "polygon(42% 0%, 58% 0%, 52% 100%, 48% 100%)"
-      },
-      {
-        opacity: 0,
-        transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.08, 0.16)`,
-        clipPath: "polygon(50% 0%, 50% 0%, 50% 100%, 50% 100%)"
-      },
+      { transform: "scale(1) translateY(0)" },
+      { transform: "scale(1.05) translateY(-8px)", offset: 0.5 },
+      { transform: "scale(1.02) translateY(-4px)" }
     ],
-    { duration: 650, easing: "cubic-bezier(0.25, 0.8, 0.25, 1)", fill: "forwards" },
+    { duration: 400, easing: "cubic-bezier(0.2, 0, 0.4, 1)", fill: "forwards" }
   );
 
-  animation.onfinish = () => {
-    image.remove();
-    target.animate(
-      [
-        { transform: "scale(1)" },
-        { transform: "scale(1.1)" },
-        { transform: "scale(1)" },
-      ],
-      { duration: 260, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
-    );
+  let flightInnerAnim: Animation | null = null;
+  let flightWrapperAnim: Animation | null = null;
+  let targetAnim: Animation | null = null;
+  let isCleanedUp = false;
+
+  const cancelAll = () => {
+    if (isCleanedUp) return;
+    isCleanedUp = true;
+    wrapper.remove();
+    focusAnim.cancel();
+    if (flightWrapperAnim) flightWrapperAnim.cancel();
+    if (flightInnerAnim) flightInnerAnim.cancel();
+    if (targetAnim) targetAnim.cancel();
   };
-  animation.oncancel = () => image.remove();
+
+  focusAnim.onfinish = () => {
+    if (isCleanedUp) return;
+    const flightDuration = 700;
+
+    flightWrapperAnim = wrapper.animate(
+      [
+        { transform: "translate3d(0, 0, 0)" },
+        { transform: `translate3d(${deltaX}px, 0, 0)` }
+      ],
+      { duration: flightDuration, easing: "cubic-bezier(0.25, 1, 0.5, 1)", fill: "forwards" }
+    );
+
+    flightInnerAnim = clone.animate(
+      [
+        { transform: "translate3d(0, 0, 0) scale(1.02)", opacity: 1 },
+        {
+          transform: `translate3d(0, ${deltaY * 0.5}px, 0) scale(0.4) rotate(${deltaX > 0 ? 15 : -15}deg)`,
+          opacity: 0.9,
+          offset: 0.6
+        },
+        { transform: `translate3d(0, ${deltaY}px, 0) scale(0.1) rotate(0deg)`, opacity: 0 }
+      ],
+      { duration: flightDuration, easing: "cubic-bezier(0.5, 0, 0.75, 0)", fill: "forwards" }
+    );
+
+    flightInnerAnim.onfinish = () => {
+      if (isCleanedUp) return;
+      cleanup();
+    };
+
+    function cleanup() {
+      wrapper.remove();
+
+      if (target) {
+        targetAnim = target.animate(
+          [
+            { transform: "scale(1)" },
+            { transform: "scale(1.25) rotate(-5deg)", offset: 0.4 },
+            { transform: "scale(0.9) rotate(3deg)", offset: 0.7 },
+            { transform: "scale(1) rotate(0deg)" }
+          ],
+          { duration: 450, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
+        );
+
+        targetAnim.onfinish = () => {
+          if (isCleanedUp) return;
+          isCleanedUp = true;
+          onComplete();
+        };
+      } else {
+        isCleanedUp = true;
+        onComplete();
+      }
+    }
+  };
+
+  return cancelAll;
 }
 
 export function ProductGrid({ products, gridClassName }: ProductGridProps) {
   const t = useTranslations("Products");
   const { hasItem, toggleItem } = useWishlist();
+  const currentAnimationRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (currentAnimationRef.current) {
+        currentAnimationRef.current();
+      }
+    };
+  }, []);
 
   if (products.length === 0) {
     return (
@@ -175,8 +251,22 @@ export function ProductGrid({ products, gridClassName }: ProductGridProps) {
                   type="button"
                   onClick={(event) => {
                     const card = event.currentTarget.closest<HTMLElement>("[data-product-card]");
-                    const imageFrame = card?.querySelector<HTMLElement>("[data-product-image-frame]");
-                    if (!favorited) playAddToWishlistAnimation(product.imageUrl, imageFrame ?? event.currentTarget);
+                    if (!favorited) {
+                      if (currentAnimationRef.current) {
+                        currentAnimationRef.current();
+                        currentAnimationRef.current = null;
+                      }
+                      if (card) {
+                        const animCleanup = playAddToWishlistAnimation(card, () => {
+                          if (currentAnimationRef.current === animCleanup) {
+                            currentAnimationRef.current = null;
+                          }
+                        });
+                        if (animCleanup) {
+                          currentAnimationRef.current = animCleanup;
+                        }
+                      }
+                    }
                     toggleItem(toWishlistItem(product));
                   }}
                   aria-label={t("favoriteAria", { name: product.name })}
@@ -234,6 +324,7 @@ export function ProductGrid({ products, gridClassName }: ProductGridProps) {
                           !(isUsm || isVolta) && "grayscale contrast-200 brightness-0"
                         )}
                         fill
+                        unoptimized
                         sizes="126px"
                         src={logoUrl}
                       />
