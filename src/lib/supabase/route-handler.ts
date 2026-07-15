@@ -4,6 +4,7 @@ import { type NextRequest, type NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { supabaseReadOnlyFetch } from "@/lib/remote-read-only";
 import type { Database } from "@/types/db";
+import { sanitizeCookies } from "./cookie-sanitizer";
 
 type PendingCookie = {
   readonly name: string;
@@ -27,7 +28,7 @@ export function createRouteHandlerClient(request: NextRequest) {
       },
       cookies: {
         getAll() {
-          return request.cookies.getAll();
+          return sanitizeCookies(request.cookies.getAll());
         },
         setAll(cookiesToSet: PendingCookie[]) {
           cookiesToSet.forEach(({ name, value, options }) => {

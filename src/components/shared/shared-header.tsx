@@ -490,7 +490,7 @@ function CartSidebar({
             <button type="button" className="bg-white text-[14px] font-medium leading-5 text-nh-ink">Yêu thích</button>
             <button type="button" className="bg-nh-ink text-[14px] font-medium leading-5 text-white">Giỏ hàng</button>
           </div>
-          <div className="mt-[26px] flex min-h-0 flex-1 flex-col">
+          <div className="mt-8 flex min-h-0 flex-1 flex-col">
             <h2 className="text-[18px] font-normal leading-7 text-[#444]">Giỏ hàng</h2>
             <div className="mt-6 flex min-h-0 flex-1 flex-col">
               <div className="flex justify-end">

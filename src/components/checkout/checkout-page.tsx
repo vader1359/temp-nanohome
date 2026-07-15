@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useCart, type CartItem } from "@/components/cart/cart-context";
+import { ShoppingCart } from "lucide-react";
 
 type CheckoutStatus = "idle" | "submitting" | "success" | "error";
 
@@ -284,18 +285,18 @@ export function CheckoutPage() {
       </div>
 
       {status !== "success" && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E5E5E5] bg-white p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] sm:p-6 lg:p-4">
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E5E5E5] bg-white px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] sm:p-6 lg:p-4">
           <div className="mx-auto flex max-w-[1540px] flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="hidden lg:flex items-center gap-4 text-sm text-[#666666]">
             </div>
 
             <div className="flex items-center justify-between gap-6 lg:justify-end w-full lg:w-auto">
-              <div className="flex flex-col">
+              <div className="hidden lg:flex flex-col">
                 <span className="text-xs text-[#666666]">{t("total")}:</span>
                 <span className="text-xl font-medium text-[#1A1A1A]">{formatVnd(total)}</span>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full lg:w-auto">
                 {step > 1 && (
                   <button
                     type="button"
@@ -311,7 +312,7 @@ export function CheckoutPage() {
                   type="submit"
                   form="checkout-form"
                   disabled={status === "submitting"}
-                  className="h-12 min-w-[120px] lg:min-w-[160px] bg-[#1A1A1A] px-6 lg:px-8 text-sm font-medium text-white transition-colors hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A1A1A] disabled:cursor-not-allowed disabled:bg-[#CCCCCC]"
+                  className="flex h-12 w-full min-w-[120px] items-center justify-center gap-2 rounded-[10px] bg-[#1A1A1A] px-6 text-sm font-medium text-white transition-colors hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A1A1A] disabled:cursor-not-allowed disabled:bg-[#CCCCCC] lg:w-auto lg:min-w-[160px] lg:rounded-none lg:px-8"
                   onClick={(e) => {
                     // Mobile intercept for multi-step to bypass form submission validation initially
                     if (step < 3 && typeof window !== 'undefined' && window.innerWidth < 1024) {
@@ -330,7 +331,9 @@ export function CheckoutPage() {
                     }
                   }}
                 >
-                  {status === "submitting" ? t("submitting") : (step < 3 && typeof window !== 'undefined' && window.innerWidth < 1024) ? (t("continue") || "Continue") : t("submit")}
+                  <ShoppingCart className="h-5 w-5 lg:hidden" aria-hidden="true" />
+                  <span className="lg:hidden">{status === "submitting" ? t("submitting") : "Đặt hàng ngay"}</span>
+                  <span className="hidden lg:inline">{status === "submitting" ? t("submitting") : t("submit")}</span>
                 </button>
               </div>
             </div>

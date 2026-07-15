@@ -4,6 +4,9 @@ import { cookies } from "next/headers";
 import { env } from "@/lib/env";
 import { supabaseReadOnlyFetch } from "@/lib/remote-read-only";
 import type { Database } from "@/types/db";
+import { sanitizeCookies } from "./cookie-sanitizer";
+
+export { type CookieLike, sanitizeCookies } from "./cookie-sanitizer";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -17,7 +20,7 @@ export async function createClient() {
       },
       cookies: {
         getAll() {
-          return cookieStore.getAll();
+          return sanitizeCookies(cookieStore.getAll());
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           try {
