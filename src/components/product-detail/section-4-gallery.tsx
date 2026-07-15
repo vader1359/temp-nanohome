@@ -17,11 +17,24 @@ export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Secti
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const slides = useMemo(() => (galleryImages.length > 0 ? galleryImages : fallbackGalleryImages), [galleryImages]);
+  const [loadedSlides, setLoadedSlides] = useState<number[]>([0, 1, 2, 3]); // Load first few slides initially
+
   const [sliderRef, slider] = useKeenSlider<HTMLDivElement>({
     initial: 0,
     mode: "free-snap",
     slideChanged(s) {
-      setCurrentSlide(s.track.details.rel);
+      const current = s.track.details.rel;
+      setCurrentSlide(current);
+      setLoadedSlides((prev) => {
+        const next = [...prev];
+        for (let offset = -2; offset <= 3; offset++) {
+          const idx = current + offset;
+          if (idx >= 0 && idx < slides.length && !next.includes(idx)) {
+            next.push(idx);
+          }
+        }
+        return next;
+      });
     },
     created() {
       setLoaded(true);
@@ -53,6 +66,7 @@ export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Secti
           <div ref={sliderRef} className="keen-slider overflow-visible">
             {slides.map((src, i) => {
               const isWide = i % 3 === 1;
+              const isLoaded = loadedSlides.includes(i);
 
               return (
                 <div
@@ -61,13 +75,18 @@ export function Section4Gallery({ galleryImages = fallbackGalleryImages }: Secti
                   style={{ minWidth: isWide ? "38%" : "24%", maxWidth: isWide ? "38%" : "24%" }}
                 >
                   <div className="relative h-[300px] overflow-hidden bg-transparent sm:h-[360px] lg:h-[420px]">
-                    <Image
-                      src={src}
-                      alt={t("galleryImageAlt", { index: i + 1 })}
-                      fill
-                      sizes="(max-width:640px) 78vw, (max-width:1024px) 48vw, 31vw"
-                      className="object-cover"
-                    />
+                    {isLoaded ? (
+                      <Image
+                        src={src}
+                        alt={t("galleryImageAlt", { index: i + 1 })}
+                        fill
+                        unoptimized
+                        sizes="(max-width:640px) 78vw, (max-width:1024px) 48vw, 31vw"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-[#f4f4f5] animate-pulse" />
+                    )}
                   </div>
                 </div>
               );

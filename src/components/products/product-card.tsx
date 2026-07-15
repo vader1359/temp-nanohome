@@ -114,6 +114,7 @@ export function ProductCard({
                   !(isUsm || isVolta) && "grayscale contrast-200 brightness-0"
                 )}
                 fill
+                unoptimized
                 sizes="126px"
                 src={logoUrl}
               />
