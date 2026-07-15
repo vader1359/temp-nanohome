@@ -5,11 +5,10 @@ import { getBrandsForVariants } from "./brands";
 import { getCategories } from "./categories";
 import { getDesignersForProducts } from "./designers";
 import { searchNews } from "./news";
-import { getVariantProducts, type VariantProductListItem } from "./products";
+import { getVariantProductCount, getVariantProducts, type VariantProductListItem } from "./products";
 import { normalizeSearchQuery } from "./search-input";
 
 const SECTION_LIMIT = 6;
-const PRODUCT_SECTION_LIMIT = 16;
 
 export type SearchSection<T> = Readonly<{
   items: readonly T[];
@@ -40,6 +39,13 @@ async function settledSection<T>(promise: Promise<readonly T[]>): Promise<Search
   return result;
 }
 
+async function getAllMatchingVariantProducts(query: string): Promise<readonly VariantProductListItem[]> {
+  const count = await getVariantProductCount({ search: query });
+  if (count === 0) return [];
+
+  return getVariantProducts({ search: query, page: 1, pageSize: count, sort: "priority" });
+}
+
 export async function unifiedSearch(value: string, locale: Locale): Promise<UnifiedSearchResults> {
   const query = normalizeSearchQuery(value);
   const empty = { items: [], hasError: false } as const;
@@ -48,7 +54,7 @@ export async function unifiedSearch(value: string, locale: Locale): Promise<Unif
   }
 
   const products = await settledSection(
-    getVariantProducts({ search: query, page: 1, pageSize: PRODUCT_SECTION_LIMIT, sort: "priority" }),
+    getAllMatchingVariantProducts(query),
   );
   const brandIds = products.items.flatMap((variant) => variant.brand_id === null ? [] : [variant.brand_id]);
   const productIds = products.items.flatMap((variant) => variant.product_id === null ? [] : [variant.product_id]);

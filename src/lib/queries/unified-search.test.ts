@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({
   getBrandsForVariants: vi.fn(async (): Promise<readonly unknown[]> => []),
   getCategories: vi.fn(async (): Promise<readonly unknown[]> => []),
   getDesignersForProducts: vi.fn(async (): Promise<readonly unknown[]> => []),
+  getVariantProductCount: vi.fn(async (): Promise<number> => 1),
   getVariantProducts: vi.fn(async (): Promise<readonly unknown[]> => []),
   searchNews: vi.fn(async (): Promise<readonly unknown[]> => []),
 }));
@@ -12,7 +13,7 @@ vi.mock("./brands", () => ({ getBrandsForVariants: state.getBrandsForVariants })
 vi.mock("./categories", () => ({ getCategories: state.getCategories }));
 vi.mock("./designers", () => ({ getDesignersForProducts: state.getDesignersForProducts }));
 vi.mock("./news", () => ({ searchNews: state.searchNews }));
-vi.mock("./products", () => ({ getVariantProducts: state.getVariantProducts }));
+vi.mock("./products", () => ({ getVariantProductCount: state.getVariantProductCount, getVariantProducts: state.getVariantProducts }));
 
 import { normalizeSearchQuery, unifiedSearch } from "./unified-search";
 
@@ -64,7 +65,8 @@ describe("unifiedSearch", () => {
     const result = await unifiedSearch(" Ikebana ", "ko");
 
     // Then: the catalog query and relationship sections share canonical product identifiers.
-    expect(state.getVariantProducts).toHaveBeenCalledWith({ page: 1, pageSize: 16, search: "Ikebana", sort: "priority" });
+    expect(state.getVariantProductCount).toHaveBeenCalledWith({ search: "Ikebana" });
+    expect(state.getVariantProducts).toHaveBeenCalledWith({ page: 1, pageSize: 1, search: "Ikebana", sort: "priority" });
     expect(state.getBrandsForVariants).toHaveBeenCalledWith({ productIds: ["product-ikebana"], variantBrandIds: [] });
     expect(state.getDesignersForProducts).toHaveBeenCalledWith({ productIds: ["product-ikebana"], variantDesignerIds: ["designer-jaime"] });
     expect(state.searchNews).toHaveBeenCalledWith("Ikebana", "ko", { pageSize: 6 });
