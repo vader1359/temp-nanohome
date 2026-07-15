@@ -207,11 +207,20 @@
 
 .zalo-widget-shell {
   position: fixed !important;
-  right: 24px !important;
+  top: auto !important;
+  left: auto !important;
+  right: 16px !important;
   bottom: 24px !important;
   z-index: 40 !important;
-  transform: scale(0.5);
+  transform: scale(0.75);
   transform-origin: bottom right;
+}
+
+.zalo-widget-shell iframe {
+  top: auto !important;
+  left: auto !important;
+  right: 0 !important;
+  bottom: 0 !important;
 }
 
 @media (min-width: 640px) {
@@ -220,6 +229,12 @@
 
 @media (min-width: 1024px) {
   :root { --compact-header-height: 64px; }
+
+  .zalo-widget-shell {
+    right: 32px !important;
+    bottom: 40px !important;
+    transform: scale(1);
+  }
 
   .site-shell {
     max-width: 960px;

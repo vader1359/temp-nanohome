@@ -17,19 +17,35 @@ interface PageProps {
 
 export const revalidate = 3600;
 
+const TRENDING_SKUS = [
+  "LPLLP00025", // PH Artichoke
+  "CHRFH00142", // Series 7, different variant from Trending
+  "CHRVT00009", // Panton Chair, different variant from Trending
+  "CLGKN00001", // Barcelona Lounge Chair
+  "USMUS00269", // USM Haller
+  "LFLLP00004", // Panthella
+  "LTLFL00027", // Snoopy
+  "LTLML00005", // Pipistrello
+] as const;
+
+const BEST_SELLER_SKUS = [
+  "CHRFH00149", // Series 7
+  "LPLLP00032", // PH 5
+  "LTLAT00024", // VP9
+  "CHRVT00008", // Panton Chair
+  "ACCFH00004", // Ikebana Vase
+  "ACCCA00021", // Cassina accessory
+  "USMUS00080", // USM Haller cabinet, different variant from Trending
+  "LTLLP00064", // Panthella
+] as const;
+
 export default async function Page({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
   const [trendingRaw, bestSellerRaw, newArrivalRaw, chairVariants, lampVariants, brands, featuredRaw] = await Promise.all([
-    getVariantProducts({
-      pageSize: 36,
-      sort: "priority",
-    }),
-    getVariantProducts({
-      pageSize: 36,
-      sort: "priority",
-    }),
+    getVariantProductsBySkus(TRENDING_SKUS),
+    getVariantProductsBySkus(BEST_SELLER_SKUS),
     getVariantProducts({
       pageSize: 36,
       status: "new_arrival",
@@ -68,14 +84,14 @@ export default async function Page({ params }: PageProps) {
     return shuffled.slice(0, n);
   };
 
-  const trendingSelected = getRandomSubset(trendingRaw, Math.min(8, trendingRaw.length));
-  const trendingSelectedIds = new Set(trendingSelected.map((v) => v.id));
-
-  const bestSellerCandidates = bestSellerRaw.filter((v) => !trendingSelectedIds.has(v.id));
-  const bestSellerSelected = getRandomSubset(
-    bestSellerCandidates.length > 0 ? bestSellerCandidates : bestSellerRaw,
-    Math.min(8, bestSellerRaw.length)
-  );
+  const trendingBySku = new Map(trendingRaw.map((variant) => [variant.sku, variant]));
+  const trendingSelected = TRENDING_SKUS
+    .map((sku) => trendingBySku.get(sku))
+    .filter((variant): variant is (typeof trendingRaw)[number] => variant?.in_stock === true);
+  const bestSellerBySku = new Map(bestSellerRaw.map((variant) => [variant.sku, variant]));
+  const bestSellerSelected = BEST_SELLER_SKUS
+    .map((sku) => bestSellerBySku.get(sku))
+    .filter((variant): variant is (typeof bestSellerRaw)[number] => variant?.in_stock === true);
 
   const newArrivalSelected = getRandomSubset(finalNewArrivalRaw, Math.min(8, finalNewArrivalRaw.length));
 
