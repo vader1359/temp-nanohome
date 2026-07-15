@@ -251,7 +251,7 @@
 }
 
 @media (min-width: 1441px) {
-  .site-shell { max-width: 1440px; }
+  .site-shell { max-width: min(1440px, calc(100% - 3rem)); }
 }
 
 /* Simple right-side reveal animation. */
