@@ -15,7 +15,6 @@ const images = [
   "/images/home/instagram/instagram-6.jpg",
   "/images/home/instagram/instagram-7.jpg",
   "/images/home/instagram/instagram-8.jpg",
-  "/images/home/instagram/instagram-9.jpg",
 ];
 
 export function InstagramGallery() {
