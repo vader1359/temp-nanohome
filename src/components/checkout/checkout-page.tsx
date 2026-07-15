@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useCart, type CartItem } from "@/components/cart/cart-context";
+import { ShoppingCart } from "lucide-react";
 
 type CheckoutStatus = "idle" | "submitting" | "success" | "error";
 
@@ -22,6 +23,7 @@ export function CheckoutPage() {
   const [vatRequested, setVatRequested] = useState(false);
   const [status, setStatus] = useState<CheckoutStatus>("idle");
   const [error, setError] = useState("");
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Selection state is tracking unselected items (inverse). Default all selected.
   const [unselectedIds, setUnselectedIds] = useState<Set<string>>(new Set());
@@ -59,9 +61,16 @@ export function CheckoutPage() {
       return;
     }
 
-    if (!form.name.trim() || !form.phone.trim() || !form.email.trim()) {
+    if (step === 2 && (!form.name.trim() || !form.phone.trim() || !form.email.trim())) {
       setError(t("validationRequired"));
       setStatus("error");
+      return;
+    }
+    
+    // Fallback block if form gets submitted during a transition block
+    if (step < 3 && typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setStep((s) => (s + 1) as 1 | 2 | 3);
+      setError("");
       return;
     }
 
@@ -128,11 +137,11 @@ export function CheckoutPage() {
           </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-2">
-            <div className="flex flex-col gap-6">
-              {/* Shipping Form Card */}
-              <div className="border border-[#E5E5E5] bg-white p-6 sm:p-8">
+            <div className={`flex flex-col gap-6 ${step !== 2 && step !== 3 ? 'hidden lg:flex' : ''}`}>
+              {/* Shipping Form Card (Step 2 on mobile, always on desktop) */}
+              <div className={`border border-[#E5E5E5] bg-white p-6 sm:p-8 ${step !== 2 && step !== 3 ? 'hidden lg:block' : ''}`}>
                 <h2 className="text-xl text-[#1A1A1A] mb-6">{t("details")}</h2>
-                <form id="checkout-form" onSubmit={submit} className="flex flex-col gap-6">
+                <form id="checkout-form" data-testid="checkout-form" onSubmit={submit} className="flex flex-col gap-6">
                   {(["name", "phone", "email"] as const).map((field) => (
                     <div key={field} className="relative">
                       <input
@@ -171,8 +180,8 @@ export function CheckoutPage() {
                 </form>
               </div>
 
-              {/* Payment Card */}
-              <div className="border border-[#E5E5E5] bg-white p-6 sm:p-8">
+              {/* Payment Card (Step 3 on mobile, always on desktop) */}
+              <div className={`border border-[#E5E5E5] bg-white p-6 sm:p-8 ${step !== 3 ? 'hidden lg:block' : ''}`}>
                 <h2 className="text-xl text-[#1A1A1A] mb-6">{t("payment")}</h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="flex cursor-not-allowed flex-col border border-[#E5E5E5] bg-[#FAFAFA] p-4 opacity-50">
@@ -195,9 +204,9 @@ export function CheckoutPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-6">
-              {/* Cart Card */}
-              <div className="border border-[#E5E5E5] bg-white p-6 sm:p-8">
+            <div className={`flex flex-col gap-6 ${step !== 1 && step !== 3 ? 'hidden lg:flex' : ''}`}>
+              {/* Cart Card (Step 1 on mobile, always visible on desktop) */}
+              <div className={`border border-[#E5E5E5] bg-white p-6 sm:p-8 ${step !== 1 ? 'hidden lg:block' : ''}`}>
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl text-[#1A1A1A]">{t("summary")}</h2>
                   <div className="flex items-center gap-4 text-sm">
@@ -234,8 +243,8 @@ export function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Total/Coupon Card */}
-              <div className="border border-[#E5E5E5] bg-white p-6 sm:p-8 lg:mb-24">
+              {/* Total/Coupon Card (Visible in Step 1 and 3 on mobile, always on desktop) */}
+              <div className={`border border-[#E5E5E5] bg-white p-6 sm:p-8 lg:mb-24 ${step === 2 ? 'hidden lg:block' : ''}`}>
                 <div className="flex gap-2 mb-6 opacity-50 cursor-not-allowed">
                   <input
                     disabled
@@ -275,30 +284,58 @@ export function CheckoutPage() {
         )}
       </div>
 
-      {/* Fixed Bottom Bar */}
       {status !== "success" && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E5E5E5] bg-white p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] sm:p-6 lg:p-4">
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E5E5E5] bg-white px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] sm:p-6 lg:p-4">
           <div className="mx-auto flex max-w-[1540px] flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="hidden lg:flex items-center gap-4 text-sm text-[#666666]">
             </div>
 
             <div className="flex items-center justify-between gap-6 lg:justify-end w-full lg:w-auto">
-              <div className="flex flex-col">
+              <div className="hidden lg:flex flex-col">
                 <span className="text-xs text-[#666666]">{t("total")}:</span>
                 <span className="text-xl font-medium text-[#1A1A1A]">{formatVnd(total)}</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-[#666666]">{t("savings")}:</span>
-                <span className="text-sm font-medium text-[#FF4D4F]">{formatVnd(savings)}</span>
+              
+              <div className="flex items-center gap-2 w-full lg:w-auto">
+                {step > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setStep(s => s - 1 as 1 | 2 | 3)}
+                    disabled={status === "submitting"}
+                    className="lg:hidden h-12 min-w-[80px] border border-[#1A1A1A] bg-white px-4 text-sm font-medium text-[#1A1A1A] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {t("back") || "Back"}
+                  </button>
+                )}
+                
+                <button
+                  type="submit"
+                  form="checkout-form"
+                  disabled={status === "submitting"}
+                  className="flex h-12 w-full min-w-[120px] items-center justify-center gap-2 rounded-[10px] bg-[#1A1A1A] px-6 text-sm font-medium text-white transition-colors hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A1A1A] disabled:cursor-not-allowed disabled:bg-[#CCCCCC] lg:w-auto lg:min-w-[160px] lg:rounded-none lg:px-8"
+                  onClick={(e) => {
+                    // Mobile intercept for multi-step to bypass form submission validation initially
+                    if (step < 3 && typeof window !== 'undefined' && window.innerWidth < 1024) {
+                       e.preventDefault(); // Stop native form submit
+                       
+                       if (items.length === 0 || status === "submitting") return;
+                       
+                       if (selectedItems.length === 0) {
+                         setError(t("validationSelectItems"));
+                         setStatus("error");
+                         return;
+                       }
+                       
+                       setStep((s) => (s + 1) as 1 | 2 | 3);
+                       setError("");
+                    }
+                  }}
+                >
+                  <ShoppingCart className="h-5 w-5 lg:hidden" aria-hidden="true" />
+                  <span className="lg:hidden">{status === "submitting" ? t("submitting") : "Đặt hàng ngay"}</span>
+                  <span className="hidden lg:inline">{status === "submitting" ? t("submitting") : t("submit")}</span>
+                </button>
               </div>
-              <button
-                type="submit"
-                form="checkout-form"
-                disabled={status === "submitting"}
-                className="h-12 min-w-[160px] bg-[#1A1A1A] px-8 text-sm font-medium text-white transition-colors hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A1A1A] disabled:cursor-not-allowed disabled:bg-[#CCCCCC]"
-              >
-                {status === "submitting" ? t("submitting") : t("submit")}
-              </button>
             </div>
           </div>
           {status === "error" && (

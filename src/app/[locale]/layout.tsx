@@ -42,8 +42,13 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
 
   const messages = await getMessages();
   const supabase = await createClient();
-  const { data } = await supabase.auth.getSession();
-  const isAuthenticated = data?.session != null;
+  let isAuthenticated = false;
+  try {
+    const { data } = await supabase.auth.getSession();
+    isAuthenticated = data?.session != null;
+  } catch (error) {
+    console.error("Supabase layout session error:", error);
+  }
 
   return (
     <NextIntlClientProvider messages={messages} locale={locale}>

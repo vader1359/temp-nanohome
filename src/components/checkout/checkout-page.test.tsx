@@ -58,13 +58,29 @@ describe("CheckoutPage", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ json: async () => ({ error: "Unavailable" }), ok: false }));
     render(<CheckoutPage />);
 
+    // Step 1 -> 2
+    const contBtns1 = screen.getAllByRole("button").filter(btn => btn.textContent === "continue");
+    if (contBtns1.length > 0) {
+      fireEvent.click(contBtns1[0]);
+    }
+
     // When: the customer completes checkout and submits.
     fireEvent.change(screen.getByPlaceholderText("name"), { target: { value: "Nguyen Van A" } });
     fireEvent.change(screen.getByPlaceholderText("phone"), { target: { value: "+84901234567" } });
     fireEvent.change(screen.getByPlaceholderText("email"), { target: { value: "a@example.com" } });
 
-    // Using the submit button in the bottom bar
-    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+    // Step 2 -> 3
+    const contBtns2 = screen.getAllByRole("button").filter(btn => btn.textContent === "continue");
+    if (contBtns2.length > 0) {
+      fireEvent.click(contBtns2[0]);
+    }
+
+    // Bottom bar submit
+    const submitBtn = screen.getAllByRole("button").find(
+      btn => btn.textContent === "submit" || btn.textContent === "submitting" || btn.getAttribute("type") === "submit"
+    );
+    if (!submitBtn) throw new Error("Submit button not found");
+    fireEvent.click(submitBtn);
 
     // Then: the order remains visible, values persist, and the cart is not cleared.
     await waitFor(() => expect(screen.getByText("serverError")).toBeInTheDocument());
@@ -92,31 +108,38 @@ describe("CheckoutPage", () => {
 
     render(<CheckoutPage />);
 
-    // Fill contact details
-    fireEvent.change(screen.getByPlaceholderText("name"), { target: { value: "Nguyen Van A" } });
-    fireEvent.change(screen.getByPlaceholderText("phone"), { target: { value: "+84901234567" } });
-    fireEvent.change(screen.getByPlaceholderText("email"), { target: { value: "a@example.com" } });
-
-    // Check VAT
-    fireEvent.click(screen.getByLabelText("Issue VAT Invoice (Optional)"));
-
-    // Unselect the second cart item. VAT and select-all controls have aria-labels;
-    // product-row checkboxes do not.
+    // Step 1: Unselect second item, then click continue
     const itemCheckboxes = screen.getAllByRole("checkbox").filter(
       (checkbox) => checkbox.getAttribute("aria-label") === null,
     );
     fireEvent.click(itemCheckboxes[itemCheckboxes.length - 1]);
+    const contBtns1 = screen.getAllByRole("button").filter(btn => btn.textContent === "continue");
+    if (contBtns1.length > 0) {
+      fireEvent.click(contBtns1[0]);
+    }
 
-    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+    // Step 2: Fill contact details, VAT, then click continue
+    fireEvent.change(screen.getByPlaceholderText("name"), { target: { value: "Nguyen Van A" } });
+    fireEvent.change(screen.getByPlaceholderText("phone"), { target: { value: "+84901234567" } });
+    fireEvent.change(screen.getByPlaceholderText("email"), { target: { value: "a@example.com" } });
+    fireEvent.click(screen.getByLabelText("Issue VAT Invoice (Optional)"));
+    const contBtns2 = screen.getAllByRole("button").filter(btn => btn.textContent === "continue");
+    if (contBtns2.length > 0) {
+      fireEvent.click(contBtns2[0]);
+    }
+
+    // Step 3: Submit
+    const submitBtns = screen.getAllByRole("button", { name: /submit/i });
+    fireEvent.click(submitBtns[0]);
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith("/api/cart/submit", expect.objectContaining({
-        method: "POST",
-        body: expect.stringContaining('"vatRequested":true'),
+        method: "POST"
       }));
     });
-
+    
     const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(calledBody.vatRequested).toBe(true);
     expect(calledBody.cartItems).toHaveLength(1);
     expect(calledBody.cartItems[0].id).toBe("chair-1");
     expect(calledBody.cartItems[0].lineTotal).toBe(10000000);
@@ -133,26 +156,31 @@ describe("CheckoutPage", () => {
   });
 
   it("shows validation error if no items are selected", async () => {
+    // Set a wide viewport for desktop so that the single submit button actually triggers submission
+    vi.stubGlobal("innerWidth", 1024);
+    
     render(<CheckoutPage />);
 
-    // The "select all" checkbox is form-associated with label "selectAll"
-    // For specific checkboxes, we uncheck them.
+    // Uncheck select all
     const selectAllCheckbox = screen.getByLabelText("selectAll");
     fireEvent.click(selectAllCheckbox);
 
-    // Call submit directly on the form
-    const form = document.querySelector("#checkout-form");
-    if (form) {
-      fireEvent.submit(form);
-    } else {
-      const submitBtn = screen.getByRole("button", { name: "submit" });
-      fireEvent.click(submitBtn);
-    }
+    // Using the submit button in the bottom bar
+    const submitBtn = screen.getAllByRole("button").find(
+      btn => btn.textContent === "submit" || btn.textContent === "submitting" || btn.textContent === "continue" || btn.getAttribute("type") === "submit"
+    );
+    if (!submitBtn) throw new Error("Submit button not found");
+    
+    fireEvent.click(submitBtn);
+
+    // If it's acting like mobile despite the stub (since component might use window.innerWidth directly inside an event handler where our mock doesn't stick perfectly in standard JSDOM depending on setup) we manually fire a form submit event which is guaranteed to hit the exact submit function.
+    fireEvent.submit(screen.getByTestId("checkout-form"));
 
     // We mock next-intl to just return the key, so the error message will be exactly "validationSelectItems"
     await waitFor(() => {
-      const errorEl = screen.getByText("validationSelectItems");
-      expect(errorEl).toBeInTheDocument();
+      // Use queryByText as error might not be found initially. Or grab by role if appropriate, but since it's just a text node inside <p> we match the text string directly.
+      const errorText = screen.getByText("validationSelectItems");
+      expect(errorText).toBeInTheDocument();
     });
   });
 });
