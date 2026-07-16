@@ -7,20 +7,13 @@ import Image from "next/image";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.css";
 
-const images = [
-  "/images/home/instagram/instagram-1.jpg",
-  "/images/home/instagram/instagram-2.jpg",
-  "/images/home/instagram/instagram-3.jpg",
-  "/images/home/instagram/instagram-4.jpg",
-  "/images/home/instagram/instagram-5.jpg",
-  "/images/home/instagram/instagram-6.jpg",
-  "/images/home/instagram/instagram-7.jpg",
-  "/images/home/instagram/instagram-8.jpg",
-  "/images/home/instagram/instagram-9.jpg",
-  "/images/home/instagram/instagram-10.jpg",
-];
+import type { InstagramPost } from "@/lib/instagram-post";
 
-export function InstagramGallery() {
+type InstagramGalleryProps = {
+  readonly posts: readonly InstagramPost[];
+};
+
+export function InstagramGallery({ posts }: InstagramGalleryProps) {
   const t = useTranslations("Instagram");
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -32,13 +25,25 @@ export function InstagramGallery() {
       if (e.key === "Escape") {
         setLightboxIndex(null);
       } else if (e.key === "ArrowLeft") {
-        setLightboxIndex((prev) => (prev !== null ? (prev - 1 + images.length) % images.length : null));
+        setLightboxIndex((prev) => (prev !== null ? (prev - 1 + posts.length) % posts.length : null));
       } else if (e.key === "ArrowRight") {
-        setLightboxIndex((prev) => (prev !== null ? (prev + 1) % images.length : null));
+        setLightboxIndex((prev) => (prev !== null ? (prev + 1) % posts.length : null));
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxIndex, posts.length]);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousRootOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousRootOverflow;
+    };
   }, [lightboxIndex]);
 
   const [sliderRef, slider] = useKeenSlider<HTMLDivElement>({
@@ -82,6 +87,7 @@ export function InstagramGallery() {
   const maxIdx = slider?.current?.track.details.maxIdx ?? 0;
   const atStart = currentSlide === 0;
   const atEnd = currentSlide >= maxIdx;
+  const lightboxPost = lightboxIndex === null ? null : posts[lightboxIndex] ?? null;
 
   return (
     <section className="flex h-auto flex-col items-center gap-12 bg-white py-12 sm:py-16 lg:py-20">
@@ -97,23 +103,39 @@ export function InstagramGallery() {
 
       <div className="site-shell relative w-full !px-24 lg:!px-0">
         <div ref={sliderRef} className="keen-slider overflow-hidden">
-          {images.map((src, i) => (
+          {posts.map((post, i) => (
             <div
-              key={src}
+              key={post.id}
               className="keen-slider__slide flex justify-center sm:px-1.5 lg:px-2"
             >
               <button
                 type="button"
                 onClick={() => setLightboxIndex(i)}
+                aria-label={`Open ${post.mediaType} post ${i + 1}`}
                 className="group relative aspect-[4/5] w-full overflow-hidden bg-[#F5F5F5] text-left cursor-zoom-in"
               >
-                <Image
-                  src={src}
-                  alt={`Instagram post ${i + 1}`}
-                  fill
-                  sizes="(min-width: 1024px) 18vw, (min-width: 640px) 29vw, 67vw"
-                  className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-                />
+                {post.mediaType === "image" ? (
+                  <Image
+                    src={post.imageUrl}
+                    alt={post.caption ?? `Instagram post ${i + 1}`}
+                    fill
+                    sizes="(min-width: 1024px) 18vw, (min-width: 640px) 29vw, 67vw"
+                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                  />
+                ) : (
+                  <video
+                    aria-hidden
+                    autoPlay
+                    className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                    data-testid="instagram-video-preview"
+                    loop
+                    muted
+                    playsInline
+                    poster={post.thumbnailUrl}
+                    preload="metadata"
+                    src={post.videoUrl}
+                  />
+                )}
                 <span className="absolute left-3 top-3 z-10 text-white drop-shadow-md">
                   <ShoppingBag className="h-4 w-4" />
                 </span>
@@ -156,7 +178,7 @@ export function InstagramGallery() {
       </div>
       </div>
 
-      {lightboxIndex !== null && (
+      {lightboxPost !== null && lightboxIndex !== null && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm transition-opacity duration-300"
           onClick={() => setLightboxIndex(null)}
@@ -170,41 +192,53 @@ export function InstagramGallery() {
             <X className="h-8 w-8" />
           </button>
 
-          {/* Navigation - Prev */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setLightboxIndex((prev) => (prev !== null ? (prev - 1 + images.length) % images.length : null));
+              setLightboxIndex((prev) => (prev !== null ? (prev - 1 + posts.length) % posts.length : null));
             }}
             className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition-colors p-2 md:left-8 z-50 cursor-pointer"
-            aria-label="Previous image"
+            aria-label="Previous post"
           >
             <ChevronLeft className="h-10 w-10" />
           </button>
 
-          {/* Image container */}
           <div
             className="relative h-[80vh] w-[90vw] max-w-[600px] aspect-[4/5] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <Image
-              src={images[lightboxIndex]}
-              alt={`Instagram post ${lightboxIndex + 1}`}
-              fill
-              className="object-contain"
-              sizes="90vw"
-              priority
-            />
+            {lightboxPost.mediaType === "image" ? (
+              <Image
+                src={lightboxPost.imageUrl}
+                alt={lightboxPost.caption ?? `Instagram post ${lightboxIndex + 1}`}
+                fill
+                className="object-contain"
+                sizes="90vw"
+                priority
+              />
+            ) : (
+              <video
+                autoPlay
+                className="h-full w-full object-contain"
+                controls
+                data-testid="instagram-video-lightbox"
+                loop
+                muted
+                playsInline
+                poster={lightboxPost.thumbnailUrl}
+                preload="metadata"
+                src={lightboxPost.videoUrl}
+              />
+            )}
           </div>
 
-          {/* Navigation - Next */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setLightboxIndex((prev) => (prev !== null ? (prev + 1) % images.length : null));
+              setLightboxIndex((prev) => (prev !== null ? (prev + 1) % posts.length : null));
             }}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition-colors p-2 md:right-8 z-50 cursor-pointer"
-            aria-label="Next image"
+            aria-label="Next post"
           >
             <ChevronRight className="h-10 w-10" />
           </button>
