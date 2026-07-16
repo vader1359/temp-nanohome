@@ -44,7 +44,9 @@ function variantText(value: unknown, fallback: string | null = ""): string {
 }
 
 function isUsableProductText(value: string): boolean {
-  return !value.toLowerCase().includes("this-response-was-truncated-by-the-cut-off-limit");
+  const normalized = value.toLowerCase();
+  return !normalized.includes("this-response-was-truncated-by-the-cut-off-limit")
+    && !normalized.includes("this response was truncated by the cut-off limit");
 }
 
 function getImageUrl(value: unknown): string {
