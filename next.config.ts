@@ -64,6 +64,21 @@ const nextConfig: NextConfig = {
         hostname: "v5.airtableusercontent.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "**.fbcdn.net",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "**.fbsbx.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "scontent.cdninstagram.com",
+        pathname: "/**",
+      },
     ],
   },
   // next-intl 3.x wires `next-intl/config` through `experimental.turbo`,
