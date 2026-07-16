@@ -402,7 +402,8 @@ export async function getVariantProductCount(options: Omit<VariantProductQueryOp
       throw error;
     }
 
-    return (data ?? []).filter(hasValidSalePrice).length;
+    const saleRows = (data ?? []) as unknown as Array<Pick<Variant, "price" | "compare_at_price">>;
+    return saleRows.filter(hasValidSalePrice).length;
   }
 
   const { count, error } = await query;
