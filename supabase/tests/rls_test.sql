@@ -1,7 +1,6 @@
 BEGIN;
 
 \ir fixtures.sql
-\ir ../seed.sql
 
 SET LOCAL ROLE postgres;
 

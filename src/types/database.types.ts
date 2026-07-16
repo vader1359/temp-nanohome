@@ -7,46 +7,33 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
-      amis_sync_log: {
-        Row: {
-          error: string | null
-          finished_at: string | null
-          id: string
-          items_failed: number | null
-          items_processed: number | null
-          started_at: string | null
-          status: string | null
-          watermark: string | null
-        }
-        Insert: {
-          error?: string | null
-          finished_at?: string | null
-          id?: string
-          items_failed?: number | null
-          items_processed?: number | null
-          started_at?: string | null
-          status?: string | null
-          watermark?: string | null
-        }
-        Update: {
-          error?: string | null
-          finished_at?: string | null
-          id?: string
-          items_failed?: number | null
-          items_processed?: number | null
-          started_at?: string | null
-          status?: string | null
-          watermark?: string | null
-        }
-        Relationships: []
-      }
       amis_inventory_baseline_lines: {
         Row: {
           baseline_id: string
@@ -185,6 +172,39 @@ export type Database = {
         }
         Relationships: []
       }
+      amis_sync_log: {
+        Row: {
+          error: string | null
+          finished_at: string | null
+          id: string
+          items_failed: number | null
+          items_processed: number | null
+          started_at: string | null
+          status: string | null
+          watermark: string | null
+        }
+        Insert: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items_failed?: number | null
+          items_processed?: number | null
+          started_at?: string | null
+          status?: string | null
+          watermark?: string | null
+        }
+        Update: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items_failed?: number | null
+          items_processed?: number | null
+          started_at?: string | null
+          status?: string | null
+          watermark?: string | null
+        }
+        Relationships: []
+      }
       brands: {
         Row: {
           airtable_id: string | null
@@ -317,6 +337,42 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_audit_log: {
+        Row: {
+          action: string
+          actor_role: string
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          id: string
+          record_id: string
+          source: string
+          table_name: string
+        }
+        Insert: {
+          action: string
+          actor_role: string
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          id?: string
+          record_id: string
+          source: string
+          table_name: string
+        }
+        Update: {
+          action?: string
+          actor_role?: string
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          id?: string
+          record_id?: string
+          source?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       catalogs: {
         Row: {
           brand_id: string | null
@@ -432,6 +488,125 @@ export type Database = {
           },
         ]
       }
+      content_carousel_items: {
+        Row: {
+          approved: boolean
+          body: string | null
+          body_ko: string | null
+          body_vi: string | null
+          carousel_id: string
+          created_at: string
+          ends_at: string | null
+          href: string | null
+          id: string
+          media_id: string
+          sort_order: number
+          starts_at: string | null
+          title: string | null
+          title_ko: string | null
+          title_vi: string | null
+          updated_at: string
+          validated: boolean
+        }
+        Insert: {
+          approved?: boolean
+          body?: string | null
+          body_ko?: string | null
+          body_vi?: string | null
+          carousel_id: string
+          created_at?: string
+          ends_at?: string | null
+          href?: string | null
+          id?: string
+          media_id: string
+          sort_order: number
+          starts_at?: string | null
+          title?: string | null
+          title_ko?: string | null
+          title_vi?: string | null
+          updated_at?: string
+          validated?: boolean
+        }
+        Update: {
+          approved?: boolean
+          body?: string | null
+          body_ko?: string | null
+          body_vi?: string | null
+          carousel_id?: string
+          created_at?: string
+          ends_at?: string | null
+          href?: string | null
+          id?: string
+          media_id?: string
+          sort_order?: number
+          starts_at?: string | null
+          title?: string | null
+          title_ko?: string | null
+          title_vi?: string | null
+          updated_at?: string
+          validated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_carousel_items_carousel_id_fkey"
+            columns: ["carousel_id"]
+            isOneToOne: false
+            referencedRelation: "content_carousels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_carousel_items_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "media_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_carousels: {
+        Row: {
+          approved: boolean
+          created_at: string
+          id: string
+          section_id: string
+          title: string | null
+          title_ko: string | null
+          title_vi: string | null
+          updated_at: string
+          validated: boolean
+        }
+        Insert: {
+          approved?: boolean
+          created_at?: string
+          id?: string
+          section_id: string
+          title?: string | null
+          title_ko?: string | null
+          title_vi?: string | null
+          updated_at?: string
+          validated?: boolean
+        }
+        Update: {
+          approved?: boolean
+          created_at?: string
+          id?: string
+          section_id?: string
+          title?: string | null
+          title_ko?: string | null
+          title_vi?: string | null
+          updated_at?: string
+          validated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_carousels_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: true
+            referencedRelation: "page_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       designers: {
         Row: {
           airtable_id: string | null
@@ -474,6 +649,214 @@ export type Database = {
           slug?: string | null
           updated_at?: string
           validated?: boolean
+        }
+        Relationships: []
+      }
+      hero_hotspots: {
+        Row: {
+          created_at: string
+          hero_slide_id: string
+          id: string
+          placement: string
+          sort_order: number
+          variant_id: string
+          x_percent: number
+          y_percent: number
+        }
+        Insert: {
+          created_at?: string
+          hero_slide_id: string
+          id?: string
+          placement?: string
+          sort_order?: number
+          variant_id: string
+          x_percent: number
+          y_percent: number
+        }
+        Update: {
+          created_at?: string
+          hero_slide_id?: string
+          id?: string
+          placement?: string
+          sort_order?: number
+          variant_id?: string
+          x_percent?: number
+          y_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hero_hotspots_hero_slide_id_fkey"
+            columns: ["hero_slide_id"]
+            isOneToOne: false
+            referencedRelation: "hero_slides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hero_hotspots_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hero_slides: {
+        Row: {
+          approved: boolean
+          body: string | null
+          body_ko: string | null
+          body_vi: string | null
+          created_at: string
+          cta_href: string | null
+          cta_label: string | null
+          cta_label_ko: string | null
+          cta_label_vi: string | null
+          desktop_media_id: string
+          ends_at: string | null
+          eyebrow: string | null
+          eyebrow_ko: string | null
+          eyebrow_vi: string | null
+          id: string
+          mobile_media_id: string | null
+          overlay_strength: number
+          section_id: string
+          sort_order: number
+          starts_at: string | null
+          title: string
+          title_ko: string | null
+          title_vi: string | null
+          updated_at: string
+          validated: boolean
+        }
+        Insert: {
+          approved?: boolean
+          body?: string | null
+          body_ko?: string | null
+          body_vi?: string | null
+          created_at?: string
+          cta_href?: string | null
+          cta_label?: string | null
+          cta_label_ko?: string | null
+          cta_label_vi?: string | null
+          desktop_media_id: string
+          ends_at?: string | null
+          eyebrow?: string | null
+          eyebrow_ko?: string | null
+          eyebrow_vi?: string | null
+          id?: string
+          mobile_media_id?: string | null
+          overlay_strength?: number
+          section_id: string
+          sort_order?: number
+          starts_at?: string | null
+          title: string
+          title_ko?: string | null
+          title_vi?: string | null
+          updated_at?: string
+          validated?: boolean
+        }
+        Update: {
+          approved?: boolean
+          body?: string | null
+          body_ko?: string | null
+          body_vi?: string | null
+          created_at?: string
+          cta_href?: string | null
+          cta_label?: string | null
+          cta_label_ko?: string | null
+          cta_label_vi?: string | null
+          desktop_media_id?: string
+          ends_at?: string | null
+          eyebrow?: string | null
+          eyebrow_ko?: string | null
+          eyebrow_vi?: string | null
+          id?: string
+          mobile_media_id?: string | null
+          overlay_strength?: number
+          section_id?: string
+          sort_order?: number
+          starts_at?: string | null
+          title?: string
+          title_ko?: string | null
+          title_vi?: string | null
+          updated_at?: string
+          validated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hero_slides_desktop_media_id_fkey"
+            columns: ["desktop_media_id"]
+            isOneToOne: false
+            referencedRelation: "media_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hero_slides_mobile_media_id_fkey"
+            columns: ["mobile_media_id"]
+            isOneToOne: false
+            referencedRelation: "media_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hero_slides_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "page_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      media_assets: {
+        Row: {
+          alt_text: string
+          alt_text_ko: string | null
+          alt_text_vi: string | null
+          approved: boolean
+          asset_type: string
+          created_at: string
+          delivery_url: string
+          focal_x: number
+          focal_y: number
+          height: number
+          id: string
+          public_id: string
+          updated_at: string
+          validated: boolean
+          width: number
+        }
+        Insert: {
+          alt_text: string
+          alt_text_ko?: string | null
+          alt_text_vi?: string | null
+          approved?: boolean
+          asset_type: string
+          created_at?: string
+          delivery_url: string
+          focal_x?: number
+          focal_y?: number
+          height: number
+          id?: string
+          public_id: string
+          updated_at?: string
+          validated?: boolean
+          width: number
+        }
+        Update: {
+          alt_text?: string
+          alt_text_ko?: string | null
+          alt_text_vi?: string | null
+          approved?: boolean
+          asset_type?: string
+          created_at?: string
+          delivery_url?: string
+          focal_x?: number
+          focal_y?: number
+          height?: number
+          id?: string
+          public_id?: string
+          updated_at?: string
+          validated?: boolean
+          width?: number
         }
         Relationships: []
       }
@@ -740,6 +1123,145 @@ export type Database = {
         }
         Relationships: []
       }
+      page_sections: {
+        Row: {
+          approved: boolean
+          created_at: string
+          enabled: boolean
+          ends_at: string | null
+          id: string
+          page_id: string
+          section_type: string
+          sort_order: number
+          starts_at: string | null
+          updated_at: string
+          validated: boolean
+        }
+        Insert: {
+          approved?: boolean
+          created_at?: string
+          enabled?: boolean
+          ends_at?: string | null
+          id?: string
+          page_id: string
+          section_type: string
+          sort_order: number
+          starts_at?: string | null
+          updated_at?: string
+          validated?: boolean
+        }
+        Update: {
+          approved?: boolean
+          created_at?: string
+          enabled?: boolean
+          ends_at?: string | null
+          id?: string
+          page_id?: string
+          section_type?: string
+          sort_order?: number
+          starts_at?: string | null
+          updated_at?: string
+          validated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "page_sections_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "site_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_curation_items: {
+        Row: {
+          created_at: string
+          curation_id: string
+          id: string
+          sort_order: number
+          variant_id: string
+        }
+        Insert: {
+          created_at?: string
+          curation_id: string
+          id?: string
+          sort_order: number
+          variant_id: string
+        }
+        Update: {
+          created_at?: string
+          curation_id?: string
+          id?: string
+          sort_order?: number
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_curation_items_curation_id_fkey"
+            columns: ["curation_id"]
+            isOneToOne: false
+            referencedRelation: "product_curations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_curation_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_curations: {
+        Row: {
+          approved: boolean
+          created_at: string
+          hide_out_of_stock: boolean
+          id: string
+          section_id: string
+          selection_mode: string
+          title: string
+          title_ko: string | null
+          title_vi: string | null
+          updated_at: string
+          validated: boolean
+        }
+        Insert: {
+          approved?: boolean
+          created_at?: string
+          hide_out_of_stock?: boolean
+          id?: string
+          section_id: string
+          selection_mode?: string
+          title: string
+          title_ko?: string | null
+          title_vi?: string | null
+          updated_at?: string
+          validated?: boolean
+        }
+        Update: {
+          approved?: boolean
+          created_at?: string
+          hide_out_of_stock?: boolean
+          id?: string
+          section_id?: string
+          selection_mode?: string
+          title?: string
+          title_ko?: string | null
+          title_vi?: string | null
+          updated_at?: string
+          validated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_curations_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: true
+            referencedRelation: "page_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_designers: {
         Row: {
           designer_id: string
@@ -906,6 +1428,57 @@ export type Database = {
           phone?: string | null
           preferred_locale?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      revalidation_webhook_events: {
+        Row: {
+          event_id: string
+          received_at: string
+        }
+        Insert: {
+          event_id: string
+          received_at?: string
+        }
+        Update: {
+          event_id?: string
+          received_at?: string
+        }
+        Relationships: []
+      }
+      site_pages: {
+        Row: {
+          approved: boolean
+          created_at: string
+          id: string
+          slug: string
+          title: string | null
+          title_ko: string | null
+          title_vi: string | null
+          updated_at: string
+          validated: boolean
+        }
+        Insert: {
+          approved?: boolean
+          created_at?: string
+          id?: string
+          slug: string
+          title?: string | null
+          title_ko?: string | null
+          title_vi?: string | null
+          updated_at?: string
+          validated?: boolean
+        }
+        Update: {
+          approved?: boolean
+          created_at?: string
+          id?: string
+          slug?: string
+          title?: string | null
+          title_ko?: string | null
+          title_vi?: string | null
+          updated_at?: string
+          validated?: boolean
         }
         Relationships: []
       }
@@ -1334,30 +1907,14 @@ export type Database = {
         Args: {
           p_baseline_lines: Json
           p_completed_at: string
-          p_expected_baseline_id: string | null
-          p_expected_watermark: string | null
+          p_expected_baseline_id?: string
+          p_expected_watermark?: string
           p_mode: string
           p_order_lines: Json
           p_orders: Json
-          p_watermark: string | null
+          p_watermark?: string
         }
         Returns: Json
-      }
-      capture_order_from_cart: {
-        Args: {
-          p_address: string
-          p_city?: string | null
-          p_district?: string | null
-          p_email: string
-          p_full_name: string
-          p_note?: string | null
-          p_phone: string
-          p_ward?: string | null
-        }
-        Returns: {
-          order_id: string
-          order_number: string
-        }[]
       }
       apply_korean_backfill_chunk: {
         Args: { p_run_id: string; p_updates: Json }
@@ -1367,6 +1924,22 @@ export type Database = {
           target_column: string
           target_id: string
           target_table: string
+        }[]
+      }
+      capture_order_from_cart: {
+        Args: {
+          p_address: string
+          p_city?: string
+          p_district?: string
+          p_email: string
+          p_full_name: string
+          p_note?: string
+          p_phone: string
+          p_ward?: string
+        }
+        Returns: {
+          order_id: string
+          order_number: string
         }[]
       }
       finish_korean_backfill_run: {
@@ -2118,6 +2691,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
