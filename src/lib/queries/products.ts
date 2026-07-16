@@ -344,7 +344,7 @@ export async function getVariantProductCount(options: Omit<VariantProductQueryOp
 
   let query = supabase
     .from("variants")
-    .select(options.status === "sale" ? "price,compare_at_price" : "id", options.status === "sale" ? undefined : { count: "exact", head: true })
+    .select(options.status === "sale" ? "price, compare_at_price" : "id", options.status === "sale" ? undefined : { count: "exact", head: true })
     .eq("validated", true)
     .neq("filter_brand", "moooi");
 
