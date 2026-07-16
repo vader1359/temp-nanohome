@@ -144,7 +144,7 @@ async function postToFillout(data: {
   const sourceParamId = process.env.FILLOUT_CART_PARAM_SOURCE_ID ?? process.env.FILLOUT_PARAM_SOURCE_ID ?? "source";
   const pageUrlParamId = process.env.FILLOUT_CART_PARAM_PAGE_URL_ID ?? process.env.FILLOUT_PARAM_PAGE_URL_ID ?? "page_url";
 
-  const vatRequestedId = process.env.FILLOUT_CART_QUESTION_VAT_REQUESTED_ID;
+  const vatRequestedId = process.env.FILLOUT_CART_QUESTION_VAT_REQUESTED_ID ?? "vfJ6";
   const zaloPayRequestedId = process.env.FILLOUT_CART_QUESTION_ZALOPAY_REQUESTED_ID;
   const vnPayRequestedId = process.env.FILLOUT_CART_QUESTION_VNPAY_REQUESTED_ID;
   const vatCompanyNameId = process.env.FILLOUT_CART_QUESTION_VAT_COMPANY_NAME_ID ?? "joRB";
