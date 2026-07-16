@@ -120,6 +120,7 @@ export function InstagramGallery({ posts }: InstagramGalleryProps) {
                     alt={post.caption ?? `Instagram post ${i + 1}`}
                     fill
                     sizes="(min-width: 1024px) 18vw, (min-width: 640px) 29vw, 67vw"
+                    unoptimized
                     className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                   />
                 ) : (
