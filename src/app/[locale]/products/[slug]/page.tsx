@@ -43,6 +43,10 @@ function variantText(value: unknown, fallback: string | null = ""): string {
   return typeof value === "string" && value.length > 0 ? value : fallback ?? "";
 }
 
+function isUsableProductText(value: string): boolean {
+  return !value.includes("this-response-was-truncated-by-the-cut-off-limit");
+}
+
 function getImageUrl(value: unknown): string {
   const text = variantText(value).trim();
   if (text.length === 0) {
@@ -181,7 +185,8 @@ function toRelatedProduct(variant: RelatedVariant | VariantProductListItem, loca
 function buildHeroProduct(variant: Variant, locale: Locale) {
   const gallery = getVariantImages(variant);
   const title = localizedVariantText(variant, locale, "Sản phẩm");
-  const breadcrumbTitle = localizedText({ ko: variant.short_name_ko, vi: variant.short_name_vi, en: variant.short_name }, locale, title);
+  const localizedBreadcrumbTitle = localizedText({ ko: variant.short_name_ko, vi: variant.short_name_vi, en: variant.short_name }, locale, title);
+  const breadcrumbTitle = isUsableProductText(localizedBreadcrumbTitle) ? localizedBreadcrumbTitle : title;
   const discounted = hasValidDiscount(variant);
 
   return {
