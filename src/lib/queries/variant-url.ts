@@ -6,7 +6,7 @@ function variantText(value: unknown, fallback: string | null = ""): string {
 }
 
 function isUsableSlug(value: string): boolean {
-  return value.length > 0 && !value.includes("this-response-was-truncated-by-the-cut-off-limit");
+  return value.length > 0 && !value.toLowerCase().includes("this-response-was-truncated-by-the-cut-off-limit");
 }
 
 export function variantDetailHref(variant: Pick<Variant, "id" | "slug" | "slug_vi" | "slug_ko">, locale: Locale): string {
