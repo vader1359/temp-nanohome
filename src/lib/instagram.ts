@@ -14,7 +14,7 @@ export type InstagramFeedConfig = {
 
 const instagramFeedConfig = createInstagramFeedConfig(env);
 
-const MEDIA_FIELDS = ["id", "caption", "media_type", "media_url", "thumbnail_url", "permalink"] as const;
+const MEDIA_FIELDS = ["id", "caption", "media_type", "media_url", "thumbnail_url", "permalink", "children{ id, media_type, media_url, thumbnail_url, permalink }"] as const;
 const META_GRAPH_API_ORIGIN = "https://graph.facebook.com";
 const META_GRAPH_API_VERSION = "v25.0";
 const FALLBACK_POSTS: readonly InstagramPost[] = Array.from({ length: 10 }, (_, index) => {
@@ -36,6 +36,13 @@ const metaMediaSchema = z.object({
   media_url: z.string().url().optional(),
   thumbnail_url: z.string().url().optional(),
   permalink: z.string().url(),
+  children: z.array(z.object({
+    id: z.string().min(1),
+    media_type: z.enum(["IMAGE", "VIDEO"]).or(z.string()),
+    media_url: z.string().url().optional(),
+    thumbnail_url: z.string().url().optional(),
+    permalink: z.string().url().optional(),
+  })).optional(),
 });
 
 const metaMediaResponseSchema = z.object({
@@ -85,30 +92,39 @@ export async function getInstagramPosts(
 }
 
 function normalizeMetaMedia(media: MetaMedia): readonly InstagramPost[] {
+  if (media.media_type === "CAROUSEL_ALBUM" && media.children !== undefined && media.children.length > 0) {
+    return media.children.flatMap((child, index) => normalizeMediaItem({
+      ...child,
+      permalink: child.permalink ?? media.permalink,
+      caption: index === 0 ? media.caption : undefined,
+    }));
+  }
+
+  return normalizeMediaItem(media.media_type === "CAROUSEL_ALBUM" ? { ...media, media_type: "IMAGE" } : media);
+}
+
+function normalizeMediaItem(media: {
+  id: string;
+  media_type: string;
+  media_url?: string;
+  thumbnail_url?: string;
+  permalink: string;
+  caption?: string;
+}): readonly InstagramPost[] {
   switch (media.media_type) {
     case "IMAGE":
-    case "CAROUSEL_ALBUM":
-      return media.media_url === undefined
-        ? []
-        : [{
-            id: media.id,
-            mediaType: "image",
-            imageUrl: media.media_url,
-            permalink: media.permalink,
-            caption: media.caption,
-          }];
+      return (media.media_url ?? media.thumbnail_url) === undefined ? [] : [{
+        id: media.id, mediaType: "image", imageUrl: media.media_url ?? media.thumbnail_url!,
+        permalink: media.permalink, caption: media.caption,
+      }];
     case "VIDEO":
-      return media.media_url === undefined || media.thumbnail_url === undefined
-        ? []
-        : [{
-            id: media.id,
-            mediaType: "video",
-            videoUrl: media.media_url,
-            thumbnailUrl: media.thumbnail_url,
-            permalink: media.permalink,
-            caption: media.caption,
-          }];
-    default:
-      return [];
+      if (media.media_url !== undefined && media.thumbnail_url !== undefined) return [{
+        id: media.id, mediaType: "video", videoUrl: media.media_url, thumbnailUrl: media.thumbnail_url,
+        permalink: media.permalink, caption: media.caption,
+      }];
+      return media.thumbnail_url === undefined ? [] : [{
+        id: media.id, mediaType: "image", imageUrl: media.thumbnail_url, permalink: media.permalink, caption: media.caption,
+      }];
+    default: return [];
   }
 }
