@@ -8,6 +8,7 @@ import { Newsletter } from "@/components/sections/newsletter";
 import { ProductsGrid } from "@/components/sections/products-grid";
 import { Rooms } from "@/components/sections/rooms";
 import { variantToProductGridItem } from "@/lib/products/mapper";
+import { getInstagramPosts } from "@/lib/instagram";
 import { getBrands } from "@/lib/queries/brands";
 import { getVariantProducts, getVariantProductsBySkus } from "@/lib/queries/products";
 
@@ -21,7 +22,7 @@ export default async function Page({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [trendingRaw, bestSellerRaw, newArrivalRaw, chairVariants, lampVariants, brands, featuredRaw] = await Promise.all([
+  const [trendingRaw, bestSellerRaw, newArrivalRaw, chairVariants, lampVariants, brands, featuredRaw, instagramPosts] = await Promise.all([
     getVariantProducts({
       pageSize: 36,
       sort: "priority",
@@ -38,6 +39,7 @@ export default async function Page({ params }: PageProps) {
     getVariantProducts({ pageSize: 12, sort: "priority", subCategory: ["table-lamps", "floor-lamps", "pendants", "wall-lamps", "lighting"] }),
     getBrands(),
     getVariantProductsBySkus(["USMUS00087", "ACCFH00004"]),
+    getInstagramPosts(),
   ]);
 
   let finalNewArrivalRaw = newArrivalRaw;
@@ -122,7 +124,7 @@ export default async function Page({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-white">
       <Hero products={heroProducts} />
-      <DeferredInstagramGallery />
+      <DeferredInstagramGallery posts={instagramPosts} />
       <ProductsGrid
         trendingProducts={trendingProducts}
         bestSellerProducts={bestSellerProducts}

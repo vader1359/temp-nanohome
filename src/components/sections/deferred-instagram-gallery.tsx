@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 
+import type { InstagramPost } from "@/lib/instagram-post";
+
 import { InstagramGalleryPlaceholder } from "./instagram-placeholder";
 
 const InstagramGallery = dynamic(
@@ -10,7 +12,11 @@ const InstagramGallery = dynamic(
   { loading: InstagramGalleryPlaceholder, ssr: false },
 );
 
-export function DeferredInstagramGallery() {
+type DeferredInstagramGalleryProps = {
+  readonly posts: readonly InstagramPost[];
+};
+
+export function DeferredInstagramGallery({ posts }: DeferredInstagramGalleryProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [hasEnteredViewport, setHasEnteredViewport] = useState(false);
 
@@ -34,5 +40,7 @@ export function DeferredInstagramGallery() {
     return () => observer.disconnect();
   }, [hasEnteredViewport]);
 
-  return hasEnteredViewport ? <InstagramGallery /> : <div ref={sentinelRef} data-instagram-sentinel><InstagramGalleryPlaceholder /></div>;
+  return hasEnteredViewport
+    ? <InstagramGallery posts={posts} />
+    : <div ref={sentinelRef} data-instagram-sentinel><InstagramGalleryPlaceholder /></div>;
 }
