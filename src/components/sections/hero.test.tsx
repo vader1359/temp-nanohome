@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { HomepageCmsSection } from "@/lib/queries/homepage-cms";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -48,5 +49,46 @@ describe("Hero", () => {
     expect(updatedImage).toHaveAttribute("data-src", "/images/home/hero/hero-2.webp");
     expect(updatedImage).toHaveAttribute("data-preload", "false");
     expect(updatedImage).toHaveAttribute("data-fetch-priority", "auto");
+  });
+
+  it("renders valid CMS media and resolved copy without static hotspot cards", () => {
+    // Given: a typed CMS hero section with desktop and mobile media.
+    const cmsHero: Extract<HomepageCmsSection, { readonly type: "hero" }> = {
+      type: "hero",
+      slides: [{
+        id: "cms-slide-1",
+        title: "CMS title",
+        body: "CMS body",
+        eyebrow: "CMS brand",
+       cta_href: "/products/cms",
+         ctaLabel: "Shop CMS",
+         overlay_strength: 50,
+        media: { id: "desktop", delivery_url: "https://example.com/desktop.webp", width: 1200, height: 800, focal_x: 50, focal_y: 50, alt: "CMS desktop" },
+        mobileMedia: { id: "mobile", delivery_url: "https://example.com/mobile.webp", width: 600, height: 800, focal_x: 50, focal_y: 50, alt: "CMS mobile" },
+        hotspots: [],
+      }],
+    };
+
+    // When: the hero receives the CMS section.
+    render(<Hero cmsHero={cmsHero} />);
+
+    // Then: CMS content is shown and static hotspot markers are omitted.
+    expect(screen.getByText("CMS title")).toBeInTheDocument();
+    expect(screen.getByText("CMS body")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Shop CMS" })).toHaveAttribute("href", "/products/cms");
+    expect(screen.getByLabelText("CMS desktop")).toBeInTheDocument();
+    expect(document.querySelector("[data-src='https://example.com/mobile.webp']")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Xem sản phẩm nổi bật" })).not.toBeInTheDocument();
+  });
+
+  it("falls back to static slides for an empty CMS hero", () => {
+    // Given: an empty typed CMS hero section.
+    const cmsHero: Extract<HomepageCmsSection, { readonly type: "hero" }> = { type: "hero", slides: [] };
+
+    // When: the hero receives the empty section.
+    render(<Hero cmsHero={cmsHero} />);
+
+    // Then: the static first slide remains visible and preloaded.
+    expect(document.querySelector("[data-src='/images/home/hero/hero-1.webp']")).toHaveAttribute("data-preload", "true");
   });
 });

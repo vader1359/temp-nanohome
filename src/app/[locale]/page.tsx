@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { About } from "@/components/sections/about";
 import { Brands } from "@/components/sections/brands";
 import { DeferredInstagramGallery } from "@/components/sections/deferred-instagram-gallery";
+import { CmsContentCarousel, CmsProductCuration } from "@/components/sections/cms-sections";
 import { FeaturedProducts } from "@/components/sections/featured-products";
 import { Hero } from "@/components/sections/hero";
 import { Newsletter } from "@/components/sections/newsletter";
@@ -9,6 +10,7 @@ import { ProductsGrid } from "@/components/sections/products-grid";
 import { Rooms } from "@/components/sections/rooms";
 import { variantToProductGridItem } from "@/lib/products/mapper";
 import { getBrands } from "@/lib/queries/brands";
+import { getHomepageCms, type HomepageCmsLocale, type HomepageCmsSection } from "@/lib/queries/homepage-cms";
 import { getVariantProducts, getVariantProductsBySkus } from "@/lib/queries/products";
 
 interface PageProps {
@@ -17,11 +19,16 @@ interface PageProps {
 
 export const revalidate = 3600;
 
+function isHomepageCmsLocale(locale: string): locale is HomepageCmsLocale {
+  return locale === "en" || locale === "ko" || locale === "vi";
+}
+
 export default async function Page({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const cmsLocale: HomepageCmsLocale = isHomepageCmsLocale(locale) ? locale : "en";
 
-  const [trendingRaw, bestSellerRaw, newArrivalRaw, chairVariants, lampVariants, brands, featuredRaw] = await Promise.all([
+  const [trendingRaw, bestSellerRaw, newArrivalRaw, chairVariants, lampVariants, brands, featuredRaw, homepageCms] = await Promise.all([
     getVariantProducts({
       pageSize: 36,
       sort: "priority",
@@ -38,6 +45,7 @@ export default async function Page({ params }: PageProps) {
     getVariantProducts({ pageSize: 12, sort: "priority", subCategory: ["table-lamps", "floor-lamps", "pendants", "wall-lamps", "lighting"] }),
     getBrands(),
     getVariantProductsBySkus(["USMUS00087", "ACCFH00004"]),
+    getHomepageCms(cmsLocale),
   ]);
 
   let finalNewArrivalRaw = newArrivalRaw;
@@ -99,6 +107,7 @@ export default async function Page({ params }: PageProps) {
 
   const usmVariant = featuredRaw.find((v) => v.sku === "USMUS00087");
   const ikebanaVariant = featuredRaw.find((v) => v.sku === "ACCFH00004");
+  const cmsHero = homepageCms.sections.find((section): section is Extract<HomepageCmsSection, { readonly type: "hero" }> => section.type === "hero");
 
   let featuredProducts = [
     usmVariant ? toGridItem(usmVariant) : undefined,
@@ -121,7 +130,17 @@ export default async function Page({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-white">
-      <Hero products={heroProducts} />
+      <Hero products={heroProducts} cmsHero={cmsHero} />
+      {homepageCms.sections.map((section) => {
+        switch (section.type) {
+          case "hero":
+            return null;
+          case "product_curation":
+            return <CmsProductCuration key={section.title} section={section} />;
+          case "content_carousel":
+            return <CmsContentCarousel key={section.title} section={section} />;
+        }
+      })}
       <DeferredInstagramGallery />
       <ProductsGrid
         trendingProducts={trendingProducts}
