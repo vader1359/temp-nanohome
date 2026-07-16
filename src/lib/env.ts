@@ -27,6 +27,10 @@ const envSchema = z.object({
   AMIS_API_BASE_URL: optionalEnvUrl,
   AMIS_CLIENT_ID: optionalEnvString,
   AMIS_CLIENT_SECRET: optionalEnvString,
+
+  // --- Instagram Graph API (server-only, optional) ---
+  INSTAGRAM_ACCESS_TOKEN: optionalEnvString,
+  INSTAGRAM_BUSINESS_ACCOUNT_ID: optionalEnvString,
 });
 
 /**
