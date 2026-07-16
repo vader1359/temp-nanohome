@@ -46,4 +46,15 @@ describe("variantDetailHref", () => {
     // Then: the stable variant id is used.
     expect(href).toBe("/products/variant-1");
   });
+
+  it("ignores a truncated localized slug and uses the canonical slug", () => {
+    const variant = {
+      id: "variant-1",
+      slug: "kaiser-idell-6631-t-luxus",
+      slug_vi: "this-response-was-truncated-by-the-cut-off-limit-max-tokens-open-the-sidebar",
+      slug_ko: null,
+    };
+
+    expect(variantDetailHref(variant, "vi")).toBe("/products/kaiser-idell-6631-t-luxus");
+  });
 });

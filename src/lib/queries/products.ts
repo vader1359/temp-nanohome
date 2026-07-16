@@ -344,7 +344,7 @@ export async function getVariantProductCount(options: Omit<VariantProductQueryOp
 
   let query = supabase
     .from("variants")
-    .select("id", { count: "exact", head: true })
+    .select(options.status === "sale" ? "price,compare_at_price" : "id", options.status === "sale" ? undefined : { count: "exact", head: true })
     .eq("validated", true)
     .neq("filter_brand", "moooi");
 
@@ -397,7 +397,7 @@ export async function getVariantProductCount(options: Omit<VariantProductQueryOp
   if (options.status === "sale") {
     // Keep the count consistent with the listing: only sale candidates with a
     // genuine lower selling price are displayable as SALE cards.
-    const { data, error } = await query.select("price,compare_at_price").range(0, 999);
+    const { data, error } = await query.range(0, 999);
     if (error !== null) {
       throw error;
     }

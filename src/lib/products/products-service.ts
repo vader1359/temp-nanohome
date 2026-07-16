@@ -165,7 +165,9 @@ export async function getProductPage(locale: string, filters: CanonicalFilters):
   }
 
   const supportedLocale = locale;
-  const t = await getTranslations("Products");
+  // API requests carry the locale as a query parameter rather than through
+  // the [locale] route segment, so provide it explicitly to next-intl.
+  const t = await getTranslations({ locale: supportedLocale, namespace: "Products" });
 
   const normalizedRoomsList = normalizeRooms(filters.room);
   const normalizedQuery = filters.q === undefined || filters.q === "" ? undefined : normalizeSearchQuery(filters.q);
