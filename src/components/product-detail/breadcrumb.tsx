@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import Link from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 
 export function Breadcrumb({
   items,

@@ -60,6 +60,9 @@ export function CartSidebar({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [vatRequested, setVatRequested] = useState(false);
+  const [vatCompanyName, setVatCompanyName] = useState("");
+  const [vatTaxCode, setVatTaxCode] = useState("");
+  const [vatInvoiceAddress, setVatInvoiceAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
@@ -72,6 +75,7 @@ export function CartSidebar({
       setPhone("");
       setEmail("");
       setVatRequested(false);
+      setVatCompanyName(""); setVatTaxCode(""); setVatInvoiceAddress("");
       setSubmitSuccess(false);
     }
   }
@@ -89,6 +93,7 @@ export function CartSidebar({
       setPhone("");
       setEmail("");
       setVatRequested(false);
+      setVatCompanyName(""); setVatTaxCode(""); setVatInvoiceAddress("");
       setSubmitSuccess(false);
       setPrevIsOpen(false);
     }, 300);
@@ -114,6 +119,7 @@ export function CartSidebar({
           pageUrl: typeof window !== "undefined" ? window.location.href : "",
           total: subtotal,
           vatRequested,
+          vatCompanyName, vatTaxCode, vatInvoiceAddress,
           zaloPayRequested: false,
           vnPayRequested: false,
           cartItems: items.map(i => ({
@@ -348,6 +354,13 @@ export function CartSidebar({
                               Yêu cầu xuất hoá đơn VAT (Tuỳ chọn)
                             </Label>
                           </div>
+                          {vatRequested && (
+                            <div className="space-y-3 pt-2">
+                              <Input value={vatCompanyName} onChange={(e) => setVatCompanyName(e.target.value)} placeholder="Tên công ty xuất hóa đơn" className="h-11" />
+                              <Input value={vatTaxCode} onChange={(e) => setVatTaxCode(e.target.value)} placeholder="Mã số thuế" className="h-11" />
+                              <Input value={vatInvoiceAddress} onChange={(e) => setVatInvoiceAddress(e.target.value)} placeholder="Địa chỉ xuất hóa đơn" className="h-11" />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

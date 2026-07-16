@@ -16,6 +16,9 @@ type SubmissionRequest = {
   vatRequested?: unknown;
   zaloPayRequested?: unknown;
   vnPayRequested?: unknown;
+  vatCompanyName?: unknown;
+  vatTaxCode?: unknown;
+  vatInvoiceAddress?: unknown;
 };
 
 type FilloutQuestion = {
@@ -122,6 +125,9 @@ async function postToFillout(data: {
   vatRequested: boolean;
   zaloPayRequested: boolean;
   vnPayRequested: boolean;
+  vatCompanyName: string;
+  vatTaxCode: string;
+  vatInvoiceAddress: string;
 }) {
   const apiKey = process.env.FILLOUT_API_KEY;
   const formId = getCartFormId();
@@ -141,6 +147,9 @@ async function postToFillout(data: {
   const vatRequestedId = process.env.FILLOUT_CART_QUESTION_VAT_REQUESTED_ID;
   const zaloPayRequestedId = process.env.FILLOUT_CART_QUESTION_ZALOPAY_REQUESTED_ID;
   const vnPayRequestedId = process.env.FILLOUT_CART_QUESTION_VNPAY_REQUESTED_ID;
+  const vatCompanyNameId = process.env.FILLOUT_CART_QUESTION_VAT_COMPANY_NAME_ID ?? "joRB";
+  const vatTaxCodeId = process.env.FILLOUT_CART_QUESTION_VAT_TAX_CODE_ID ?? "rsSg";
+  const vatInvoiceAddressId = process.env.FILLOUT_CART_QUESTION_VAT_INVOICE_ADDRESS_ID ?? "dLm4";
 
   const questions: FilloutQuestion[] = [
     { id: nameId, value: data.name },
@@ -156,6 +165,9 @@ async function postToFillout(data: {
   if (vatRequestedId) {
     questions.push({ id: vatRequestedId, value: data.vatRequested });
   }
+  questions.push({ id: vatCompanyNameId, value: data.vatCompanyName });
+  questions.push({ id: vatTaxCodeId, value: data.vatTaxCode });
+  questions.push({ id: vatInvoiceAddressId, value: data.vatInvoiceAddress });
 
   if (zaloPayRequestedId) {
     questions.push({ id: zaloPayRequestedId, value: data.zaloPayRequested });
@@ -256,6 +268,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const vatCompanyName = asTrimmedString(body.vatCompanyName) ?? "";
+  const vatTaxCode = asTrimmedString(body.vatTaxCode) ?? "";
+  const vatInvoiceAddress = asTrimmedString(body.vatInvoiceAddress) ?? "";
+
   return postToFillout({
     name,
     phone,
@@ -267,5 +283,8 @@ export async function POST(request: NextRequest) {
     vatRequested,
     zaloPayRequested,
     vnPayRequested,
+    vatCompanyName,
+    vatTaxCode,
+    vatInvoiceAddress,
   });
 }

@@ -21,6 +21,9 @@ export function CheckoutPage() {
   const { items, removeItem, updateQuantity } = useCart();
   const [form, setForm] = useState<CheckoutForm>(initialForm);
   const [vatRequested, setVatRequested] = useState(false);
+  const [vatCompanyName, setVatCompanyName] = useState("");
+  const [vatTaxCode, setVatTaxCode] = useState("");
+  const [vatInvoiceAddress, setVatInvoiceAddress] = useState("");
   const [status, setStatus] = useState<CheckoutStatus>("idle");
   const [error, setError] = useState("");
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -95,6 +98,7 @@ export function CheckoutPage() {
           source: "nanohome-checkout",
           total: submittedTotal,
           vatRequested,
+          vatCompanyName, vatTaxCode, vatInvoiceAddress,
           zaloPayRequested: false,
           vnPayRequested: false,
         }),
@@ -177,6 +181,13 @@ export function CheckoutPage() {
                     </div>
                     {t("vatInvoice")}
                   </label>
+                  {vatRequested && (
+                    <div className="space-y-3 pt-2">
+                      <input value={vatCompanyName} onChange={(e) => setVatCompanyName(e.target.value)} placeholder="Tên công ty xuất hóa đơn" className="w-full border-b border-[#E5E5E5] bg-transparent pb-2 pt-2 text-sm outline-none focus:border-[#1A1A1A]" />
+                      <input value={vatTaxCode} onChange={(e) => setVatTaxCode(e.target.value)} placeholder="Mã số thuế" className="w-full border-b border-[#E5E5E5] bg-transparent pb-2 pt-2 text-sm outline-none focus:border-[#1A1A1A]" />
+                      <input value={vatInvoiceAddress} onChange={(e) => setVatInvoiceAddress(e.target.value)} placeholder="Địa chỉ xuất hóa đơn" className="w-full border-b border-[#E5E5E5] bg-transparent pb-2 pt-2 text-sm outline-none focus:border-[#1A1A1A]" />
+                    </div>
+                  )}
                 </form>
               </div>
 
