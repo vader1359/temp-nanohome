@@ -36,13 +36,15 @@ const metaMediaSchema = z.object({
   media_url: z.string().url().optional(),
   thumbnail_url: z.string().url().optional(),
   permalink: z.string().url(),
-  children: z.array(z.object({
-    id: z.string().min(1),
-    media_type: z.enum(["IMAGE", "VIDEO"]).or(z.string()),
-    media_url: z.string().url().optional(),
-    thumbnail_url: z.string().url().optional(),
-    permalink: z.string().url().optional(),
-  })).optional(),
+  children: z.object({
+    data: z.array(z.object({
+      id: z.string().min(1),
+      media_type: z.enum(["IMAGE", "VIDEO"]).or(z.string()),
+      media_url: z.string().url().optional(),
+      thumbnail_url: z.string().url().optional(),
+      permalink: z.string().url().optional(),
+    })),
+  }).optional(),
 });
 
 const metaMediaResponseSchema = z.object({
@@ -92,8 +94,8 @@ export async function getInstagramPosts(
 }
 
 function normalizeMetaMedia(media: MetaMedia): readonly InstagramPost[] {
-  if (media.media_type === "CAROUSEL_ALBUM" && media.children !== undefined && media.children.length > 0) {
-    return media.children.flatMap((child, index) => normalizeMediaItem({
+  if (media.media_type === "CAROUSEL_ALBUM" && media.children?.data.length > 0) {
+    return media.children.data.flatMap((child, index) => normalizeMediaItem({
       ...child,
       permalink: child.permalink ?? media.permalink,
       caption: index === 0 ? media.caption : undefined,
