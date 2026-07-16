@@ -22,6 +22,8 @@ const envSchema = z.object({
   // --- SERVER-ONLY ---
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   CRON_SECRET: z.string().min(1),
+  REVALIDATE_SECRET: z.string().min(1),
+  PREVIEW_SECRET: z.string().min(1),
 
   // --- AMIS (server-only) ---
   AMIS_API_BASE_URL: optionalEnvUrl,

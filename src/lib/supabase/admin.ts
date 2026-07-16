@@ -2,7 +2,11 @@ import "server-only";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 import { env } from "@/lib/env";
-import { supabaseAmisSyncFetch, supabaseReadOnlyFetch } from "@/lib/remote-read-only";
+import {
+  supabaseAmisSyncFetch,
+  supabaseReadOnlyFetch,
+  supabaseRevalidationFetch,
+} from "@/lib/remote-read-only";
 import type { Database, TypedSupabaseClient } from "@/types/db";
 
 export function createAdminClient(): TypedSupabaseClient {
@@ -11,6 +15,10 @@ export function createAdminClient(): TypedSupabaseClient {
 
 export function createAmisSyncAdminClient(): TypedSupabaseClient {
   return createAdminClientWithFetch(supabaseAmisSyncFetch);
+}
+
+export function createRevalidationAdminClient(): TypedSupabaseClient {
+  return createAdminClientWithFetch(supabaseRevalidationFetch);
 }
 
 function createAdminClientWithFetch(customFetch: typeof fetch): TypedSupabaseClient {

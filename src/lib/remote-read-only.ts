@@ -55,6 +55,22 @@ const AMIS_SYNC_SUPABASE_WRITES = new Map<string, ReadonlySet<string>>([
   ["/rest/v1/variants", new Set(["PATCH"])],
 ]);
 
+const SUPABASE_REVALIDATION_WRITE_PATH = "/rest/v1/revalidation_webhook_events";
+
+export const supabaseRevalidationFetch: typeof fetch = async (input, init) => {
+  const request = new Request(input, init);
+  const method = request.method.toUpperCase();
+
+  if (
+    !READ_ONLY_HTTP_METHODS.has(method)
+    && (method !== "POST" || new URL(request.url).pathname !== SUPABASE_REVALIDATION_WRITE_PATH)
+  ) {
+    throw new RemoteWriteBlockedError("Supabase", method, request.url);
+  }
+
+  return fetch(input, init);
+};
+
 export const supabaseAmisSyncFetch: typeof fetch = async (input, init) => {
   const request = new Request(input, init);
   const method = request.method.toUpperCase();

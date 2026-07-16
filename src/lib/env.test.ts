@@ -12,6 +12,8 @@ const FULL_ENV = {
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
   SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
   CRON_SECRET: "cron-test",
+  PREVIEW_SECRET: "preview-test",
+  REVALIDATE_SECRET: "revalidate-test",
   AMIS_API_BASE_URL: "https://amis.example.com",
 };
 
