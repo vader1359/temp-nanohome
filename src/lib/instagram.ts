@@ -94,8 +94,9 @@ export async function getInstagramPosts(
 }
 
 function normalizeMetaMedia(media: MetaMedia): readonly InstagramPost[] {
-  if (media.media_type === "CAROUSEL_ALBUM" && media.children?.data.length > 0) {
-    return media.children.data.flatMap((child, index) => normalizeMediaItem({
+  const children = media.children?.data;
+  if (media.media_type === "CAROUSEL_ALBUM" && children !== undefined && children.length > 0) {
+    return children.flatMap((child, index) => normalizeMediaItem({
       ...child,
       permalink: child.permalink ?? media.permalink,
       caption: index === 0 ? media.caption : undefined,
