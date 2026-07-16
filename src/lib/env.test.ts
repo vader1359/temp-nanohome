@@ -58,6 +58,8 @@ describe("env parser", () => {
     expect(env.SUPABASE_SERVICE_ROLE_KEY).toBe("service-role-test");
     expect(env.AMIS_API_BASE_URL).toBe("https://amis.example.com");
     expect(env.AMIS_CLIENT_ID).toBeUndefined();
+    expect(env.INSTAGRAM_ACCESS_TOKEN).toBeUndefined();
+    expect(env.INSTAGRAM_BUSINESS_ACCOUNT_ID).toBeUndefined();
   });
 
   it("throws when SUPABASE_SERVICE_ROLE_KEY is missing", async () => {
