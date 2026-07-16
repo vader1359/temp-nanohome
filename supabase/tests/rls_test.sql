@@ -38,7 +38,28 @@ values
 insert into public.amis_sync_log (status, items_processed)
 values ('success', 1);
 
-SELECT plan(55);
+insert into public.designers (id, name, validated, approved)
+values ('00000000-0000-4000-8000-000000000014', 'RLS Designer', true, true)
+on conflict do nothing;
+insert into public.product_designers (product_id, designer_id)
+values (:'prod_id_1', '00000000-0000-4000-8000-000000000014') on conflict do nothing;
+insert into public.news_products (news_id, product_id)
+values (:'news_id_1', :'prod_id_1') on conflict do nothing;
+insert into public.news_variants (news_id, variant_id)
+values (:'news_id_1', :'variant_id_1') on conflict do nothing;
+
+SELECT plan(115);
+
+SELECT ok((select relrowsecurity from pg_class where oid = 'public.brands'::regclass), 'brands enable RLS');
+SELECT ok((select relrowsecurity from pg_class where oid = 'public.categories'::regclass), 'categories enable RLS');
+SELECT ok((select relrowsecurity from pg_class where oid = 'public.designers'::regclass), 'designers enable RLS');
+SELECT ok((select relrowsecurity from pg_class where oid = 'public.news'::regclass), 'news enable RLS');
+SELECT ok((select relrowsecurity from pg_class where oid = 'public.catalogs'::regclass), 'catalogs enable RLS');
+SELECT ok((select relrowsecurity from pg_class where oid = 'public.products'::regclass), 'products enable RLS');
+SELECT ok((select relrowsecurity from pg_class where oid = 'public.variants'::regclass), 'variants enable RLS');
+SELECT ok((select relrowsecurity from pg_class where oid = 'public.product_designers'::regclass), 'product designers enable RLS');
+SELECT ok((select relrowsecurity from pg_class where oid = 'public.news_products'::regclass), 'news products enable RLS');
+SELECT ok((select relrowsecurity from pg_class where oid = 'public.news_variants'::regclass), 'news variants enable RLS');
 
 SET LOCAL ROLE anon;
 SELECT set_config('request.jwt.claims', '{"role":"anon"}', true);
@@ -50,6 +71,26 @@ SELECT is((SELECT slug_ko FROM public.variants WHERE id = :'variant_id_1'), '테
 SELECT is((SELECT finish_ko FROM public.variants WHERE id = :'variant_id_1'), '무광 검정', 'seeded variant exposes Korean finish');
 SELECT is((SELECT title_ko FROM public.news WHERE id = :'news_id_1'), '테스트 뉴스 1', 'seeded news exposes Korean title');
 SELECT is((SELECT origin_ko FROM public.catalogs WHERE id = :'catalog_id_1'), '이탈리아', 'seeded catalog exposes Korean origin');
+SELECT is((SELECT count(*) FROM public.brands WHERE id = :'brand_id_1'), 1::bigint, 'anon reads validated brands');
+SELECT is((SELECT count(*) FROM public.categories WHERE id = :'cat_id_2'), 1::bigint, 'anon reads approved validated categories');
+SELECT is((SELECT count(*) FROM public.designers), 1::bigint, 'anon reads validated designers');
+SELECT is((SELECT count(*) FROM public.news WHERE id = :'news_id_1'), 1::bigint, 'anon reads validated news');
+SELECT is((SELECT count(*) FROM public.catalogs WHERE id = :'catalog_id_1'), 1::bigint, 'anon reads catalogs');
+SELECT is((SELECT count(*) FROM public.products WHERE id = :'prod_id_1'), 1::bigint, 'anon reads validated products');
+SELECT is((SELECT count(*) FROM public.variants WHERE id = :'variant_id_1'), 1::bigint, 'anon reads validated variants');
+SELECT is((SELECT count(*) FROM public.product_designers WHERE product_id = :'prod_id_1'), 1::bigint, 'anon reads product designers');
+SELECT is((SELECT count(*) FROM public.news_products WHERE news_id = :'news_id_1' and product_id = :'prod_id_1'), 1::bigint, 'anon reads news products');
+SELECT is((SELECT count(*) FROM public.news_variants WHERE news_id = :'news_id_1' and variant_id = :'variant_id_1'), 1::bigint, 'anon reads news variants');
+SELECT throws_ok($$ insert into public.brands default values $$, '42501', NULL, 'anon cannot insert brands');
+SELECT throws_ok($$ insert into public.categories default values $$, '42501', NULL, 'anon cannot insert categories');
+SELECT throws_ok($$ insert into public.designers default values $$, '42501', NULL, 'anon cannot insert designers');
+SELECT throws_ok($$ insert into public.news default values $$, '42501', NULL, 'anon cannot insert news');
+SELECT throws_ok($$ insert into public.catalogs default values $$, '42501', NULL, 'anon cannot insert catalogs');
+SELECT throws_ok($$ insert into public.products default values $$, '42501', NULL, 'anon cannot insert products');
+SELECT throws_ok($$ insert into public.variants default values $$, '42501', NULL, 'anon cannot insert variants');
+SELECT throws_ok($$ insert into public.product_designers default values $$, '42501', NULL, 'anon cannot insert product designers');
+SELECT throws_ok($$ insert into public.news_products default values $$, '42501', NULL, 'anon cannot insert news products');
+SELECT throws_ok($$ insert into public.news_variants default values $$, '42501', NULL, 'anon cannot insert news variants');
 SELECT is((SELECT count(*) FROM public.carts), 0::bigint, 'anon cannot read carts');
 SELECT throws_ok($$ insert into public.carts (guest_id) values ('forged-guest') $$, '42501', NULL, 'anon cannot insert carts');
 with updated as (update public.carts set guest_id = 'forged-guest' returning 1)
@@ -61,6 +102,26 @@ SELECT throws_ok($$ insert into public.cart_items (cart_id, variant_id, quantity
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims', json_build_object('sub', :'authenticated_user_id', 'role', 'authenticated')::text, true);
 SELECT set_config('request.jwt.claim.sub', :'authenticated_user_id', true);
+SELECT is((SELECT count(*) FROM public.brands WHERE id = :'brand_id_1'), 1::bigint, 'authenticated reads validated brands');
+SELECT is((SELECT count(*) FROM public.categories WHERE id = :'cat_id_2'), 1::bigint, 'authenticated reads approved validated categories');
+SELECT is((SELECT count(*) FROM public.designers), 1::bigint, 'authenticated reads validated designers');
+SELECT is((SELECT count(*) FROM public.news WHERE id = :'news_id_1'), 1::bigint, 'authenticated reads validated news');
+SELECT is((SELECT count(*) FROM public.catalogs WHERE id = :'catalog_id_1'), 1::bigint, 'authenticated reads catalogs');
+SELECT is((SELECT count(*) FROM public.products WHERE id = :'prod_id_1'), 1::bigint, 'authenticated reads validated products');
+SELECT is((SELECT count(*) FROM public.variants WHERE id = :'variant_id_1'), 1::bigint, 'authenticated reads validated variants');
+SELECT is((SELECT count(*) FROM public.product_designers WHERE product_id = :'prod_id_1'), 1::bigint, 'authenticated reads product designers');
+SELECT is((SELECT count(*) FROM public.news_products WHERE news_id = :'news_id_1' and product_id = :'prod_id_1'), 1::bigint, 'authenticated reads news products');
+SELECT is((SELECT count(*) FROM public.news_variants WHERE news_id = :'news_id_1' and variant_id = :'variant_id_1'), 1::bigint, 'authenticated reads news variants');
+SELECT throws_ok($$ insert into public.brands default values $$, '42501', NULL, 'authenticated cannot insert brands');
+SELECT throws_ok($$ insert into public.categories default values $$, '42501', NULL, 'authenticated cannot insert categories');
+SELECT throws_ok($$ insert into public.designers default values $$, '42501', NULL, 'authenticated cannot insert designers');
+SELECT throws_ok($$ insert into public.news default values $$, '42501', NULL, 'authenticated cannot insert news');
+SELECT throws_ok($$ insert into public.catalogs default values $$, '42501', NULL, 'authenticated cannot insert catalogs');
+SELECT throws_ok($$ insert into public.products default values $$, '42501', NULL, 'authenticated cannot insert products');
+SELECT throws_ok($$ insert into public.variants default values $$, '42501', NULL, 'authenticated cannot insert variants');
+SELECT throws_ok($$ insert into public.product_designers default values $$, '42501', NULL, 'authenticated cannot insert product designers');
+SELECT throws_ok($$ insert into public.news_products default values $$, '42501', NULL, 'authenticated cannot insert news products');
+SELECT throws_ok($$ insert into public.news_variants default values $$, '42501', NULL, 'authenticated cannot insert news variants');
 SELECT is((SELECT count(*) FROM public.carts where id = :'cart_id_1'), 1::bigint, 'user reads own cart');
 SELECT is((SELECT count(*) FROM public.carts where id = :'cart_id_2'), 0::bigint, 'user cannot read another cart');
 SELECT lives_ok($$ update public.carts set guest_id = null where id = '00000000-0000-4000-8000-000000000071' $$, 'user updates own cart');
@@ -140,6 +201,17 @@ SELECT is((SELECT subtotal FROM public.orders WHERE order_number LIKE 'ORD-%'), 
 SELECT is((SELECT count(*) FROM public.order_items WHERE order_id = (SELECT id FROM public.orders WHERE order_number LIKE 'ORD-%')), 2::bigint, 'checkout RPC snapshots every cart item');
 SELECT is((SELECT count(*) FROM public.order_status_history WHERE order_id = (SELECT id FROM public.orders WHERE order_number LIKE 'ORD-%')), 1::bigint, 'checkout RPC writes initial order history');
 SELECT is((SELECT count(*) FROM public.cart_items WHERE cart_id = :'cart_id_1'), 0::bigint, 'checkout RPC clears only the captured cart');
+
+SELECT ok(not has_table_privilege('anon', 'public.brands', 'insert') and not has_table_privilege('anon', 'public.brands', 'update') and not has_table_privilege('anon', 'public.brands', 'delete') and not has_table_privilege('authenticated', 'public.brands', 'insert') and not has_table_privilege('authenticated', 'public.brands', 'update') and not has_table_privilege('authenticated', 'public.brands', 'delete'), 'storefront roles lack brand writes');
+SELECT ok(not has_table_privilege('anon', 'public.categories', 'insert') and not has_table_privilege('anon', 'public.categories', 'update') and not has_table_privilege('anon', 'public.categories', 'delete') and not has_table_privilege('authenticated', 'public.categories', 'insert') and not has_table_privilege('authenticated', 'public.categories', 'update') and not has_table_privilege('authenticated', 'public.categories', 'delete'), 'storefront roles lack category writes');
+SELECT ok(not has_table_privilege('anon', 'public.designers', 'insert') and not has_table_privilege('anon', 'public.designers', 'update') and not has_table_privilege('anon', 'public.designers', 'delete') and not has_table_privilege('authenticated', 'public.designers', 'insert') and not has_table_privilege('authenticated', 'public.designers', 'update') and not has_table_privilege('authenticated', 'public.designers', 'delete'), 'storefront roles lack designer writes');
+SELECT ok(not has_table_privilege('anon', 'public.news', 'insert') and not has_table_privilege('anon', 'public.news', 'update') and not has_table_privilege('anon', 'public.news', 'delete') and not has_table_privilege('authenticated', 'public.news', 'insert') and not has_table_privilege('authenticated', 'public.news', 'update') and not has_table_privilege('authenticated', 'public.news', 'delete'), 'storefront roles lack news writes');
+SELECT ok(not has_table_privilege('anon', 'public.catalogs', 'insert') and not has_table_privilege('anon', 'public.catalogs', 'update') and not has_table_privilege('anon', 'public.catalogs', 'delete') and not has_table_privilege('authenticated', 'public.catalogs', 'insert') and not has_table_privilege('authenticated', 'public.catalogs', 'update') and not has_table_privilege('authenticated', 'public.catalogs', 'delete'), 'storefront roles lack catalog writes');
+SELECT ok(not has_table_privilege('anon', 'public.products', 'insert') and not has_table_privilege('anon', 'public.products', 'update') and not has_table_privilege('anon', 'public.products', 'delete') and not has_table_privilege('authenticated', 'public.products', 'insert') and not has_table_privilege('authenticated', 'public.products', 'update') and not has_table_privilege('authenticated', 'public.products', 'delete'), 'storefront roles lack product writes');
+SELECT ok(not has_table_privilege('anon', 'public.variants', 'insert') and not has_table_privilege('anon', 'public.variants', 'update') and not has_table_privilege('anon', 'public.variants', 'delete') and not has_table_privilege('authenticated', 'public.variants', 'insert') and not has_table_privilege('authenticated', 'public.variants', 'update') and not has_table_privilege('authenticated', 'public.variants', 'delete'), 'storefront roles lack variant writes');
+SELECT ok(not has_table_privilege('anon', 'public.product_designers', 'insert') and not has_table_privilege('anon', 'public.product_designers', 'update') and not has_table_privilege('anon', 'public.product_designers', 'delete') and not has_table_privilege('authenticated', 'public.product_designers', 'insert') and not has_table_privilege('authenticated', 'public.product_designers', 'update') and not has_table_privilege('authenticated', 'public.product_designers', 'delete'), 'storefront roles lack product designer writes');
+SELECT ok(not has_table_privilege('anon', 'public.news_products', 'insert') and not has_table_privilege('anon', 'public.news_products', 'update') and not has_table_privilege('anon', 'public.news_products', 'delete') and not has_table_privilege('authenticated', 'public.news_products', 'insert') and not has_table_privilege('authenticated', 'public.news_products', 'update') and not has_table_privilege('authenticated', 'public.news_products', 'delete'), 'storefront roles lack news product writes');
+SELECT ok(not has_table_privilege('anon', 'public.news_variants', 'insert') and not has_table_privilege('anon', 'public.news_variants', 'update') and not has_table_privilege('anon', 'public.news_variants', 'delete') and not has_table_privilege('authenticated', 'public.news_variants', 'insert') and not has_table_privilege('authenticated', 'public.news_variants', 'update') and not has_table_privilege('authenticated', 'public.news_variants', 'delete'), 'storefront roles lack news variant writes');
 
 SELECT * FROM finish();
 ROLLBACK;
