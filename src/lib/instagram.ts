@@ -45,8 +45,8 @@ const metaMediaResponseSchema = z.object({
 type MetaMedia = z.infer<typeof metaMediaSchema>;
 
 export function createInstagramFeedConfig(env: {
-  readonly INSTAGRAM_ACCESS_TOKEN: string | undefined;
-  readonly INSTAGRAM_BUSINESS_ACCOUNT_ID: string | undefined;
+  readonly INSTAGRAM_ACCESS_TOKEN?: string;
+  readonly INSTAGRAM_BUSINESS_ACCOUNT_ID?: string;
 }): InstagramFeedConfig | null {
   if (env.INSTAGRAM_ACCESS_TOKEN === undefined || env.INSTAGRAM_BUSINESS_ACCOUNT_ID === undefined) {
     return null;
