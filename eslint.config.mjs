@@ -28,6 +28,8 @@ const eslintConfig = defineConfig([
        "src/lib/amis/sync.ts",
        "src/lib/amis/inventory-sync.ts",
        "src/lib/instagram/sync.ts",
+       "src/lib/instagram.ts",
+       "src/lib/instagram-sync.ts",
       "src/lib/queries/cart.ts",
       "src/app/api/**",
       "**/route.{ts,tsx,js,jsx}",
@@ -46,6 +48,22 @@ const eslintConfig = defineConfig([
           ],
         },
       ],
+    },
+  },
+  // These server-side integration adapters consume dynamic third-party JSON
+  // and Node-only request properties. Keep the exception narrowly scoped.
+  {
+    files: ["src/lib/instagram-sync.ts", "src/lib/remote-read-only.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  // These server-side integration adapters consume dynamic third-party JSON
+  // and Node-only request properties. Keep the exception narrowly scoped.
+  {
+    files: ["src/lib/instagram-sync.ts", "src/lib/remote-read-only.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 ]);

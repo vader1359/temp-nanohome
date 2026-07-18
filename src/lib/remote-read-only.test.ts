@@ -6,6 +6,7 @@ import {
   RemoteWriteBlockedError,
   supabaseAmisSyncFetch,
   supabaseCheckoutFetch,
+  supabaseInstagramSyncFetch,
   supabaseReadOnlyFetch,
 } from "@/lib/remote-read-only";
 
@@ -234,5 +235,125 @@ describe("remote read-only safeguard", () => {
       }),
     ).resolves.toBeInstanceOf(Response);
     expect(networkFetch).toHaveBeenCalledTimes(2);
+  });
+
+  describe("local PostgREST raw port fallback (PGRST125)", () => {
+    it("performs fallback retry for local GET requests on localhost/127.0.0.1/[::1]", async () => {
+      const urlsCalled: string[] = [];
+      const networkFetch = vi.fn(async (input) => {
+        const req = (input instanceof Request) ? input.clone() : new Request(input);
+        urlsCalled.push(req.url);
+        if (urlsCalled.length === 1) {
+          return new Response(
+            JSON.stringify({ code: "PGRST125", message: "Invalid path specified in request URL" }),
+            { status: 404, headers: { "content-type": "application/json" } }
+          );
+        }
+        return new Response(JSON.stringify([{ id: 1 }]), { status: 200 });
+      });
+      vi.stubGlobal("fetch", networkFetch);
+
+      const response = await supabaseReadOnlyFetch("http://localhost:54321/rest/v1/products?select=*");
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data).toEqual([{ id: 1 }]);
+      expect(urlsCalled).toEqual([
+        "http://localhost:54321/rest/v1/products?select=*",
+        "http://localhost:54321/products?select=*"
+      ]);
+      expect(networkFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not retry remote/production requests even on PGRST125", async () => {
+      const urlsCalled: string[] = [];
+      const networkFetch = vi.fn(async (input) => {
+        const req = (input instanceof Request) ? input.clone() : new Request(input);
+        urlsCalled.push(req.url);
+        return new Response(
+          JSON.stringify({ code: "PGRST125", message: "Invalid path specified in request URL" }),
+          { status: 404, headers: { "content-type": "application/json" } }
+        );
+      });
+      vi.stubGlobal("fetch", networkFetch);
+
+      const response = await supabaseReadOnlyFetch("https://example.supabase.co/rest/v1/products");
+      expect(response.status).toBe(404);
+      const data = await response.json();
+      expect(data.code).toBe("PGRST125");
+      expect(urlsCalled).toEqual(["https://example.supabase.co/rest/v1/products"]);
+      expect(networkFetch).toHaveBeenCalledOnce();
+    });
+
+    it("does not retry non-PGRST125 responses on localhost", async () => {
+      const urlsCalled: string[] = [];
+      const networkFetch = vi.fn(async (input) => {
+        const req = (input instanceof Request) ? input.clone() : new Request(input);
+        urlsCalled.push(req.url);
+        return new Response(
+          JSON.stringify({ code: "SOME_OTHER_ERROR", message: "Not found" }),
+          { status: 404, headers: { "content-type": "application/json" } }
+        );
+      });
+      vi.stubGlobal("fetch", networkFetch);
+
+      const response = await supabaseReadOnlyFetch("http://127.0.0.1:54321/rest/v1/products");
+      expect(response.status).toBe(404);
+      const data = await response.json();
+      expect(data.code).toBe("SOME_OTHER_ERROR");
+      expect(urlsCalled).toEqual(["http://127.0.0.1:54321/rest/v1/products"]);
+      expect(networkFetch).toHaveBeenCalledOnce();
+    });
+
+    it("preserves body, headers, method, and signal for allowed local Instagram RPC POST", async () => {
+      const urlsCalled: string[] = [];
+      const methodsCalled: string[] = [];
+      const headersCalled: Headers[] = [];
+      const bodiesCalled: string[] = [];
+      const signalsCalled: boolean[] = [];
+
+      const controller = new AbortController();
+
+      const networkFetch = vi.fn(async (input) => {
+        const req = (input instanceof Request) ? input.clone() : new Request(input);
+        urlsCalled.push(req.url);
+        methodsCalled.push(req.method);
+        headersCalled.push(req.headers);
+        bodiesCalled.push(await req.text());
+        signalsCalled.push(req.signal.aborted);
+
+        if (urlsCalled.length === 1) {
+          return new Response(
+            JSON.stringify({ code: "PGRST125", message: "Invalid path specified in request URL" }),
+            { status: 404, headers: { "content-type": "application/json" } }
+          );
+        }
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      });
+      vi.stubGlobal("fetch", networkFetch);
+
+      const payload = { test: "data" };
+      const response = await supabaseInstagramSyncFetch("http://[::1]:54321/rest/v1/rpc/publish_instagram_stage", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-custom-header": "test-val"
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      expect(response.status).toBe(200);
+      expect(urlsCalled).toEqual([
+        "http://[::1]:54321/rest/v1/rpc/publish_instagram_stage",
+        "http://[::1]:54321/rpc/publish_instagram_stage"
+      ]);
+      expect(methodsCalled).toEqual(["POST", "POST"]);
+      expect(headersCalled[1].get("content-type")).toBe("application/json");
+      expect(headersCalled[1].get("x-custom-header")).toBe("test-val");
+      expect(JSON.parse(bodiesCalled[0])).toEqual(payload);
+      expect(JSON.parse(bodiesCalled[1])).toEqual(payload);
+      expect(signalsCalled).toEqual([false, false]);
+      expect(networkFetch).toHaveBeenCalledTimes(2);
+    });
   });
 });

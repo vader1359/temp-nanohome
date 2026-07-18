@@ -33,6 +33,10 @@ const envSchema = z.object({
   INSTAGRAM_BUSINESS_ACCOUNT_ID: optionalEnvString,
   META_APP_ID: optionalEnvString,
   META_APP_SECRET: optionalEnvString,
+
+  // --- Cloudinary and Wistia (server-only, optional) ---
+  CLOUDINARY_URL: optionalEnvString,
+  WISTIA_API_TOKEN: optionalEnvString,
 });
 
 /**

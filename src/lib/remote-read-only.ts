@@ -27,26 +27,26 @@ const SUPABASE_AUTH_WRITE_PATHS = new Map<string, ReadonlySet<string>>([
 ]);
 
 export const supabaseReadOnlyFetch: typeof fetch = async (input, init) => {
-  const request = new Request(input, init);
+  const { request, signal } = safeCreateRequest(input, init);
   assertReadOnlyMethod("Supabase", request.method, request.url);
-  return fetch(input, init);
+  return supabaseNetworkFetch(request, signal);
 };
 
 const SUPABASE_CHECKOUT_RPC_PATH = "/rest/v1/rpc/capture_order_from_cart";
 
 export const supabaseCheckoutFetch: typeof fetch = async (input, init) => {
-  const request = new Request(input, init);
+  const { request, signal } = safeCreateRequest(input, init);
   const method = request.method.toUpperCase();
 
   if (READ_ONLY_HTTP_METHODS.has(method)) {
-    return fetch(input, init);
+    return supabaseNetworkFetch(request, signal);
   }
 
   if (method !== "POST" || new URL(request.url).pathname !== SUPABASE_CHECKOUT_RPC_PATH) {
     throw new RemoteWriteBlockedError("Supabase", method, request.url);
   }
 
-  return fetch(input, init);
+  return supabaseNetworkFetch(request, signal);
 };
 
 const AMIS_SYNC_SUPABASE_WRITES = new Map<string, ReadonlySet<string>>([
@@ -56,7 +56,7 @@ const AMIS_SYNC_SUPABASE_WRITES = new Map<string, ReadonlySet<string>>([
 ]);
 
 export const supabaseAmisSyncFetch: typeof fetch = async (input, init) => {
-  const request = new Request(input, init);
+  const { request, signal } = safeCreateRequest(input, init);
   const method = request.method.toUpperCase();
 
   if (!READ_ONLY_HTTP_METHODS.has(method)) {
@@ -66,22 +66,36 @@ export const supabaseAmisSyncFetch: typeof fetch = async (input, init) => {
     }
   }
 
-  return fetch(input, init);
+  return supabaseNetworkFetch(request, signal);
 };
 
 const INSTAGRAM_SYNC_SUPABASE_WRITES = new Map<string, ReadonlySet<string>>([
-  ["/rest/v1/instagram_sync_state", new Set(["POST", "PATCH"])],
-  ["/rest/v1/instagram_media", new Set(["POST"])],
+  ["/rest/v1/rpc/begin_instagram_snapshot_stage", new Set(["POST"])],
+  ["/rest/v1/rpc/save_instagram_stage_drafts", new Set(["POST"])],
+  ["/rest/v1/rpc/get_instagram_stage_work", new Set(["POST"])],
+  ["/rest/v1/rpc/get_instagram_stage_pending_videos", new Set(["POST"])],
+  ["/rest/v1/rpc/publish_instagram_stage", new Set(["POST"])],
+  ["/rest/v1/rpc/update_instagram_stage_wistia_status", new Set(["POST"])],
+  ["/rpc/begin_instagram_snapshot_stage", new Set(["POST"])],
+  ["/rpc/save_instagram_stage_drafts", new Set(["POST"])],
+  ["/rpc/get_instagram_stage_work", new Set(["POST"])],
+  ["/rpc/get_instagram_stage_pending_videos", new Set(["POST"])],
+  ["/rpc/publish_instagram_stage", new Set(["POST"])],
+  ["/rpc/update_instagram_stage_wistia_status", new Set(["POST"])],
 ]);
 
 export const supabaseInstagramSyncFetch: typeof fetch = async (input, init) => {
-  const request = new Request(input, init);
+  const { request, signal } = safeCreateRequest(input, init);
   const method = request.method.toUpperCase();
+
   if (!READ_ONLY_HTTP_METHODS.has(method)) {
     const allowedMethods = INSTAGRAM_SYNC_SUPABASE_WRITES.get(new URL(request.url).pathname);
-    if (allowedMethods?.has(method) !== true) throw new RemoteWriteBlockedError("Supabase", method, request.url);
+    if (allowedMethods?.has(method) !== true) {
+      throw new RemoteWriteBlockedError("Supabase", method, request.url);
+    }
   }
-  return fetch(input, init);
+
+  return supabaseNetworkFetch(request, signal);
 };
 
 const AMIS_CRM_ORIGIN = "https://crmconnect.misa.vn";
@@ -149,5 +163,99 @@ function assertReadOnlyMethod(system: "Supabase", method: string, url: string): 
 
   if (!READ_ONLY_HTTP_METHODS.has(normalizedMethod)) {
     throw new RemoteWriteBlockedError(system, normalizedMethod, url);
+  }
+}
+
+async function supabaseNetworkFetch(request: Request, signal?: AbortSignal | null): Promise<Response> {
+  const url = new URL(request.url);
+  const hostname = url.hostname;
+  const isLocal =
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "[::1]" ||
+    hostname === "::1";
+  const startsWithRestV1 = url.pathname.startsWith("/rest/v1");
+
+  if (!isLocal || !startsWithRestV1) {
+    return fetch(request, { signal });
+  }
+
+  const firstRequest = request.clone();
+  const response = await fetch(firstRequest, { signal });
+
+  if (response.status === 404) {
+    try {
+      const clone = response.clone();
+      const data = await clone.json();
+      if (data && typeof data === "object" && data.code === "PGRST125") {
+        const newUrl = new URL(request.url);
+        newUrl.pathname = url.pathname.replace(/^\/rest\/v1/, "");
+
+        const headers = new Headers(request.headers);
+        const method = request.method;
+        const body = request.body;
+        const duplex = (request as any).duplex;
+
+        const retryInit: RequestInit = {
+          method,
+          headers,
+        };
+        if (body !== null) {
+          retryInit.body = body;
+        }
+        if (duplex) {
+          (retryInit as any).duplex = duplex;
+        }
+
+        const retryRequest = new Request(newUrl.toString(), retryInit);
+        return fetch(retryRequest, { signal });
+      }
+    } catch {
+      // JSON parsing or check failed, do not retry
+    }
+  }
+
+  return response;
+}
+
+function safeCreateRequest(input: RequestInfo | URL, init?: RequestInit): { request: Request; signal?: AbortSignal | null } {
+  let signal: AbortSignal | null | undefined = init?.signal;
+
+  if (input instanceof Request) {
+    if (!signal) {
+      signal = input.signal;
+    }
+    const headers = new Headers(input.headers);
+    const method = input.method;
+    const body = input.body;
+    const duplex = (input as any).duplex;
+
+    const newInit: RequestInit = {
+      method,
+      headers,
+    };
+    if (body !== null) {
+      newInit.body = body;
+    }
+    if (duplex) {
+      (newInit as any).duplex = duplex;
+    }
+    if (init) {
+      Object.assign(newInit, init);
+      delete newInit.signal;
+    }
+    return {
+      request: new Request(input.url, newInit),
+      signal,
+    };
+  } else {
+    const newInit = init ? { ...init } : undefined;
+    if (newInit) {
+      delete newInit.signal;
+    }
+    return {
+      request: new Request(input, newInit),
+      signal,
+    };
   }
 }
