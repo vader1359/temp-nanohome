@@ -84,7 +84,7 @@ export function InstagramGallery({ posts }: InstagramGalleryProps) {
     return () => window.clearInterval(interval);
   }, [loaded, slider]);
 
-  const maxIdx = slider?.current?.track.details.maxIdx ?? 0;
+  const maxIdx = slider?.current?.track?.details?.maxIdx ?? 0;
   const atStart = currentSlide === 0;
   const atEnd = currentSlide >= maxIdx;
   const lightboxPost = lightboxIndex === null ? null : posts[lightboxIndex] ?? null;

@@ -39,7 +39,7 @@ values
 insert into public.amis_sync_log (status, items_processed)
 values ('success', 1);
 
-SELECT plan(55);
+SELECT plan(105);
 
 SET LOCAL ROLE anon;
 SELECT set_config('request.jwt.claims', '{"role":"anon"}', true);
@@ -141,6 +141,437 @@ SELECT is((SELECT subtotal FROM public.orders WHERE order_number LIKE 'ORD-%'), 
 SELECT is((SELECT count(*) FROM public.order_items WHERE order_id = (SELECT id FROM public.orders WHERE order_number LIKE 'ORD-%')), 2::bigint, 'checkout RPC snapshots every cart item');
 SELECT is((SELECT count(*) FROM public.order_status_history WHERE order_id = (SELECT id FROM public.orders WHERE order_number LIKE 'ORD-%')), 1::bigint, 'checkout RPC writes initial order history');
 SELECT is((SELECT count(*) FROM public.cart_items WHERE cart_id = :'cart_id_1'), 0::bigint, 'checkout RPC clears only the captured cart');
+
+-- Instagram pipeline security & validation tests
+SET LOCAL ROLE anon;
+SELECT set_config('request.jwt.claims', '{"role":"anon"}', true);
+SELECT ok(not has_function_privilege('public.publish_instagram_snapshot(jsonb, text[], text)', 'execute'), 'anon lacks publish_instagram_snapshot RPC execute privilege');
+SELECT throws_ok($$ select public.publish_instagram_snapshot('[]'::jsonb, ARRAY[]::text[], 'v1') $$, '42501', NULL, 'anon execution of publish_instagram_snapshot is blocked');
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', json_build_object('sub', :'authenticated_user_id', 'role', 'authenticated')::text, true);
+SELECT ok(not has_function_privilege('public.publish_instagram_snapshot(jsonb, text[], text)', 'execute'), 'authenticated user lacks publish_instagram_snapshot RPC execute privilege');
+SELECT throws_ok($$ select public.publish_instagram_snapshot('[]'::jsonb, ARRAY[]::text[], 'v1') $$, '42501', NULL, 'authenticated execution of publish_instagram_snapshot is blocked');
+
+SET LOCAL ROLE service_role;
+SELECT ok(has_function_privilege('public.publish_instagram_snapshot(jsonb, text[], text)', 'execute'), 'service_role has publish_instagram_snapshot RPC execute privilege');
+SELECT throws_ok($$ select public.publish_instagram_snapshot('[]'::jsonb, ARRAY[]::text[], 'v1') $$, 'P0001', 'p_posts must contain exactly 24 candidate post objects', 'service_role composition validation rejects wrong candidate count');
+
+-- Test 24 3/21 composition logic via publish_instagram_snapshot
+-- Create 24 mock draft posts first (3 videos, 21 images) in public.instagram_posts
+-- Let's construct candidate JSONB and active_ids array of size 24.
+-- All candidate posts must have source_url_fingerprint and valid structure.
+-- Let's use DO block or direct INSERTs to test.
+DO $$
+DECLARE
+    v_posts JSONB := '[]';
+    v_active_ids TEXT[] := ARRAY[]::TEXT[];
+    v_post JSONB;
+BEGIN
+    FOR i IN 1..24 LOOP
+        v_post := jsonb_build_object(
+            'id', 'post-' || i,
+            'media_type', CASE WHEN i <= 3 THEN 'video' ELSE 'image' END,
+            'image_url', 'https://res.cloudinary.com/cloudname/image/upload/v1/post-' || i || '.jpg',
+            'video_url', CASE WHEN i <= 3 THEN 'https://fast.wistia.net/embed/medias/abc' || i || '.mp4' ELSE NULL END,
+            'thumbnail_url', CASE WHEN i <= 3 THEN 'https://res.cloudinary.com/cloudname/image/upload/v1/post-' || i || '-thumb.jpg' ELSE NULL END,
+            'permalink', 'https://www.instagram.com/p/abc' || i || '/',
+            'caption', 'Caption ' || i,
+            'wistia_status', CASE WHEN i <= 3 THEN 'ready' ELSE NULL END,
+            'source_url_fingerprint', 'fp-' || i
+        );
+        v_posts := v_posts || jsonb_build_array(v_post);
+        v_active_ids := array_append(v_active_ids, 'post-' || i);
+    END LOOP;
+
+    -- This should succeed as composition is exactly 3 video and 21 image, all valid
+    PERFORM public.publish_instagram_snapshot(v_posts, v_active_ids, 'v1');
+END;
+$$;
+
+SELECT is((SELECT count(*) FROM public.instagram_active_posts), 24::bigint, '24 posts successfully published');
+SELECT is((SELECT count(*) FROM public.instagram_active_posts WHERE media_type = 'video'), 3::bigint, 'exactly 3 video posts published');
+SELECT is((SELECT count(*) FROM public.instagram_active_posts WHERE media_type = 'image'), 21::bigint, 'exactly 21 image posts published');
+SELECT is((SELECT min(sort_order) FROM public.instagram_active_posts), 1, 'minimum sort_order is 1');
+SELECT is((SELECT max(sort_order) FROM public.instagram_active_posts), 24, 'maximum sort_order is 24');
+
+-- Test invalid composition rejects and does not corrupt existing active posts snapshot
+SELECT throws_ok(
+    $test$
+    DO $do$
+    DECLARE
+        v_posts JSONB := '[]';
+        v_active_ids TEXT[] := ARRAY[]::TEXT[];
+        v_post JSONB;
+    BEGIN
+        -- 2 videos, 22 images
+        FOR i IN 1..24 LOOP
+            v_post := jsonb_build_object(
+                'id', 'post-new-' || i,
+                'media_type', CASE WHEN i <= 2 THEN 'video' ELSE 'image' END,
+                'image_url', 'https://res.cloudinary.com/cloudname/image/upload/v1/post-' || i || '.jpg',
+                'video_url', CASE WHEN i <= 2 THEN 'https://fast.wistia.net/embed/medias/abc' || i || '.mp4' ELSE NULL END,
+                'thumbnail_url', CASE WHEN i <= 2 THEN 'https://res.cloudinary.com/cloudname/image/upload/v1/post-' || i || '-thumb.jpg' ELSE NULL END,
+                'permalink', 'https://www.instagram.com/p/abc' || i || '/',
+                'caption', 'Caption ' || i,
+                'wistia_status', CASE WHEN i <= 2 THEN 'ready' ELSE NULL END,
+                'source_url_fingerprint', 'fp-' || i
+            );
+            v_posts := v_posts || jsonb_build_array(v_post);
+            v_active_ids := array_append(v_active_ids, 'post-new-' || i);
+        END LOOP;
+        PERFORM public.publish_instagram_snapshot(v_posts, v_active_ids, 'v2');
+    END;
+    $do$;
+    $test$,
+    'P0001',
+    'Must have exactly 3 video posts, found 2',
+    'Composition rejection for 2 videos and 22 images'
+);
+
+-- Ensure active posts snapshot remains untouched
+SELECT is((SELECT count(*) FROM public.instagram_active_posts), 24::bigint, '24 posts snapshot remains intact after rejected update');
+SELECT is((SELECT count(*) FROM public.instagram_active_posts WHERE id LIKE 'post-%' AND id NOT LIKE 'post-new-%'), 24::bigint, 'original active posts are retained');
+
+-- Staged Instagram pipeline tests
+SET LOCAL ROLE anon;
+SELECT ok(not has_function_privilege('public.begin_instagram_snapshot_stage(jsonb, text, text)', 'execute'), 'anon lacks begin_instagram_snapshot_stage RPC execute privilege');
+SELECT ok(not has_function_privilege('public.save_instagram_stage_drafts(uuid, jsonb)', 'execute'), 'anon lacks save_instagram_stage_drafts RPC execute privilege');
+SELECT ok(not has_function_privilege('public.get_instagram_stage_work(uuid)', 'execute'), 'anon lacks get_instagram_stage_work RPC execute privilege');
+SELECT ok(not has_function_privilege('public.get_instagram_stage_pending_videos(uuid)', 'execute'), 'anon lacks get_instagram_stage_pending_videos RPC execute privilege');
+SELECT ok(not has_function_privilege('public.update_instagram_stage_wistia_status(uuid, text, text, text, text)', 'execute'), 'anon lacks update_instagram_stage_wistia_status RPC execute privilege');
+SELECT ok(not has_function_privilege('public.publish_instagram_stage(uuid)', 'execute'), 'anon lacks publish_instagram_stage RPC execute privilege');
+
+SET LOCAL ROLE authenticated;
+SELECT ok(not has_function_privilege('public.begin_instagram_snapshot_stage(jsonb, text, text)', 'execute'), 'authenticated lacks begin_instagram_snapshot_stage RPC execute privilege');
+SELECT ok(not has_function_privilege('public.save_instagram_stage_drafts(uuid, jsonb)', 'execute'), 'authenticated lacks save_instagram_stage_drafts RPC execute privilege');
+SELECT ok(not has_function_privilege('public.get_instagram_stage_work(uuid)', 'execute'), 'authenticated lacks get_instagram_stage_work RPC execute privilege');
+SELECT ok(not has_function_privilege('public.get_instagram_stage_pending_videos(uuid)', 'execute'), 'authenticated lacks get_instagram_stage_pending_videos RPC execute privilege');
+SELECT ok(not has_function_privilege('public.update_instagram_stage_wistia_status(uuid, text, text, text, text)', 'execute'), 'authenticated lacks update_instagram_stage_wistia_status RPC execute privilege');
+SELECT ok(not has_function_privilege('public.publish_instagram_stage(uuid)', 'execute'), 'authenticated lacks publish_instagram_stage RPC execute privilege');
+
+SET LOCAL ROLE service_role;
+SELECT ok(has_function_privilege('public.begin_instagram_snapshot_stage(jsonb, text, text)', 'execute'), 'service_role has begin_instagram_snapshot_stage RPC execute privilege');
+SELECT ok(has_function_privilege('public.save_instagram_stage_drafts(uuid, jsonb)', 'execute'), 'service_role has save_instagram_stage_drafts RPC execute privilege');
+SELECT ok(has_function_privilege('public.get_instagram_stage_work(uuid)', 'execute'), 'service_role has get_instagram_stage_work RPC execute privilege');
+SELECT ok(has_function_privilege('public.get_instagram_stage_pending_videos(uuid)', 'execute'), 'service_role has get_instagram_stage_pending_videos RPC execute privilege');
+SELECT ok(has_function_privilege('public.update_instagram_stage_wistia_status(uuid, text, text, text, text)', 'execute'), 'service_role has update_instagram_stage_wistia_status RPC execute privilege');
+SELECT ok(has_function_privilege('public.publish_instagram_stage(uuid)', 'execute'), 'service_role has publish_instagram_stage RPC execute privilege');
+
+-- Staged Functional Validation
+SELECT lives_ok(
+    $$ SELECT public.begin_instagram_snapshot_stage(
+        (SELECT jsonb_agg(x) FROM (
+            SELECT
+                'stage-post-' || i AS id,
+                CASE WHEN i <= 3 THEN 'video' ELSE 'image' END AS media_type,
+                '1111111111111111111111111111111111111111111111111111111111111111' AS source_url_fingerprint,
+                i AS sort_order,
+                'https://www.instagram.com/p/stage' || i || '/' AS permalink,
+                'Stage caption ' || i AS caption,
+                'https://lookaside.fbsbx.com/stage-' || i || '.jpg' AS image_url,
+                CASE WHEN i <= 3 THEN 'https://lookaside.fbsbx.com/stage-' || i || '.mp4' ELSE NULL END AS video_url
+            FROM generate_series(1, 24) i
+        ) x),
+        'v1',
+        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+    ) $$,
+    'begin_instagram_snapshot_stage succeeds for valid composition'
+);
+
+SELECT ok(
+    (SELECT count(*) FROM public.instagram_snapshot_stages WHERE selection_key = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef') = 1,
+    'stage is persisted in building status'
+);
+
+SELECT throws_ok(
+    $$ SELECT public.begin_instagram_snapshot_stage(
+        (SELECT jsonb_agg(x) FROM (
+            SELECT
+                'other-post-' || i AS id,
+                CASE WHEN i <= 3 THEN 'video' ELSE 'image' END AS media_type,
+                '2222222222222222222222222222222222222222222222222222222222222222' AS source_url_fingerprint,
+                i AS sort_order,
+                'https://www.instagram.com/p/other' || i || '/' AS permalink,
+                'Other caption ' || i AS caption,
+                'https://lookaside.fbsbx.com/other-' || i || '.jpg' AS image_url,
+                CASE WHEN i <= 3 THEN 'https://lookaside.fbsbx.com/other-' || i || '.mp4' ELSE NULL END AS video_url
+            FROM generate_series(1, 24) i
+        ) x),
+        'v1',
+        '9999999999999999999999999999999999999999999999999999999999999999'
+    ) $$,
+    'P0001',
+    NULL,
+    'begin_instagram_snapshot_stage prevents concurrent building/ready stages'
+);
+
+SELECT throws_ok(
+    $$ SELECT public.save_instagram_stage_drafts(
+        (SELECT id FROM public.instagram_snapshot_stages LIMIT 1),
+        '[]'::jsonb
+    ) $$,
+    'P0001',
+    'p_posts must contain between 1 and 2 posts',
+    'save_instagram_stage_drafts rejects empty posts array'
+);
+
+SELECT throws_ok(
+    $$ SELECT public.save_instagram_stage_drafts(
+        (SELECT id FROM public.instagram_snapshot_stages LIMIT 1),
+        '[1, 2, 3]'::jsonb
+    ) $$,
+    'P0001',
+    'p_posts must contain between 1 and 2 posts',
+    'save_instagram_stage_drafts rejects array of length 3'
+);
+
+SELECT throws_ok(
+    $$ SELECT public.save_instagram_stage_drafts(
+        (SELECT id FROM public.instagram_snapshot_stages LIMIT 1),
+        jsonb_build_array(
+            jsonb_build_object(
+                'id', 'stage-post-1',
+                'media_type', 'video',
+                'image_url', 'https://res.cloudinary.com/ok-1.jpg',
+                'video_url', 'https://fast.wistia.com/1.mp4',
+                'thumbnail_url', 'https://res.cloudinary.com/ok-t-1.jpg',
+                'permalink', 'https://www.instagram.com/p/stage1/',
+                'caption', 'wrong caption',
+                'wistia_hashed_id', 'w1',
+                'wistia_status', 'ready',
+                'source_url_fingerprint', '1111111111111111111111111111111111111111111111111111111111111111'
+            )
+        )
+    ) $$,
+    'P0001',
+    'Caption mismatch for post stage-post-1',
+    'save_instagram_stage_drafts rejects caption mismatch'
+);
+
+SELECT throws_ok(
+    $$ SELECT public.save_instagram_stage_drafts(
+        (SELECT id FROM public.instagram_snapshot_stages LIMIT 1),
+        jsonb_build_array(
+            jsonb_build_object(
+                'id', 'stage-post-1',
+                'media_type', 'video',
+                'image_url', 'https://res.cloudinary.com/ok-1.jpg',
+                'video_url', 'https://fast.wistia.com/1.mp4',
+                'thumbnail_url', 'https://res.cloudinary.com/ok-t-1.jpg',
+                'permalink', 'https://www.instagram.com/p/wrongpermalink/',
+                'caption', 'Stage caption 1',
+                'wistia_hashed_id', 'w1',
+                'wistia_status', 'ready',
+                'source_url_fingerprint', '1111111111111111111111111111111111111111111111111111111111111111'
+            )
+        )
+    ) $$,
+    'P0001',
+    'Permalink mismatch for post stage-post-1: stage expected https://www.instagram.com/p/stage1/, got https://www.instagram.com/p/wrongpermalink/',
+    'save_instagram_stage_drafts rejects permalink mismatch'
+);
+
+SELECT throws_ok(
+    $$ SELECT public.save_instagram_stage_drafts(
+        (SELECT id FROM public.instagram_snapshot_stages LIMIT 1),
+        jsonb_build_array(
+            jsonb_build_object(
+                'id', 'stage-post-4',
+                'media_type', 'image',
+                'image_url', 'https://res.cloudinary.com/ok-4.jpg',
+                'thumbnail_url', 'https://res.cloudinary.com/ok-t-4.jpg',
+                'permalink', 'https://www.instagram.com/p/stage4/',
+                'caption', 'Stage caption 4',
+                'source_url_fingerprint', '1111111111111111111111111111111111111111111111111111111111111111'
+            )
+        )
+    ) $$,
+    'P0001',
+    'Image post stage-post-4 cannot have video fields, Wistia status, or thumbnail',
+    'save_instagram_stage_drafts rejects image post with thumbnail'
+);
+
+SELECT throws_ok(
+    $$ SELECT public.update_instagram_stage_wistia_status(
+        (SELECT id FROM public.instagram_snapshot_stages LIMIT 1),
+        'stage-post-4',
+        '1111111111111111111111111111111111111111111111111111111111111111',
+        'failed',
+        NULL
+    ) $$,
+    'P0001',
+    'No matching video item for post stage-post-4 and fingerprint 1111111111111111111111111111111111111111111111111111111111111111 in stage %',
+    'update_instagram_stage_wistia_status rejects non-video posts'
+);
+
+SELECT lives_ok(
+    $$ SELECT public.save_instagram_stage_drafts(
+        (SELECT id FROM public.instagram_snapshot_stages LIMIT 1),
+        jsonb_build_array(
+            jsonb_build_object(
+                'id', 'stage-post-1',
+                'media_type', 'video',
+                'image_url', 'https://res.cloudinary.com/ok-1.jpg',
+                'video_url', 'https://fast.wistia.com/1.mp4',
+                'thumbnail_url', 'https://res.cloudinary.com/ok-t-1.jpg',
+                'permalink', 'https://www.instagram.com/p/stage1/',
+                'caption', 'Stage caption 1',
+                'wistia_hashed_id', 'w1',
+                'wistia_status', 'ready',
+                'source_url_fingerprint', '1111111111111111111111111111111111111111111111111111111111111111'
+            )
+        )
+    ) $$,
+    'save video draft successfully'
+);
+
+SELECT lives_ok(
+    $$ SELECT public.update_instagram_stage_wistia_status(
+        (SELECT id FROM public.instagram_snapshot_stages LIMIT 1),
+        'stage-post-1',
+        '1111111111111111111111111111111111111111111111111111111111111111',
+        'failed',
+        NULL
+    ) $$,
+    'wistia status update to failed works'
+);
+
+SELECT is(
+    (SELECT video_url FROM public.instagram_posts WHERE id = 'stage-post-1'),
+    NULL,
+    'video_url is cleared when wistia status is non-ready'
+);
+
+-- Populate all 24 ready posts
+DO $$
+DECLARE
+    v_stage_id UUID;
+    v_drafts JSONB;
+BEGIN
+    SELECT id INTO v_stage_id FROM public.instagram_snapshot_stages LIMIT 1;
+    FOR i IN 1..24 LOOP
+        v_drafts := jsonb_build_array(
+            jsonb_build_object(
+                'id', 'stage-post-' || i,
+                'media_type', CASE WHEN i <= 3 THEN 'video' ELSE 'image' END,
+                'image_url', 'https://res.cloudinary.com/ok-' || i || '.jpg',
+                'video_url', CASE WHEN i <= 3 THEN 'https://fast.wistia.com/' || i || '.mp4' ELSE NULL END,
+                'thumbnail_url', CASE WHEN i <= 3 THEN 'https://res.cloudinary.com/ok-t-' || i || '.jpg' ELSE NULL END,
+                'permalink', 'https://www.instagram.com/p/stage' || i || '/',
+                'caption', 'Stage caption ' || i,
+                'wistia_hashed_id', CASE WHEN i <= 3 THEN 'w' || i ELSE NULL END,
+                'wistia_status', CASE WHEN i <= 3 THEN 'ready' ELSE NULL END,
+                'source_url_fingerprint', '1111111111111111111111111111111111111111111111111111111111111111'
+            )
+        );
+        PERFORM public.save_instagram_stage_drafts(v_stage_id, v_drafts);
+    END LOOP;
+END;
+$$;
+
+SELECT is(
+    (SELECT public.publish_instagram_stage((SELECT id FROM public.instagram_snapshot_stages LIMIT 1))),
+    'published',
+    'publish_instagram_stage succeeds when all 24 are ready'
+);
+
+SELECT is(
+    (SELECT count(*)::integer FROM public.instagram_active_posts WHERE id LIKE 'stage-post-%'),
+    24,
+    'exactly 24 active posts published'
+);
+
+-- Target tests for reel permalink validation
+-- Valid /reel/ accepted
+SELECT lives_ok(
+    $$ SELECT public.begin_instagram_snapshot_stage(
+        (SELECT jsonb_agg(x) FROM (
+            SELECT
+                'reel-post-' || i AS id,
+                CASE WHEN i <= 3 THEN 'video' ELSE 'image' END AS media_type,
+                '3333333333333333333333333333333333333333333333333333333333333333' AS source_url_fingerprint,
+                i AS sort_order,
+                CASE WHEN i = 1 THEN 'https://www.instagram.com/reel/validreel/' ELSE 'https://www.instagram.com/p/stage' || i || '/' END AS permalink,
+                'Reel caption ' || i AS caption,
+                'https://lookaside.fbsbx.com/reel-' || i || '.jpg' AS image_url,
+                CASE WHEN i <= 3 THEN 'https://lookaside.fbsbx.com/reel-' || i || '.mp4' ELSE NULL END AS video_url
+            FROM generate_series(1, 24) i
+        ) x),
+        'v1',
+        '0000000000000000000000000000000000000000000000000000000000000002'
+    ) $$,
+    'begin_instagram_snapshot_stage accepts valid /reel/ permalinks'
+);
+
+-- Invalid /reel/<id>/extra rejected
+SELECT throws_ok(
+    $$ SELECT public.begin_instagram_snapshot_stage(
+        (SELECT jsonb_agg(x) FROM (
+            SELECT
+                'reel-post-bad-' || i AS id,
+                CASE WHEN i <= 3 THEN 'video' ELSE 'image' END AS media_type,
+                '4444444444444444444444444444444444444444444444444444444444444444' AS source_url_fingerprint,
+                i AS sort_order,
+                CASE WHEN i = 1 THEN 'https://www.instagram.com/reel/validreel/extra' ELSE 'https://www.instagram.com/p/stage' || i || '/' END AS permalink,
+                'Reel caption ' || i AS caption,
+                'https://lookaside.fbsbx.com/reel-bad-' || i || '.jpg' AS image_url,
+                CASE WHEN i <= 3 THEN 'https://lookaside.fbsbx.com/reel-bad-' || i || '.mp4' ELSE NULL END AS video_url
+            FROM generate_series(1, 24) i
+        ) x),
+        'v1',
+        '0000000000000000000000000000000000000000000000000000000000000003'
+    ) $$,
+    'P0001',
+    'Invalid permalink found in selection',
+    'begin_instagram_snapshot_stage rejects /reel/<id>/extra'
+);
+
+-- Invalid reel permalinks with query params rejected
+SELECT throws_ok(
+    $$ SELECT public.begin_instagram_snapshot_stage(
+        (SELECT jsonb_agg(x) FROM (
+            SELECT
+                'reel-post-bad2-' || i AS id,
+                CASE WHEN i <= 3 THEN 'video' ELSE 'image' END AS media_type,
+                '5555555555555555555555555555555555555555555555555555555555555555' AS source_url_fingerprint,
+                i AS sort_order,
+                CASE WHEN i = 1 THEN 'https://www.instagram.com/reel/validreel/?utm_source=ig' ELSE 'https://www.instagram.com/p/stage' || i || '/' END AS permalink,
+                'Reel caption ' || i AS caption,
+                'https://lookaside.fbsbx.com/reel-bad2-' || i || '.jpg' AS image_url,
+                CASE WHEN i <= 3 THEN 'https://lookaside.fbsbx.com/reel-bad2-' || i || '.mp4' ELSE NULL END AS video_url
+            FROM generate_series(1, 24) i
+        ) x),
+        'v1',
+        '0000000000000000000000000000000000000000000000000000000000000004'
+    ) $$,
+    'P0001',
+    'Invalid permalink found in selection',
+    'begin_instagram_snapshot_stage rejects /reel/<id>/ with query parameters'
+);
+
+-- Invalid reel permalinks with fragments rejected
+SELECT throws_ok(
+    $$ SELECT public.begin_instagram_snapshot_stage(
+        (SELECT jsonb_agg(x) FROM (
+            SELECT
+                'reel-post-bad3-' || i AS id,
+                CASE WHEN i <= 3 THEN 'video' ELSE 'image' END AS media_type,
+                '6666666666666666666666666666666666666666666666666666666666666666' AS source_url_fingerprint,
+                i AS sort_order,
+                CASE WHEN i = 1 THEN 'https://www.instagram.com/reel/validreel/#hash' ELSE 'https://www.instagram.com/p/stage' || i || '/' END AS permalink,
+                'Reel caption ' || i AS caption,
+                'https://lookaside.fbsbx.com/reel-bad3-' || i || '.jpg' AS image_url,
+                CASE WHEN i <= 3 THEN 'https://lookaside.fbsbx.com/reel-bad3-' || i || '.mp4' ELSE NULL END AS video_url
+            FROM generate_series(1, 24) i
+        ) x),
+        'v1',
+        '0000000000000000000000000000000000000000000000000000000000000005'
+    ) $$,
+    'P0001',
+    'Invalid permalink found in selection',
+    'begin_instagram_snapshot_stage rejects /reel/<id>/ with fragment'
+);
 
 SELECT * FROM finish();
 ROLLBACK;

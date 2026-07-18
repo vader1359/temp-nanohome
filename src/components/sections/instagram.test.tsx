@@ -45,7 +45,7 @@ describe("InstagramGallery", () => {
     // When: a visitor opens the reel.
     const preview = screen.getByTestId("instagram-video-preview");
     expect(preview).toHaveAttribute("autoplay");
-    expect(preview).toHaveAttribute("muted");
+    expect((preview as HTMLVideoElement).muted).toBe(true);
     expect(preview).toHaveAttribute("loop");
     expect(preview).toHaveAttribute("playsinline");
     expect(preview).toHaveAttribute("poster", "https://lookaside.fbsbx.com/video-1.jpg");
@@ -55,7 +55,7 @@ describe("InstagramGallery", () => {
     const lightboxVideo = screen.getByTestId("instagram-video-lightbox");
     expect(lightboxVideo).toHaveAttribute("controls");
     expect(lightboxVideo).toHaveAttribute("autoplay");
-    expect(lightboxVideo).toHaveAttribute("muted");
+    expect((lightboxVideo as HTMLVideoElement).muted).toBe(true);
     expect(lightboxVideo).toHaveAttribute("playsinline");
     expect(lightboxVideo).toHaveAttribute("src", "https://lookaside.fbsbx.com/video-1.mp4");
   });

@@ -1,134 +1,241 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getInstagramPosts, type InstagramFeedConfig } from "@/lib/instagram";
+import { getInstagramPosts } from "@/lib/instagram";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-const config: InstagramFeedConfig = {
-  accessToken: "instagram-token",
-  businessAccountId: "17841400000000000",
-};
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: vi.fn(),
+}));
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
 });
 
+function generateValidMockData(count = 24, videoCount = 3): any[] {
+  return Array.from({ length: count }, (_, index) => {
+    const postNumber = index + 1;
+    const isVideo = index < videoCount;
+    return {
+      id: `post-${postNumber}`,
+      source_post_id: `src-${postNumber}`,
+      media_type: isVideo ? "video" : "image",
+      image_url: isVideo ? "https://res.cloudinary.com/cloudname/image/upload/v1/post.jpg" : `https://res.cloudinary.com/cloudname/image/upload/v1/post-${postNumber}.jpg`,
+      video_url: isVideo ? "https://fast.wistia.net/embed/medias/abc.mp4" : null,
+      thumbnail_url: isVideo ? "https://res.cloudinary.com/cloudname/image/upload/v1/thumb.jpg" : null,
+      permalink: `https://www.instagram.com/p/C_abc${postNumber}/`,
+      caption: `Caption ${postNumber}`,
+      sort_order: postNumber,
+    };
+  });
+}
+
 describe("getInstagramPosts", () => {
-  it("returns the local gallery without contacting Meta when the feed is not configured", async () => {
-    // Given: the homepage has no Instagram credentials.
+  it("returns fallback posts on DB error/empty", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    // When: it resolves posts for the gallery.
-    const posts = await getInstagramPosts(null);
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: null, error: new Error("DB error") }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase as any);
 
-    // Then: the existing local images remain available and no network call is made.
+    const posts = await getInstagramPosts(null);
     expect(posts).toHaveLength(10);
-    expect(posts[0]).toMatchObject({
-      id: "fallback-1",
-      imageUrl: "/images/home/instagram/instagram-1.jpg",
-    });
+    expect(posts[0]?.id).toBe("fallback-1");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("normalizes usable Meta media and skips unsupported or incomplete records", async () => {
-    // Given: Meta returns image, reel, carousel, and unusable media records.
-    const fetchMock = vi.fn(async () => Response.json({
-      data: [
-        {
-          id: "image-1",
-          media_type: "IMAGE",
-          media_url: "https://lookaside.fbsbx.com/image-1.jpg",
-          permalink: "https://www.instagram.com/p/image-1/",
-          caption: "A calm living room",
-        },
-        {
-          id: "reel-1",
-          media_type: "VIDEO",
-          media_url: "https://lookaside.fbsbx.com/reel-1.mp4",
-          thumbnail_url: "https://lookaside.fbsbx.com/reel-1.jpg",
-          permalink: "https://www.instagram.com/reel/reel-1/",
-        },
-        {
-          id: "carousel-1",
-          media_type: "CAROUSEL_ALBUM",
-          media_url: "https://lookaside.fbsbx.com/carousel-1.jpg",
-          permalink: "https://www.instagram.com/p/carousel-1/",
-        },
-        {
-          id: "missing-image",
-          media_type: "VIDEO",
-          permalink: "https://www.instagram.com/reel/missing-image/",
-        },
-        {
-          id: "unsupported",
-          media_type: "STORY",
-          media_url: "https://lookaside.fbsbx.com/story.jpg",
-          permalink: "https://www.instagram.com/stories/unsupported/",
-        },
-      ],
-    }));
+  it("normalizes and validates a perfectly composed 24 posts snapshot", async () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    // When: the server fetches and parses the account media.
-    const posts = await getInstagramPosts(config);
+    const mockData = generateValidMockData();
 
-    // Then: the gallery receives typed image and playable video records only.
-    expect(posts).toEqual([
-      {
-        id: "image-1",
-        mediaType: "image",
-        imageUrl: "https://lookaside.fbsbx.com/image-1.jpg",
-        permalink: "https://www.instagram.com/p/image-1/",
-        caption: "A calm living room",
-      },
-      {
-        id: "reel-1",
-        mediaType: "video",
-        videoUrl: "https://lookaside.fbsbx.com/reel-1.mp4",
-        thumbnailUrl: "https://lookaside.fbsbx.com/reel-1.jpg",
-        permalink: "https://www.instagram.com/reel/reel-1/",
-        caption: undefined,
-      },
-      {
-        id: "carousel-1",
-        mediaType: "image",
-        imageUrl: "https://lookaside.fbsbx.com/carousel-1.jpg",
-        permalink: "https://www.instagram.com/p/carousel-1/",
-        caption: undefined,
-      },
-    ]);
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]));
-    expect(requestUrl.pathname).toBe("/v25.0/17841400000000000/media");
-    expect(requestUrl.searchParams.get("access_token")).toBe("instagram-token");
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase as any);
+
+    const posts = await getInstagramPosts(null);
+    expect(posts).toHaveLength(24);
+    expect(posts.filter((p) => p.mediaType === "video")).toHaveLength(3);
+    expect(posts.filter((p) => p.mediaType === "image")).toHaveLength(21);
+    expect(posts[0]).toEqual({
+      id: "post-1",
+      mediaType: "video",
+      videoUrl: "https://fast.wistia.net/embed/medias/abc.mp4",
+      thumbnailUrl: "https://res.cloudinary.com/cloudname/image/upload/v1/thumb.jpg",
+      permalink: "https://www.instagram.com/p/C_abc1/",
+      caption: "Caption 1",
+    });
+    expect(posts[3]).toEqual({
+      id: "post-4",
+      mediaType: "image",
+      imageUrl: "https://res.cloudinary.com/cloudname/image/upload/v1/post-4.jpg",
+      permalink: "https://www.instagram.com/p/C_abc4/",
+      caption: "Caption 4",
+    });
   });
 
-  it("returns no more than 16 live posts in Meta response order", async () => {
-    // Given: Meta returns more usable records than the homepage should display.
-    const data = Array.from({ length: 17 }, (_, index) => ({
-      id: `image-${index + 1}`,
-      media_type: "IMAGE",
-      media_url: `https://lookaside.fbsbx.com/image-${index + 1}.jpg`,
-      permalink: `https://www.instagram.com/p/image-${index + 1}/`,
-    }));
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ data })));
+  it("returns fallback posts when there is excess posts (25 rows returned)", async () => {
+    const mockData = generateValidMockData(25, 3);
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase as any);
 
-    // When: the server resolves the gallery feed.
-    const posts = await getInstagramPosts(config);
-
-    // Then: the homepage receives the first 16 posts only.
-    expect(posts).toHaveLength(16);
-    expect(posts[15]?.id).toBe("image-16");
+    const posts = await getInstagramPosts(null);
+    expect(posts).toHaveLength(10);
+    expect(posts[0]?.id).toBe("fallback-1");
   });
 
-  it("keeps the homepage available with local images when Meta rejects the request", async () => {
-    // Given: Meta is temporarily unavailable.
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("rate limited", { status: 429 })));
+  it("returns fallback posts when there is a deficit of posts (23 rows returned)", async () => {
+    const mockData = generateValidMockData(23, 3);
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase as any);
 
-    // When: the server resolves the gallery posts.
-    const posts = await getInstagramPosts(config);
+    const posts = await getInstagramPosts(null);
+    expect(posts).toHaveLength(10);
+  });
 
-    // Then: the gallery preserves its local fallback instead of failing the homepage.
-    expect(posts[0]?.imageUrl).toBe("/images/home/instagram/instagram-1.jpg");
+  it("returns fallback posts when composition is wrong (4 videos and 20 images)", async () => {
+    const mockData = generateValidMockData(24, 4);
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase as any);
+
+    const posts = await getInstagramPosts(null);
+    expect(posts).toHaveLength(10);
+  });
+
+  it("returns fallback posts when sort_order is not contiguous 1..24", async () => {
+    const mockData = generateValidMockData();
+    mockData[10].sort_order = 99; // make a gap/non-contiguous
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase as any);
+
+    const posts = await getInstagramPosts(null);
+    expect(posts).toHaveLength(10);
+  });
+
+  it("returns fallback posts when there are duplicate IDs", async () => {
+    const mockData = generateValidMockData();
+    mockData[5].id = mockData[4].id; // duplicate ID
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase as any);
+
+    const posts = await getInstagramPosts(null);
+    expect(posts).toHaveLength(10);
+  });
+
+  it("returns fallback posts when a post URL fails validation", async () => {
+    const mockData = generateValidMockData();
+    mockData[5].image_url = "https://lookaside.fbsbx.com/image.jpg"; // invalid host
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase as any);
+
+    const posts = await getInstagramPosts(null);
+    expect(posts).toHaveLength(10);
+  });
+
+  it("handles valid reel permalinks and rejects reel permalinks with query params or fragments", async () => {
+    // 1. Valid reel link with trailing slash
+    const mockData1 = generateValidMockData();
+    mockData1[0].permalink = "https://www.instagram.com/reel/C_abc1/";
+    const mockSupabase1 = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData1, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase1 as any);
+    let posts = await getInstagramPosts(null);
+    expect(posts).toHaveLength(24);
+
+    // 2. Valid reel link without trailing slash
+    const mockData2 = generateValidMockData();
+    mockData2[0].permalink = "https://instagram.com/reel/C_abc1";
+    const mockSupabase2 = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData2, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase2 as any);
+    posts = await getInstagramPosts(null);
+    expect(posts).toHaveLength(24);
+
+    // 3. Invalid reel link with query parameter
+    const mockData3 = generateValidMockData();
+    mockData3[0].permalink = "https://www.instagram.com/reel/C_abc1/?utm_source=ig";
+    const mockSupabase3 = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData3, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase3 as any);
+    posts = await getInstagramPosts(null);
+    expect(posts).toHaveLength(10); // returns fallback posts due to invalid link
+
+    // 4. Invalid reel link with fragment
+    const mockData4 = generateValidMockData();
+    mockData4[0].permalink = "https://www.instagram.com/reel/C_abc1/#hash";
+    const mockSupabase4 = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData4, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase4 as any);
+    posts = await getInstagramPosts(null);
+    expect(posts).toHaveLength(10);
+
+    // 5. Invalid reel link containing extra path segments
+    const mockData5 = generateValidMockData();
+    mockData5[0].permalink = "https://www.instagram.com/reel/C_abc1/extra";
+    const mockSupabase5 = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData5, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase5 as any);
+    posts = await getInstagramPosts(null);
     expect(posts).toHaveLength(10);
   });
 });

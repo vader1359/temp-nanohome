@@ -31,6 +31,10 @@ const envSchema = z.object({
   // --- Instagram Graph API (server-only, optional) ---
   INSTAGRAM_ACCESS_TOKEN: optionalEnvString,
   INSTAGRAM_BUSINESS_ACCOUNT_ID: optionalEnvString,
+
+  // --- Cloudinary and Wistia (server-only, optional) ---
+  CLOUDINARY_URL: optionalEnvString,
+  WISTIA_API_TOKEN: optionalEnvString,
 });
 
 /**

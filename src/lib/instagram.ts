@@ -1,8 +1,6 @@
 import "server-only";
 
-import { z } from "zod";
-
-import { env } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { InstagramPost } from "@/lib/instagram-post";
 
 export type { InstagramPost } from "@/lib/instagram-post";
@@ -12,11 +10,6 @@ export type InstagramFeedConfig = {
   readonly businessAccountId: string;
 };
 
-const instagramFeedConfig = createInstagramFeedConfig(env);
-
-const MEDIA_FIELDS = ["id", "caption", "media_type", "media_url", "thumbnail_url", "permalink", "children{ id, media_type, media_url, thumbnail_url, permalink }"] as const;
-const META_GRAPH_API_ORIGIN = "https://graph.facebook.com";
-const META_GRAPH_API_VERSION = "v25.0";
 const FALLBACK_POSTS: readonly InstagramPost[] = Array.from({ length: 10 }, (_, index) => {
   const postNumber = index + 1;
 
@@ -28,30 +21,6 @@ const FALLBACK_POSTS: readonly InstagramPost[] = Array.from({ length: 10 }, (_, 
     caption: undefined,
   };
 });
-
-const metaMediaSchema = z.object({
-  id: z.string().min(1),
-  caption: z.string().optional(),
-  media_type: z.enum(["IMAGE", "VIDEO", "CAROUSEL_ALBUM"]).or(z.string()),
-  media_url: z.string().url().optional(),
-  thumbnail_url: z.string().url().optional(),
-  permalink: z.string().url(),
-  children: z.object({
-    data: z.array(z.object({
-      id: z.string().min(1),
-      media_type: z.enum(["IMAGE", "VIDEO"]).or(z.string()),
-      media_url: z.string().url().optional(),
-      thumbnail_url: z.string().url().optional(),
-      permalink: z.string().url().optional(),
-    })),
-  }).optional(),
-});
-
-const metaMediaResponseSchema = z.object({
-  data: z.array(metaMediaSchema),
-});
-
-type MetaMedia = z.infer<typeof metaMediaSchema>;
 
 export function createInstagramFeedConfig(env: {
   readonly INSTAGRAM_ACCESS_TOKEN?: string;
@@ -68,66 +37,148 @@ export function createInstagramFeedConfig(env: {
 }
 
 export async function getInstagramPosts(
-  config: InstagramFeedConfig | null = instagramFeedConfig,
+  _config?: unknown,
 ): Promise<readonly InstagramPost[]> {
-  if (config === null) {
+  void _config;
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("instagram_active_posts")
+      .select("id, source_post_id, media_type, image_url, video_url, thumbnail_url, permalink, caption, sort_order")
+      .order("sort_order", { ascending: true })
+      .limit(25);
+
+    if (error || !data || data.length !== 24) {
+      return FALLBACK_POSTS;
+    }
+
+    const posts: InstagramPost[] = [];
+    const seenIds = new Set<string>();
+
+    for (let i = 0; i < 24; i++) {
+      const row = data[i]!;
+
+      // Verify contiguous sort_order 1..24
+      if (row.sort_order !== i + 1) {
+        return FALLBACK_POSTS;
+      }
+
+      // Verify ID
+      if (!row.id || typeof row.id !== "string" || row.id.trim() === "") {
+        return FALLBACK_POSTS;
+      }
+      if (seenIds.has(row.id)) {
+        return FALLBACK_POSTS;
+      }
+      seenIds.add(row.id);
+
+      // Verify permalink
+      if (!isValidPermalink(row.permalink)) {
+        return FALLBACK_POSTS;
+      }
+
+      const mediaType = row.media_type?.toLowerCase();
+      if (mediaType === "image") {
+        if (!isValidCloudinaryUrl(row.image_url)) {
+          return FALLBACK_POSTS;
+        }
+        posts.push({
+          id: row.id,
+          mediaType: "image",
+          imageUrl: row.image_url,
+          permalink: row.permalink,
+          caption: row.caption ?? undefined,
+        });
+      } else if (mediaType === "video") {
+        if (!isValidWistiaUrl(row.video_url)) {
+          return FALLBACK_POSTS;
+        }
+        if (!isValidCloudinaryUrl(row.thumbnail_url)) {
+          return FALLBACK_POSTS;
+        }
+        posts.push({
+          id: row.id,
+          mediaType: "video",
+          videoUrl: row.video_url!,
+          thumbnailUrl: row.thumbnail_url!,
+          permalink: row.permalink,
+          caption: row.caption ?? undefined,
+        });
+      } else {
+        return FALLBACK_POSTS;
+      }
+    }
+
+    if (posts.length !== 24) {
+      return FALLBACK_POSTS;
+    }
+
+    const videoCount = posts.filter((p) => p.mediaType === "video").length;
+    const imageCount = posts.filter((p) => p.mediaType === "image").length;
+
+    if (videoCount !== 3 || imageCount !== 21) {
+      return FALLBACK_POSTS;
+    }
+
+    return posts;
+  } catch {
     return FALLBACK_POSTS;
   }
-
-  const url = new URL(`/${META_GRAPH_API_VERSION}/${config.businessAccountId}/media`, META_GRAPH_API_ORIGIN);
-  url.searchParams.set("fields", MEDIA_FIELDS.join(","));
-  url.searchParams.set("access_token", config.accessToken);
-
-  const response = await fetch(url, { next: { revalidate: 3600 } }).catch(() => null);
-  if (response === null || !response.ok) {
-    return FALLBACK_POSTS;
-  }
-
-  const payload = await response.json().catch(() => null);
-  const parsedResponse = metaMediaResponseSchema.safeParse(payload);
-  if (!parsedResponse.success) {
-    return FALLBACK_POSTS;
-  }
-
-  const posts = parsedResponse.data.data.flatMap(normalizeMetaMedia);
-  return posts.length > 0 ? posts.slice(0, 16) : FALLBACK_POSTS;
 }
 
-function normalizeMetaMedia(media: MetaMedia): readonly InstagramPost[] {
-  const children = media.children?.data;
-  if (media.media_type === "CAROUSEL_ALBUM" && children !== undefined && children.length > 0) {
-    return children.flatMap((child, index) => normalizeMediaItem({
-      ...child,
-      permalink: child.permalink ?? media.permalink,
-      caption: index === 0 ? media.caption : undefined,
-    }));
+function isValidCloudinaryUrl(urlStr: string | null | undefined): boolean {
+  if (!urlStr) return false;
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol !== "https:") return false;
+    if (url.username || url.password) return false;
+    if (url.port !== "" && url.port !== "443") return false;
+    return url.hostname.toLowerCase() === "res.cloudinary.com";
+  } catch {
+    return false;
   }
-
-  return normalizeMediaItem(media.media_type === "CAROUSEL_ALBUM" ? { ...media, media_type: "IMAGE" } : media);
 }
 
-function normalizeMediaItem(media: {
-  id: string;
-  media_type: string;
-  media_url?: string;
-  thumbnail_url?: string;
-  permalink: string;
-  caption?: string;
-}): readonly InstagramPost[] {
-  switch (media.media_type) {
-    case "IMAGE":
-      return (media.media_url ?? media.thumbnail_url) === undefined ? [] : [{
-        id: media.id, mediaType: "image", imageUrl: media.media_url ?? media.thumbnail_url!,
-        permalink: media.permalink, caption: media.caption,
-      }];
-    case "VIDEO":
-      if (media.media_url !== undefined && media.thumbnail_url !== undefined) return [{
-        id: media.id, mediaType: "video", videoUrl: media.media_url, thumbnailUrl: media.thumbnail_url,
-        permalink: media.permalink, caption: media.caption,
-      }];
-      return media.thumbnail_url === undefined ? [] : [{
-        id: media.id, mediaType: "image", imageUrl: media.thumbnail_url, permalink: media.permalink, caption: media.caption,
-      }];
-    default: return [];
+function isValidWistiaUrl(urlStr: string | null | undefined): boolean {
+  if (!urlStr) return false;
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol !== "https:") return false;
+    if (url.username || url.password) return false;
+    if (url.port !== "" && url.port !== "443") return false;
+    const hostname = url.hostname.toLowerCase();
+    const allowedWistiaHosts = [
+      "embed-ssl.wistia.com",
+      "embed.wistia.com",
+      "fast.wistia.com",
+      "fast.wistia.net",
+    ];
+    return allowedWistiaHosts.includes(hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isValidPermalink(urlStr: string | null | undefined): boolean {
+  if (!urlStr || /(?:^|\/)\.\.(?:\/|$)/.test(urlStr)) return false;
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol !== "https:") return false;
+    if (url.username || url.password) return false;
+    if (url.port !== "" && url.port !== "443") return false;
+    const hostname = url.hostname.toLowerCase();
+    if (hostname !== "www.instagram.com" && hostname !== "instagram.com") return false;
+
+    // Reject query parameters or fragments
+    if (url.search !== "" || url.hash !== "") return false;
+
+    const path = url.pathname;
+    if (!path.startsWith("/")) return false;
+    if (path.includes("//") || path.includes("\\") || path.includes("..")) return false;
+
+    const pathRegex = /^\/(p|reel)\/[a-zA-Z0-9_-]+\/?$/;
+    return pathRegex.test(path);
+  } catch {
+    return false;
   }
 }

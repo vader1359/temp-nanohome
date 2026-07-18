@@ -1325,6 +1325,179 @@ export type Database = {
           },
         ]
       }
+      instagram_posts: {
+        Row: {
+          id: string
+          media_type: string
+          image_url: string
+          video_url: string | null
+          thumbnail_url: string | null
+          permalink: string
+          caption: string | null
+          wistia_hashed_id: string | null
+          wistia_status: string | null
+          source_url_fingerprint: string
+          created_at: string | null
+          updated_at: string | null
+          last_seen_at: string | null
+        }
+        Insert: {
+          id: string
+          media_type: string
+          image_url: string
+          video_url?: string | null
+          thumbnail_url?: string | null
+          permalink: string
+          caption?: string | null
+          wistia_hashed_id?: string | null
+          wistia_status?: string | null
+          source_url_fingerprint: string
+          created_at?: string | null
+          updated_at?: string | null
+          last_seen_at?: string | null
+        }
+        Update: {
+          id?: string
+          media_type?: string
+          image_url?: string
+          video_url?: string | null
+          thumbnail_url?: string | null
+          permalink?: string
+          caption?: string | null
+          wistia_hashed_id?: string | null
+          wistia_status?: string | null
+          source_url_fingerprint?: string
+          created_at?: string | null
+          updated_at?: string | null
+          last_seen_at?: string | null
+        }
+        Relationships: []
+      }
+      instagram_snapshot_stages: {
+        Row: {
+          id: string
+          status: string
+          selection_key: string
+          source_url_version: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          status: string
+          selection_key: string
+          source_url_version: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          status?: string
+          selection_key?: string
+          source_url_version?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      instagram_snapshot_stage_items: {
+        Row: {
+          stage_id: string
+          post_id: string
+          media_type: string
+          source_url_fingerprint: string
+          sort_order: number
+          permalink: string
+          caption: string | null
+          image_url: string
+          video_url: string | null
+        }
+        Insert: {
+          stage_id: string
+          post_id: string
+          media_type: string
+          source_url_fingerprint: string
+          sort_order: number
+          permalink: string
+          caption?: string | null
+          image_url: string
+          video_url?: string | null
+        }
+        Update: {
+          stage_id?: string
+          post_id?: string
+          media_type?: string
+          source_url_fingerprint?: string
+          sort_order?: number
+          permalink?: string
+          caption?: string | null
+          image_url?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_snapshot_stage_items_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_snapshot_stages"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      instagram_active_posts: {
+        Row: {
+          id: string
+          source_post_id: string
+          media_type: string
+          image_url: string
+          video_url: string | null
+          thumbnail_url: string | null
+          permalink: string
+          caption: string | null
+          sort_order: number
+          published_at: string | null
+        }
+        Insert: {
+          id: string
+          source_post_id: string
+          media_type: string
+          image_url: string
+          video_url?: string | null
+          thumbnail_url?: string | null
+          permalink: string
+          caption?: string | null
+          sort_order: number
+          published_at?: string | null
+        }
+        Update: {
+          id?: string
+          source_post_id?: string
+          media_type?: string
+          image_url?: string
+          video_url?: string | null
+          thumbnail_url?: string | null
+          permalink?: string
+          caption?: string | null
+          sort_order?: number
+          published_at?: string | null
+        }
+        Relationships: []
+      }
+      instagram_pipeline_state: {
+        Row: {
+          key: string
+          value: string
+        }
+        Insert: {
+          key: string
+          value: string
+        }
+        Update: {
+          key?: string
+          value?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1970,6 +2143,86 @@ export type Database = {
       start_korean_backfill_run: {
         Args: { p_artifact_sha256: string; p_planned_count: number }
         Returns: string
+      }
+      publish_instagram_snapshot: {
+        Args: {
+          p_posts: Json
+          p_active_ids: string[]
+          p_source_url_version: string
+        }
+        Returns: unknown
+      }
+      save_instagram_posts_draft: {
+        Args: {
+          p_posts: Json
+        }
+        Returns: unknown
+      }
+      begin_instagram_snapshot_stage: {
+        Args: {
+          p_selection: Json
+          p_source_url_version: string
+          p_selection_key: string
+        }
+        Returns: string
+      }
+      save_instagram_stage_drafts: {
+        Args: {
+          p_stage_id: string
+          p_posts: Json
+        }
+        Returns: unknown
+      }
+      get_instagram_stage_work: {
+        Args: {
+          p_stage_id: string
+        }
+        Returns: {
+          id: string
+          media_type: string
+          permalink: string
+          caption: string | null
+          sort_order: number
+          source_url_fingerprint: string
+          meta_image_url: string
+          meta_video_url: string | null
+          draft_image_url: string | null
+          draft_video_url: string | null
+          draft_thumbnail_url: string | null
+          wistia_hashed_id: string | null
+          wistia_status: string | null
+        }[]
+      }
+      get_instagram_stage_pending_videos: {
+        Args: {
+          p_stage_id: string
+        }
+        Returns: {
+          id: string
+          wistia_hashed_id: string | null
+          wistia_status: string | null
+          image_url: string | null
+          thumbnail_url: string | null
+          permalink: string
+          caption: string | null
+          source_url_fingerprint: string
+        }[]
+      }
+      publish_instagram_stage: {
+        Args: {
+          p_stage_id: string
+        }
+        Returns: string
+      }
+      update_instagram_stage_wistia_status: {
+        Args: {
+          p_stage_id: string
+          p_post_id: string
+          p_source_url_fingerprint: string
+          p_status: string
+          p_video_url: string
+        }
+        Returns: unknown
       }
     }
     Enums: {
