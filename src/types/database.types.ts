@@ -47,6 +47,18 @@ export type Database = {
         }
         Relationships: []
       }
+      instagram_media: {
+        Row: { caption: string | null; id: string; media_type: string; media_url: string | null; permalink: string | null; published_at: string | null; synced_at: string; thumbnail_url: string | null }
+        Insert: { caption?: string | null; id: string; media_type: string; media_url?: string | null; permalink?: string | null; published_at?: string | null; synced_at?: string; thumbnail_url?: string | null }
+        Update: { caption?: string | null; id?: string; media_type?: string; media_url?: string | null; permalink?: string | null; published_at?: string | null; synced_at?: string; thumbnail_url?: string | null }
+        Relationships: []
+      }
+      instagram_sync_state: {
+        Row: { access_token: string; account_id: string; expires_at: string; sync_key: string; updated_at: string }
+        Insert: { access_token: string; account_id: string; expires_at: string; sync_key?: string; updated_at?: string }
+        Update: { access_token?: string; account_id?: string; expires_at?: string; sync_key?: string; updated_at?: string }
+        Relationships: []
+      }
       amis_inventory_baseline_lines: {
         Row: {
           baseline_id: string

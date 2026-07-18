@@ -27,6 +27,7 @@ const eslintConfig = defineConfig([
        "src/lib/supabase/**",
        "src/lib/amis/sync.ts",
        "src/lib/amis/inventory-sync.ts",
+       "src/lib/instagram/sync.ts",
       "src/lib/queries/cart.ts",
       "src/app/api/**",
       "**/route.{ts,tsx,js,jsx}",

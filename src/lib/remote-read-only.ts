@@ -69,6 +69,21 @@ export const supabaseAmisSyncFetch: typeof fetch = async (input, init) => {
   return fetch(input, init);
 };
 
+const INSTAGRAM_SYNC_SUPABASE_WRITES = new Map<string, ReadonlySet<string>>([
+  ["/rest/v1/instagram_sync_state", new Set(["POST", "PATCH"])],
+  ["/rest/v1/instagram_media", new Set(["POST"])],
+]);
+
+export const supabaseInstagramSyncFetch: typeof fetch = async (input, init) => {
+  const request = new Request(input, init);
+  const method = request.method.toUpperCase();
+  if (!READ_ONLY_HTTP_METHODS.has(method)) {
+    const allowedMethods = INSTAGRAM_SYNC_SUPABASE_WRITES.get(new URL(request.url).pathname);
+    if (allowedMethods?.has(method) !== true) throw new RemoteWriteBlockedError("Supabase", method, request.url);
+  }
+  return fetch(input, init);
+};
+
 const AMIS_CRM_ORIGIN = "https://crmconnect.misa.vn";
 
 const AMIS_ALLOWED_REQUESTS = new Map<string, ReadonlySet<string>>([
