@@ -4,6 +4,7 @@ import { createHash } from "crypto";
 import { z } from "zod";
 
 import { env } from "@/lib/env";
+import { isR2MediaUrl, uploadRemoteImageToR2 } from "@/lib/r2";
 import { createInstagramSyncAdminClient } from "@/lib/supabase/admin";
 
 const MEDIA_FIELDS = [
@@ -218,6 +219,18 @@ export async function uploadToCloudinary(
   return data.secure_url;
 }
 
+function isManagedImageUrl(url: string | null | undefined): boolean {
+  return Boolean(url?.startsWith("https://res.cloudinary.com/")) || isR2MediaUrl(url);
+}
+
+async function uploadInstagramImage(sourceUrl: string, key: string, signal?: AbortSignal): Promise<string> {
+  if (env.CF_R2_ACCESS_KEY_ID && env.CF_R2_SECRET_ACCESS_KEY && env.CF_R2_ENDPOINT && env.CF_R2_BUCKET && env.NEXT_PUBLIC_MEDIA_URL) {
+    return uploadRemoteImageToR2(sourceUrl, `instagram/${key}`, signal);
+  }
+  if (!env.CLOUDINARY_URL) throw new Error("Neither R2 nor Cloudinary image storage is configured");
+  return uploadToCloudinary(sourceUrl, key, "image", env.CLOUDINARY_URL, signal);
+}
+
 export async function importVideoToWistia(
   videoUrl: string,
   name: string,
@@ -387,11 +400,11 @@ export function requiredCandidateWorkMs(
   const localForceReingestion = forceReingestion || isSourceChanged;
 
   if (post.mediaType === "image") {
-    const needsImageUpload = localForceReingestion || !existing?.image_url || !existing.image_url.startsWith("https://res.cloudinary.com/");
+    const needsImageUpload = localForceReingestion || !isManagedImageUrl(existing?.image_url);
     return needsImageUpload ? 15000 : 0;
   }
 
-  const needsPosterUpload = localForceReingestion || !existing?.thumbnail_url || !existing.thumbnail_url.startsWith("https://res.cloudinary.com/");
+  const needsPosterUpload = localForceReingestion || !isManagedImageUrl(existing?.thumbnail_url);
   const wistiaHashedId = localForceReingestion ? null : (existing?.wistia_hashed_id || null);
   const wistiaStatus = localForceReingestion ? null : (existing?.wistia_status || null);
 
@@ -464,7 +477,7 @@ export async function runInstagramSync(
   const hasCreds = !!(
     env.INSTAGRAM_ACCESS_TOKEN &&
     env.INSTAGRAM_BUSINESS_ACCOUNT_ID &&
-    env.CLOUDINARY_URL &&
+    (env.CLOUDINARY_URL || (env.CF_R2_ACCESS_KEY_ID && env.CF_R2_SECRET_ACCESS_KEY && env.CF_R2_ENDPOINT && env.CF_R2_BUCKET && env.NEXT_PUBLIC_MEDIA_URL)) &&
     env.WISTIA_API_TOKEN
   );
 
@@ -474,7 +487,7 @@ export async function runInstagramSync(
       status: "disabled",
       processedCount: 0,
       readyCount: 0,
-      error: "Missing required configuration variables (access token, account ID, Cloudinary URL, or Wistia API token)",
+      error: "Missing required configuration variables (access token, account ID, image storage, or Wistia API token)",
     };
   }
 
@@ -695,9 +708,9 @@ export async function runInstagramSync(
       }
 
       // Check if item needs upload/import work
-      const needsImageUpload = item.media_type === "image" && (!item.draft_image_url || !item.draft_image_url.startsWith("https://res.cloudinary.com/"));
+      const needsImageUpload = item.media_type === "image" && !isManagedImageUrl(item.draft_image_url);
       const needsVideoImport = item.media_type === "video" && ((!item.wistia_hashed_id || item.wistia_status === "failed") && !!env.WISTIA_API_TOKEN);
-      const needsVideoPoster = item.media_type === "video" && (!item.draft_thumbnail_url || !item.draft_thumbnail_url.startsWith("https://res.cloudinary.com/"));
+      const needsVideoPoster = item.media_type === "video" && !isManagedImageUrl(item.draft_thumbnail_url);
 
       const isCostly = needsImageUpload || needsVideoImport || needsVideoPoster;
 
@@ -741,15 +754,13 @@ export async function runInstagramSync(
             const validatedVideoUrl = validateMetaUrl(item.meta_video_url!).toString();
 
             let cloudinaryPosterPromise: Promise<string>;
-            if (cloudinaryPosterUrl && cloudinaryPosterUrl.startsWith("https://res.cloudinary.com/")) {
+            if (isManagedImageUrl(cloudinaryPosterUrl)) {
               cloudinaryPosterPromise = Promise.resolve(cloudinaryPosterUrl);
             } else {
               const posterUploadSignal = getTimeoutSignal(jobAbortController.signal, 15000, TIME_AND_PERSIST_RESERVE_MS, remainingMs);
-              cloudinaryPosterPromise = uploadToCloudinary(
+              cloudinaryPosterPromise = uploadInstagramImage(
                 validatedPosterUrl,
                 `instagram_${item.id}_poster`,
-                "image",
-                env.CLOUDINARY_URL!,
                 posterUploadSignal
               );
             }
@@ -784,11 +795,9 @@ export async function runInstagramSync(
             // Image case
             const validatedUrl = validateMetaUrl(item.meta_image_url).toString();
             const imageUploadSignal = getTimeoutSignal(jobAbortController.signal, 15000, TIME_AND_PERSIST_RESERVE_MS, remainingMs);
-            cloudinaryImageUrl = await uploadToCloudinary(
+            cloudinaryImageUrl = await uploadInstagramImage(
               validatedUrl,
               `instagram_${item.id}`,
-              "image",
-              env.CLOUDINARY_URL!,
               imageUploadSignal
             );
           }
