@@ -18,6 +18,7 @@ const envSchema = z.object({
   NEXT_PUBLIC_CLARITY_ID: z.string().min(1).optional(),
   NEXT_PUBLIC_AXIOM_DATASET: z.string().min(1).optional(),
   NEXT_PUBLIC_AXIOM_TOKEN: z.string().min(1).optional(),
+  NEXT_PUBLIC_MEDIA_URL: optionalEnvUrl,
 
   // --- SERVER-ONLY ---
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
@@ -36,6 +37,10 @@ const envSchema = z.object({
 
   // --- Cloudinary and Wistia (server-only, optional) ---
   CLOUDINARY_URL: optionalEnvString,
+  CF_R2_ACCESS_KEY_ID: optionalEnvString,
+  CF_R2_SECRET_ACCESS_KEY: optionalEnvString,
+  CF_R2_ENDPOINT: optionalEnvUrl,
+  CF_R2_BUCKET: optionalEnvString,
   WISTIA_API_TOKEN: optionalEnvString,
 });
 

@@ -11,7 +11,7 @@ import {
 } from "@/lib/queries/products";
 import { variantDetailHref } from "@/lib/queries/variant-url";
 import { normalizeSearchQuery } from "@/lib/queries/search-input";
-import { firstCloudinaryImage } from "@/lib/image";
+import { firstProductImage } from "@/lib/image";
 import { isUsmContactVariant, isUsmVariant } from "@/lib/products/usm";
 import type { Variant } from "@/types/db";
 import { isSupportedLocale, type Locale } from "@/i18n/routing";
@@ -119,7 +119,7 @@ function facetLabel(
 }
 
 function getImageUrl(variant: VariantProductListItem): string {
-  return firstCloudinaryImage([
+  return firstProductImage([
     variantText(variant.packshot_url),
     ...variant.gallery_urls,
     variantText(variant.cldr_media_lifestyle_1),

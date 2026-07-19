@@ -1,6 +1,6 @@
 import { ProductGrid, type ProductGridItem, type ProductStatusKind } from "@/components/products/ProductGrid";
 import type { Locale } from "@/i18n/routing";
-import { firstCloudinaryImage } from "@/lib/image";
+import { firstProductImage } from "@/lib/image";
 import type { VariantProductListItem } from "@/lib/queries/products";
 import { variantDetailHref } from "@/lib/queries/variant-url";
 
@@ -108,7 +108,7 @@ function toProductGridItem(variant: VariantProductListItem, locale: Locale): Pro
     subCategory: variant.filter_sub_category ?? undefined,
     subtitle,
     status,
-    imageUrl: firstCloudinaryImage([
+    imageUrl: firstProductImage([
       variant.packshot_url,
       ...variant.gallery_urls,
       variant.cldr_media_lifestyle_1,

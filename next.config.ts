@@ -9,6 +9,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 import "./src/lib/env";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+const publicMediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL?.replace(/\/+$/, "");
 
 type WebpackConfig = Parameters<NonNullable<NextConfig["webpack"]>>[0];
 type WatchIgnored = NonNullable<NonNullable<WebpackConfig["watchOptions"]>["ignored"]>;
@@ -39,6 +40,10 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
+      // The public R2 hostname is deployment-specific. Keep the pattern exact
+      // by deriving it from the public media base URL rather than allowing all
+      // r2.dev tenants.
+      ...(publicMediaUrl ? [new URL(`${publicMediaUrl}/**`)] : []),
       {
         protocol: "https",
         hostname: "res.cloudinary.com",
