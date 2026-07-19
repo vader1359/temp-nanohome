@@ -3,7 +3,6 @@
     { "path": "/api/cron/instagram-sync", "schedule": "0 3 * * *" },
     { "path": "/api/cron/amis-sync", "schedule": "0 18 * * *" },
     { "path": "/api/cron/amis-stock-baseline", "schedule": "0 2 * * *" },
-    { "path": "/api/cron/amis-sale-orders", "schedule": "*/10 * * * *" },
-    { "path": "/api/cron/instagram-sync", "schedule": "0 3 * * *" }
+    { "path": "/api/cron/amis-sale-orders", "schedule": "*/10 * * * *" }
   ]
 }
