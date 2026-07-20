@@ -142,7 +142,20 @@ function hasValues(values: readonly string[] | undefined): values is readonly [s
 }
 
 const POSTGREST_RESERVED_VALUE_CHARACTERS = /[",.:*()\\]/u;
-const VARIANT_SEARCH_COLUMNS = ["name_vi", "name", "name_ko", "sku", "finish_vi", "finish", "finish_ko", "brand_name_denorm"] as const;
+const VARIANT_SEARCH_COLUMNS = [
+  "name_vi",
+  "name",
+  "name_ko",
+  "sku",
+  "finish_vi",
+  "finish",
+  "finish_ko",
+  "filter_category",
+  "filter_sub_category",
+  "filter_brand",
+  "brand_name_denorm",
+  "designer_name",
+] as const;
 
 function postgrestFilterValue(searchTerm: string): string {
   if (!POSTGREST_RESERVED_VALUE_CHARACTERS.test(searchTerm)) {
@@ -220,7 +233,7 @@ function fuzzyCountArgs(options: Omit<VariantProductQueryOptions, "page" | "page
 }
 
 function shouldUseFuzzyProductSearch(): boolean {
-  return false;
+  return true;
 }
 
 export async function getVariantProducts(options: VariantProductQueryOptions = {}): Promise<readonly VariantProductListItem[]> {
