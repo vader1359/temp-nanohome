@@ -316,7 +316,9 @@ export async function fetchWistiaVideoAssetUrl(
         continue;
       }
 
-      const assetUrl = asset.url;
+      // Wistia's v1 response can advertise an HTTP asset URL even though the
+      // same CDN asset is served over HTTPS. Persist only the secure form.
+      const assetUrl = asset.url.replace(/^http:\/\//i, "https://");
       try {
         validateWistiaAssetUrl(assetUrl);
         return assetUrl;

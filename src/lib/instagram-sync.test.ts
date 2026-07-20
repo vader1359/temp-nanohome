@@ -119,6 +119,16 @@ describe("Instagram Ingestion Pipeline", () => {
     });
   });
 
+  it("upgrades legacy HTTP Wistia asset URLs to HTTPS", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock.mockResolvedValue(Response.json({
+      assets: [{ contentType: "video/mp4", url: "http://embed.wistia.com/deliveries/video.bin" }],
+    }));
+
+    await expect(fetchWistiaVideoAssetUrl("video-hash", "wistia-token"))
+      .resolves.toBe("https://embed.wistia.com/deliveries/video.bin");
+  });
+
   describe("Error Redaction (redactError)", () => {
     it("redacts Cloudinary, Wistia and Instagram secrets from error strings", () => {
       mockEnv.CLOUDINARY_URL = "cloudinary://key123:secret456@cloudname";
