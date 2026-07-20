@@ -12,6 +12,7 @@ globalThis.ResizeObserver = class {
 Object.assign(process.env, {
   AMIS_API_BASE_URL: "https://amis.test",
   CRON_SECRET: "cron-secret-test",
+  NEXT_PUBLIC_MEDIA_URL: "https://pub-test.r2.dev",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
   NEXT_PUBLIC_SUPABASE_URL: "https://supabase.test",
   SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
