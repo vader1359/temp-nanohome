@@ -10,6 +10,7 @@ vi.mock("@/lib/env", () => ({
 
 const mockRunInstagramSync = vi.fn();
 vi.mock("@/lib/instagram-sync", () => ({
+  redactError: (error: unknown) => String(error).replace(/api_key_[^\s]+/g, "[REDACTED]"),
   runInstagramSync: mockRunInstagramSync,
 }));
 

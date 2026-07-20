@@ -240,7 +240,7 @@ export async function importVideoToWistia(
   const response = await fetch("https://upload.wistia.com", {
     method: "POST",
     headers: {
-      "Authorization": `Basic ${Buffer.from(`api:${apiToken}`).toString("base64")}`,
+      "Authorization": `Bearer ${apiToken}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: new URLSearchParams({
@@ -275,7 +275,7 @@ export async function checkWistiaStatus(
   const url = `https://api.wistia.com/v1/medias/${hashedId}.json`;
   const res = await fetch(url, {
     headers: {
-      Authorization: `Basic ${Buffer.from(`api:${apiToken}`).toString("base64")}`,
+      Authorization: `Bearer ${apiToken}`,
     },
     signal: signal || AbortSignal.timeout(10000),
   });
@@ -295,7 +295,7 @@ export async function fetchWistiaVideoAssetUrl(
   const url = `https://api.wistia.com/v1/medias/${hashedId}.json`;
   const res = await fetch(url, {
     headers: {
-      Authorization: `Basic ${Buffer.from(`api:${apiToken}`).toString("base64")}`,
+      Authorization: `Bearer ${apiToken}`,
     },
     signal: signal || AbortSignal.timeout(10000),
   });

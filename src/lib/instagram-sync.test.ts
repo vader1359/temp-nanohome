@@ -24,6 +24,8 @@ import {
   parseCloudinaryUrl,
   runInstagramSync,
   parseWistiaStatus,
+  importVideoToWistia,
+  checkWistiaStatus,
   fetchWistiaVideoAssetUrl,
 } from "@/lib/instagram-sync";
 import { createInstagramSyncAdminClient } from "@/lib/supabase/admin";
@@ -96,6 +98,24 @@ describe("Instagram Ingestion Pipeline", () => {
       expect(() => parseWistiaStatus("3")).toThrow("Unknown Wistia status");
       expect(() => parseWistiaStatus(undefined)).toThrow();
       expect(() => parseWistiaStatus(null)).toThrow();
+    });
+  });
+
+  describe("Wistia API authentication", () => {
+    it("uses the documented bearer-token authentication for imports and status reads", async () => {
+      const fetchMock = vi.mocked(global.fetch);
+      fetchMock.mockResolvedValueOnce(Response.json({ hashed_id: "video-hash", status: "processing" }));
+      fetchMock.mockResolvedValueOnce(Response.json({ status: "ready" }));
+
+      await importVideoToWistia("https://cdn.instagram.com/video.mp4", "Instagram video", "wistia-token");
+      await checkWistiaStatus("video-hash", "wistia-token");
+
+      expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+        headers: { Authorization: "Bearer wistia-token" },
+      });
+      expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+        headers: { Authorization: "Bearer wistia-token" },
+      });
     });
   });
 

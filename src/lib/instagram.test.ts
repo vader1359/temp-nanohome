@@ -84,6 +84,27 @@ describe("getInstagramPosts", () => {
     });
   });
 
+  it("accepts R2 images and video thumbnails in the active snapshot", async () => {
+    const mockData = generateValidMockData();
+    mockData[0].thumbnail_url = "https://pub-e41c11a8864c4fecba97a41f01637b8e.r2.dev/instagram/thumbnail.jpg";
+    mockData[3].image_url = "https://pub-e41c11a8864c4fecba97a41f01637b8e.r2.dev/instagram/image.jpg";
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+    };
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase as any);
+
+    const posts = await getInstagramPosts(null);
+    expect(posts).toHaveLength(24);
+    expect(posts[0]?.mediaType).toBe("video");
+    expect(posts[3]).toMatchObject({
+      mediaType: "image",
+      imageUrl: "https://pub-e41c11a8864c4fecba97a41f01637b8e.r2.dev/instagram/image.jpg",
+    });
+  });
+
   it("returns fallback posts when there is excess posts (25 rows returned)", async () => {
     const mockData = generateValidMockData(25, 3);
     const mockSupabase = {

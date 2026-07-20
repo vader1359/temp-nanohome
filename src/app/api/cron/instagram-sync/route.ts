@@ -1,5 +1,5 @@
 import { env } from "@/lib/env";
-import { runInstagramSync } from "@/lib/instagram-sync";
+import { redactError, runInstagramSync } from "@/lib/instagram-sync";
 
 export const maxDuration = 60;
 
@@ -19,6 +19,11 @@ async function handleInstagramSyncCron(request: Request): Promise<Response> {
   }
 
   const result = await runInstagramSync();
+  if (result.status === "error") {
+    // Keep the HTTP response generic while retaining a redacted diagnostic in
+    // server logs, even if an implementation returns an unredacted message.
+    console.error("Instagram sync failed:", redactError(result.error));
+  }
   return Response.json({
     status: result.status,
     processedCount: result.processedCount,

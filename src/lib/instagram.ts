@@ -79,7 +79,7 @@ export async function getInstagramPosts(
 
       const mediaType = row.media_type?.toLowerCase();
       if (mediaType === "image") {
-        if (!isValidCloudinaryUrl(row.image_url)) {
+        if (!isValidManagedImageUrl(row.image_url)) {
           return FALLBACK_POSTS;
         }
         posts.push({
@@ -93,7 +93,7 @@ export async function getInstagramPosts(
         if (!isValidWistiaUrl(row.video_url)) {
           return FALLBACK_POSTS;
         }
-        if (!isValidCloudinaryUrl(row.thumbnail_url)) {
+        if (!isValidManagedImageUrl(row.thumbnail_url)) {
           return FALLBACK_POSTS;
         }
         posts.push({
@@ -126,14 +126,15 @@ export async function getInstagramPosts(
   }
 }
 
-function isValidCloudinaryUrl(urlStr: string | null | undefined): boolean {
+function isValidManagedImageUrl(urlStr: string | null | undefined): boolean {
   if (!urlStr) return false;
   try {
     const url = new URL(urlStr);
     if (url.protocol !== "https:") return false;
     if (url.username || url.password) return false;
     if (url.port !== "" && url.port !== "443") return false;
-    return url.hostname.toLowerCase() === "res.cloudinary.com";
+    const hostname = url.hostname.toLowerCase();
+    return hostname === "res.cloudinary.com" || /^pub-[a-z0-9-]+\.r2\.dev$/.test(hostname);
   } catch {
     return false;
   }
