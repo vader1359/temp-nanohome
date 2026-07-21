@@ -1,0 +1,10 @@
+export { DEFAULT_VISION_CONFIG } from "./config";
+export { createSyntheticRoomSceneRecord } from "./fixtures";
+export { canProcessRoomImage, canRetainRoomImage, buildDeepSeekTextPayload } from "./privacy";
+export { transitionAnalysisState } from "./state";
+export { measurementWithOverride, parseProviderVisionOutput, validateVectorCompatibility, visualCandidateSchema, observedValueSchema, roomSceneRecordSchema, providerVisionOutputSchema } from "./contracts";
+export { rankRoomFitCandidates, rankVisuallySimilarCandidates, retrieveVisualCandidates } from "./retrieval";
+export type { DeepSeekTextPayload, VisionConsent } from "./privacy";
+export type { AnalysisEvent, AnalysisState, TransitionResult } from "./state";
+export type { MeasurementOverrideResult, ObservedValue, ProviderParseResult, ProviderVisionOutput, RoomSceneRecord, VectorCompatibility, VectorRejectionReason, VectorValidationResult, VisualCandidate } from "./contracts";
+export type { EmbeddingCandidate, RetrievalInput, RetrievalResult, RoomFitInput } from "./retrieval";
