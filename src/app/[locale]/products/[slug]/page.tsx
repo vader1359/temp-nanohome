@@ -9,6 +9,7 @@ import { Section6Recommended } from "@/components/product-detail/section-6-recom
 import type { RelatedProduct } from "@/components/product-detail/mock-data";
 import { COLORS } from "@/components/product-detail/mock-data";
 import { getVariantProducts, type VariantProductListItem } from "@/lib/queries/products";
+import { loadPdpRecommendations } from "@/lib/recommendations/pdp";
 import { variantDetailHref } from "@/lib/queries/variant-url";
 import { getVariantBySlug, getVariantsByProductId } from "@/lib/queries/variants";
 import { getDesignerById } from "@/lib/queries/designers";
@@ -125,39 +126,7 @@ function getVariantImages(variant: Variant): string[] {
   return getImageUrls([getVariantPackshotUrl(variant), ...getGalleryUrls(variant.gallery_urls)]);
 }
 
-type RelatedVariant = Pick<
-  Variant,
-  | "id"
-  | "name"
-  | "name_vi"
-  | "name_ko"
-  | "short_name"
-  | "short_name_vi"
-  | "short_name_ko"
-  | "slug"
-  | "slug_vi"
-  | "slug_ko"
-  | "sku"
-  | "stock"
-  | "price"
-  | "compare_at_price"
-  | "discount_percent"
-  | "on_sale"
-  | "in_stock"
-  | "packshot_url"
-  | "gallery_urls"
-  | "finish"
-  | "finish_vi"
-  | "finish_ko"
-  | "size"
-  | "brand_name_denorm"
-  | "media_lifestyle_1"
-  | "media_lifestyle_2"
-  | "cldr_media_lifestyle_1"
-  | "cldr_media_lifestyle_2"
-  | "media_long"
-  | "media_closeup"
->;
+type RelatedVariant = Pick<Variant, "id" | "name" | "name_vi" | "name_ko" | "short_name" | "short_name_vi" | "short_name_ko" | "slug" | "slug_vi" | "slug_ko" | "sku" | "stock" | "price" | "compare_at_price" | "discount_percent" | "on_sale" | "in_stock" | "packshot_url" | "gallery_urls" | "finish" | "finish_vi" | "finish_ko" | "size" | "brand_name_denorm" | "media_lifestyle_1" | "media_lifestyle_2" | "cldr_media_lifestyle_1" | "cldr_media_lifestyle_2" | "media_long" | "media_closeup">;
 
 function localizedVariantText(variant: Pick<Variant, "name" | "name_vi" | "name_ko">, locale: Locale, fallback: string): string {
   return localizedText({ ko: variant.name_ko, vi: variant.name_vi, en: variant.name }, locale, fallback);
@@ -171,6 +140,7 @@ function toRelatedProduct(variant: RelatedVariant | VariantProductListItem, loca
   const discounted = hasValidDiscount(variant);
 
   return {
+    id: variant.id,
     name: localizedVariantText(variant, locale, "Sản phẩm"),
     brand: variantText(variant.brand_name_denorm, "nanoHome"),
     category: [localizedFinish(variant, locale), variantText(variant.size)].filter(Boolean).join(" / ") || "Sản phẩm",
@@ -273,7 +243,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
   const [siblingVariants, similarCategoryVariants, recommendedVariants] = await Promise.all([
     variant.product_id !== null ? getVariantsByProductId(variant.product_id) : Promise.resolve([]),
     getVariantProducts({ categoryId: variant.category_id, excludeId: variant.id, pageSize: 8 }),
-    getVariantProducts({ excludeId: variant.id, pageSize: 4 }),
+    loadPdpRecommendations({ contextVariantId: variant.id }),
   ]);
   const relatedSource = similarCategoryVariants.length > 0 ? similarCategoryVariants : siblingVariants.filter((item) => item.id !== variant.id);
   const related = relatedSource.slice(0, 8).map((item) => toRelatedProduct(item, locale));
