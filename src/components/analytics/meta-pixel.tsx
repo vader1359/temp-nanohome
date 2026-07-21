@@ -1,40 +1,39 @@
-import Script from "next/script";
+"use client";
 
-const DEFAULT_META_PIXEL_ID = "484179830726882";
+import { useEffect } from "react";
 
 function getMetaPixelId(): string | null {
-  const value = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || DEFAULT_META_PIXEL_ID;
-  return /^\d+$/.test(value) ? value : null;
+  const value = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim();
+  return value && /^\d+$/.test(value) ? value : null;
 }
 
 export function MetaPixel() {
-  const pixelId = getMetaPixelId();
-  if (!pixelId) return null;
+  useEffect(() => {
+    const pixelId = getMetaPixelId();
+    if (!pixelId || typeof window.fbq === "function") return;
 
-  return (
-    <>
-      <Script
-        id="meta-pixel-init"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
-            !function(f,b,e,v,n,t,s)
-            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-            n.queue=[];t=b.createElement(e);t.async=!0;
-            t.src=v;s=b.getElementsByTagName(e)[0];
-            s.parentNode.insertBefore(t,s)}(window, document,'script',
-            'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${pixelId}');
-            fbq('track', 'PageView');
-          `,
-        }}
-      />
-      <noscript>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img height="1" width="1" style={{ display: "none" }} src={`https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`} alt="" />
-      </noscript>
-    </>
-  );
+    const previousFbq = window.fbq;
+    const script = document.createElement("script");
+    script.id = "meta-pixel-init";
+    script.src = "https://connect.facebook.net/en_US/fbevents.js";
+    script.async = true;
+    script.dataset.nanohomeTracker = "meta";
+    document.head.append(script);
+
+    const queue: unknown[][] = [];
+    const fbq = (...args: unknown[]) => {
+      queue.push(args);
+    };
+    window.fbq = fbq;
+    window.fbq("init", pixelId);
+    window.fbq("track", "PageView");
+
+    return () => {
+      script.remove();
+      if (previousFbq) window.fbq = previousFbq;
+      else delete window.fbq;
+    };
+  }, []);
+
+  return null;
 }
