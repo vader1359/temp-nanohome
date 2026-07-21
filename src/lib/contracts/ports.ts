@@ -38,7 +38,10 @@ export interface ZaloPayGateway {
 }
 
 export interface CustomerMemoryPort {
-  getMemory(visitorId: string): Promise<CustomerMemory>;
+  getForAuthenticatedCustomer(input: {
+    readonly userId: string;
+    readonly purpose: "concierge" | "personalization";
+  }): Promise<CustomerMemory | null>;
 }
 
 export interface RecommendationPort {
