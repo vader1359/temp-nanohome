@@ -19,13 +19,14 @@ const request = (ownerId?: string): Request => new Request("https://example.test
 });
 
 describe("GET /api/commerce/orders/[orderId]", () => {
-  it("returns unauthorized with the deny-default composition", async () => {
-    // Given: no server identity or production persistence composition.
-    // When: the actual exported handler reads an order.
+  it("retires the process-local order read scaffold", async () => {
+    // Given: the Plan 02 repository cannot survive a process restart.
+    // When: a caller reaches the exported read route.
     const response = await GET(request("user-1"), { params: Promise.resolve({ orderId: "WEB-1" }) });
 
-    // Then: the route does not expose order data.
-    expect(response.status).toBe(401);
+    // Then: it is explicitly unavailable instead of implying durable history.
+    expect(response.status).toBe(410);
+    await expect(response.json()).resolves.toEqual({ error: "commerce_scaffold_retired" });
   });
 
   it("hides another owner's order as not found", async () => {

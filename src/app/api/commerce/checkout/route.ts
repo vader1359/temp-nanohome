@@ -1,7 +1,5 @@
-import { createCommerceRouteComposition } from "@/lib/commerce/route-composition";
+import { retiredCommerceScaffoldResponse } from "@/lib/commerce/retired-route";
 
-import { createPostHandler } from "./handler";
-
-const composition = createCommerceRouteComposition();
-
-export const POST = createPostHandler(composition.routes);
+// Authenticated persisted-cart checkout lives at /api/checkout. The public
+// order-request path remains /api/cart/submit until a durable ledger is wired.
+export const POST = retiredCommerceScaffoldResponse;

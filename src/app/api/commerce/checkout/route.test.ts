@@ -26,13 +26,14 @@ const checkoutBody = {
 };
 
 describe("POST /api/commerce/checkout", () => {
-  it("returns unauthorized with the deny-default composition", async () => {
-    // Given: no server identity or production persistence composition.
-    // When: the actual exported handler receives checkout data.
+  it("retires the non-persistent Plan 02 checkout scaffold", async () => {
+    // Given: the scaffold only has an in-memory order repository.
+    // When: a caller reaches the exported route.
     const response = await POST(request(checkoutBody));
 
-    // Then: the route denies checkout before any browser identity is trusted.
-    expect(response.status).toBe(401);
+    // Then: it cannot be mistaken for durable checkout.
+    expect(response.status).toBe(410);
+    await expect(response.json()).resolves.toEqual({ error: "commerce_scaffold_retired" });
   });
 
   it("creates an order from server-owned catalog data", async () => {

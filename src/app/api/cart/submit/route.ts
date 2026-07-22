@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import type { CanonicalOrderRequestItem } from "@/lib/commerce/order-request-catalog";
+import { resolveOrderRequestCatalogFromSupabase } from "@/lib/commerce/order-request-catalog.server";
+
 export const runtime = "nodejs";
 
 const FILLOUT_API_BASE = "https://api.fillout.com/v1/api";
@@ -12,7 +15,6 @@ type SubmissionRequest = {
   source?: unknown;
   pageUrl?: unknown;
   cartItems?: unknown;
-  total?: unknown;
   vatRequested?: unknown;
   zaloPayRequested?: unknown;
   vnPayRequested?: unknown;
@@ -44,19 +46,6 @@ function asTrimmedString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function asFiniteNumber(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
 function isValidName(name: string): boolean {
   return /^[\p{L}\p{M}\s.'-]{2,100}$/u.test(name);
 }
@@ -77,37 +66,19 @@ function formatVnd(value: number): string {
   }).format(value);
 }
 
-function formatCartItem(item: unknown): string {
-  if (!isRecord(item)) return String(item);
-
-  const name = asTrimmedString(item.name) ?? "Sản phẩm";
-  const category = asTrimmedString(item.category);
-  const quantity = asFiniteNumber(item.quantity) ?? 1;
-  const priceText = asTrimmedString(item.price);
-  const originalPrice = asTrimmedString(item.originalPrice);
-  const discount = asTrimmedString(item.discount);
-  const badge = asTrimmedString(item.badge);
-  const lineTotal = asFiniteNumber(item.lineTotal);
-
+function formatCanonicalCartItem(item: CanonicalOrderRequestItem): string {
   const details = [
-    category ? `Danh mục: ${category}` : null,
-    priceText ? `Giá: ${priceText}` : null,
-    originalPrice ? `Giá gốc: ${originalPrice}` : null,
-    discount ? `Giảm giá: ${discount}` : null,
-    badge ? `Trạng thái: ${badge}` : null,
-    lineTotal !== null ? `Tổng dòng: ${formatVnd(lineTotal)}` : null,
+    `SKU: ${item.sku}`,
+    item.category === null ? null : `Danh mục: ${item.category}`,
+    `Giá: ${formatVnd(item.unitAmount)}`,
+    `Tổng dòng: ${formatVnd(item.lineTotal)}`,
   ].filter(Boolean);
 
-  return `${name} x${quantity}${details.length ? `\n  ${details.join("\n  ")}` : ""}`;
+  return `${item.name} x${item.quantity}\n  ${details.join("\n  ")}`;
 }
 
-function buildCartItemsString(cartItems: unknown, total: number | null): string {
-  const cartItemsStr = Array.isArray(cartItems)
-    ? cartItems.map(formatCartItem).join("\n\n")
-    : asTrimmedString(cartItems) ?? "";
-
-  if (total === null) return cartItemsStr;
-  return cartItemsStr ? `${cartItemsStr}\n\nTotal: ${formatVnd(total)}` : `Total: ${formatVnd(total)}`;
+function buildCanonicalCartItemsString(items: readonly CanonicalOrderRequestItem[], total: number): string {
+  return `${items.map(formatCanonicalCartItem).join("\n\n")}\n\nTotal: ${formatVnd(total)}`;
 }
 
 function getCartFormId(): string {
@@ -196,12 +167,13 @@ async function postToFillout(data: {
   });
 
   if (!response.ok) {
-    const detail = await response.json().catch(async () => response.text().catch(() => null));
-    return NextResponse.json({ error: "Fillout rejected the submission", status: response.status, detail }, { status: 502 });
+    return NextResponse.json(
+      { error: "Fillout rejected the submission" },
+      { status: 502 },
+    );
   }
 
-  const fillout = await response.json().catch(() => null);
-  return NextResponse.json({ ok: true, fillout });
+  return NextResponse.json({ ok: true });
 }
 
 export async function POST(request: NextRequest) {
@@ -219,7 +191,6 @@ export async function POST(request: NextRequest) {
 
   const source = asTrimmedString(body.source) ?? "nanohome-cart";
   const pageUrl = asTrimmedString(body.pageUrl) ?? "";
-  const total = asFiniteNumber(body.total);
 
   const isHomeSource = source === "nanohome-home";
 
@@ -230,8 +201,6 @@ export async function POST(request: NextRequest) {
   if (!isHomeSource && !hasItems) {
     return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
   }
-
-  const cartItems = buildCartItemsString(body.cartItems, total);
 
   const name = asTrimmedString(body.name) ?? (isHomeSource ? "Khách hàng" : null);
   const phone = asTrimmedString(body.phone);
@@ -271,6 +240,31 @@ export async function POST(request: NextRequest) {
   const vatCompanyName = asTrimmedString(body.vatCompanyName) ?? "";
   const vatTaxCode = asTrimmedString(body.vatTaxCode) ?? "";
   const vatInvoiceAddress = asTrimmedString(body.vatInvoiceAddress) ?? "";
+
+  let cartItems = "";
+  let total: number | null = null;
+  if (Array.isArray(body.cartItems) && body.cartItems.length > 0) {
+    let catalogResult;
+    try {
+      catalogResult = await resolveOrderRequestCatalogFromSupabase(body.cartItems);
+    } catch {
+      return NextResponse.json({ error: "Catalog is temporarily unavailable" }, { status: 503 });
+    }
+
+    if (catalogResult.kind !== "success") {
+      return NextResponse.json({ error: "Cart contains unavailable items" }, { status: 409 });
+    }
+
+    cartItems = buildCanonicalCartItemsString(
+      catalogResult.orderRequest.items,
+      catalogResult.orderRequest.totalAmount,
+    );
+    total = catalogResult.orderRequest.totalAmount;
+  } else if (isHomeSource) {
+    cartItems = asTrimmedString(body.cartItems) ?? "";
+  } else {
+    return NextResponse.json({ error: "Cart is invalid" }, { status: 400 });
+  }
 
   return postToFillout({
     name,

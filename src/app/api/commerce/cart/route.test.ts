@@ -20,13 +20,14 @@ const request = (body: unknown): Request => new Request("https://example.test/ap
 });
 
 describe("POST /api/commerce/cart", () => {
-  it("returns unauthorized with the deny-default composition", async () => {
-    // Given: no server identity or production persistence composition.
-    // When: the actual exported handler receives a cart replacement.
+  it("retires the non-persistent Plan 02 scaffold", async () => {
+    // Given: the customer cart still uses the established local + Fillout flow.
+    // When: a caller reaches the old in-memory scaffold.
     const response = await POST(request({ owner: { kind: "guest", id: "browser" }, selections: [{ variantId: "variant-1", quantity: 1 }] }));
 
-    // Then: the route does not allow a browser to become an owner.
-    expect(response.status).toBe(401);
+    // Then: it is explicitly unavailable instead of pretending to persist.
+    expect(response.status).toBe(410);
+    await expect(response.json()).resolves.toEqual({ error: "commerce_scaffold_retired" });
   });
 
   it("uses server catalog values and ignores browser commercial fields", async () => {

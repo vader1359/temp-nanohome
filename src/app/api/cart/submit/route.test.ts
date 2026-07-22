@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+
+const catalogMocks = vi.hoisted(() => ({
+  resolveOrderRequestCatalogFromSupabase: vi.fn(),
+}));
+
+vi.mock("@/lib/commerce/order-request-catalog.server", () => catalogMocks);
+
 import { POST } from "./route";
 
 describe("POST /api/cart/submit", () => {
@@ -12,6 +19,22 @@ describe("POST /api/cart/submit", () => {
     vi.stubEnv("FILLOUT_CART_QUESTION_ZALOPAY_REQUESTED_ID", "");
     vi.stubEnv("FILLOUT_CART_QUESTION_VNPAY_REQUESTED_ID", "");
     vi.stubEnv("FILLOUT_CART_QUESTION_TOTAL_ID", "");
+    catalogMocks.resolveOrderRequestCatalogFromSupabase.mockReset();
+    catalogMocks.resolveOrderRequestCatalogFromSupabase.mockResolvedValue({
+      kind: "success",
+      orderRequest: {
+        items: [{
+          variantId: "item-1",
+          sku: "SKU-SERVER",
+          name: "Canonical Product",
+          category: "Canonical Brand / Canonical Category",
+          quantity: 2,
+          unitAmount: 125000,
+          lineTotal: 250000,
+        }],
+        totalAmount: 250000,
+      },
+    });
   });
 
   afterEach(() => {
@@ -140,5 +163,77 @@ describe("POST /api/cart/submit", () => {
     const hasVnpay = questions.some((q: { id?: string }) => q.id === "" || q.id === "vnpay_id");
     expect(hasZalo).toBe(false);
     expect(hasVnpay).toBe(false);
+  });
+
+  it("rebuilds the Fillout cart summary and total from the canonical server catalog", async () => {
+    // Given: the browser sends forged labels, SKU text, and commercial amounts.
+    vi.stubEnv("FILLOUT_CART_QUESTION_TOTAL_ID", "total_id");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+    const browserItems = [{
+      id: "item-1",
+      name: "Forged Product",
+      sku: "FORGED-SKU",
+      category: "Forged Category",
+      quantity: 2,
+      price: "1 ₫",
+      lineTotal: 2,
+    }];
+
+    // When: the public order-request endpoint accepts the cart.
+    const response = await POST(new NextRequest("http://localhost/api/cart/submit", {
+      method: "POST",
+      body: JSON.stringify({ ...validBasePayload, cartItems: browserItems, total: 2 }),
+    }));
+
+    // Then: only the ID and quantity reach validation, and Fillout receives server facts.
+    expect(response.status).toBe(200);
+    expect(catalogMocks.resolveOrderRequestCatalogFromSupabase).toHaveBeenCalledWith(browserItems);
+    const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const questions = requestBody.submissions[0].questions;
+    const itemsQuestion = questions.find((question: { id?: string }) => question.id === "nNHy");
+    const totalQuestion = questions.find((question: { id?: string }) => question.id === "total_id");
+    expect(itemsQuestion.value).toContain("Canonical Product x2");
+    expect(itemsQuestion.value).toContain("SKU: SKU-SERVER");
+    expect(itemsQuestion.value).not.toContain("Forged Product");
+    expect(itemsQuestion.value).not.toContain("FORGED-SKU");
+    expect(totalQuestion).toEqual({ id: "total_id", value: 250000 });
+    await expect(response.json()).resolves.toEqual({ ok: true });
+  });
+
+  it("rejects unavailable catalog selections before contacting Fillout", async () => {
+    // Given: the canonical catalog rejects one selected variant.
+    catalogMocks.resolveOrderRequestCatalogFromSupabase.mockResolvedValue({ kind: "invalid_selection" });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    // When: the cart is submitted.
+    const response = await POST(new NextRequest("http://localhost/api/cart/submit", {
+      method: "POST",
+      body: JSON.stringify(validBasePayload),
+    }));
+
+    // Then: the request fails closed without creating a Fillout record.
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({ error: "Cart contains unavailable items" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the canonical catalog cannot be read", async () => {
+    // Given: Supabase is unavailable.
+    catalogMocks.resolveOrderRequestCatalogFromSupabase.mockRejectedValue(new Error("offline"));
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    // When: the cart is submitted.
+    const response = await POST(new NextRequest("http://localhost/api/cart/submit", {
+      method: "POST",
+      body: JSON.stringify(validBasePayload),
+    }));
+
+    // Then: browser commercial data is not used as a fallback.
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "Catalog is temporarily unavailable" });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

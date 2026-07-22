@@ -1,7 +1,5 @@
-import { createCommerceRouteComposition } from "@/lib/commerce/route-composition";
+import { retiredCommerceScaffoldResponse } from "@/lib/commerce/retired-route";
 
-import { createPostHandler } from "./handler";
-
-const composition = createCommerceRouteComposition();
-
-export const POST = createPostHandler(composition.routes);
+// The customer cart remains local and order requests use /api/cart/submit.
+// Do not expose the Plan 02 in-memory scaffold as a production cart API.
+export const POST = retiredCommerceScaffoldResponse;
