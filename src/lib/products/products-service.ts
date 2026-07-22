@@ -13,6 +13,8 @@ import { variantDetailHref } from "@/lib/queries/variant-url";
 import { normalizeSearchQuery } from "@/lib/queries/search-input";
 import { firstProductImage } from "@/lib/image";
 import { isUsmContactVariant, isUsmVariant } from "@/lib/products/usm";
+import { isInStock } from "@/lib/products/availability";
+import { isContactPrice } from "@/lib/products/price";
 import type { Variant } from "@/types/db";
 import { isSupportedLocale, type Locale } from "@/i18n/routing";
 import { type CanonicalFilters, PAGE_SIZE } from "./filter-utils";
@@ -211,13 +213,13 @@ export async function getProductPage(locale: string, filters: CanonicalFilters):
   const fmt = buildPriceFormatter(supportedLocale);
 
   function formatPrice(variant: Pick<VariantProductListItem, "sku" | "stock">, price: Variant["price"]): string {
-    if (isUsmContactVariant(variant) || price === null || (Number(price) === 0 && !isUsmVariant(variant))) return t("contactForPrice");
+    if (isUsmContactVariant(variant) || isContactPrice(price) || (Number(price) === 0 && !isUsmVariant(variant))) return t("contactForPrice");
     return fmt.format(Number(price));
   }
 
   function toGridItem(variant: VariantProductListItem): ProductGridItem {
     const brand = variant.brand_id ? brandById.get(variant.brand_id) : undefined;
-    const useContactPrice = isUsmContactVariant(variant);
+    const useContactPrice = isUsmContactVariant(variant) || isContactPrice(variant.price);
 
     const rawComparePrice = variant.compare_at_price !== null ? Number(variant.compare_at_price) : 0;
     const rawPrice = variant.price !== null ? Number(variant.price) : 0;
@@ -225,7 +227,7 @@ export async function getProductPage(locale: string, filters: CanonicalFilters):
 
     const status: ProductStatusKind = (variant.on_sale && hasValidDiscount)
       ? "sale"
-      : variant.in_stock
+      : isInStock(variant)
         ? "in_stock"
         : "out_of_stock";
 

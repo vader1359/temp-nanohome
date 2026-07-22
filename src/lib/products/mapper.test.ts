@@ -29,6 +29,29 @@ describe("variantToProductGridItem", () => {
     expect(product.price).toMatch(/^0\s₫$/u);
   });
 
+  it("uses contact pricing for an AMIS placeholder price of one", () => {
+    const product = variantToProductGridItem({
+      id: "contact-price-one",
+      name: "Product",
+      name_vi: "Sản phẩm",
+      slug: "product",
+      slug_vi: "san-pham",
+      sku: "CHRBB00006",
+      stock: 1,
+      price: 1,
+      compare_at_price: 100,
+      discount_percent: 99,
+      on_sale: true,
+      in_stock: true,
+      packshot_url: null,
+      gallery_urls: [],
+    });
+
+    expect(product.price).toBe("Liên hệ");
+    expect(product.oldPrice).toBeNull();
+    expect(product.discount).toBeNull();
+  });
+
   it("uses the catalog fallback image when a packshot-only item has no media", () => {
     // Given: a catalog item with no packshot or gallery media.
     const variant = {
@@ -53,5 +76,26 @@ describe("variantToProductGridItem", () => {
 
     // Then: the card has a real fallback image rather than an empty frame.
     expect(product.imageUrl).toBe("/images/p_lc2.png");
+  });
+
+  it("uses positive AMIS stock even when the legacy availability flag is false", () => {
+    const product = variantToProductGridItem({
+      id: "amis-stock-is-source-of-truth",
+      name: "Product",
+      name_vi: "Sản phẩm",
+      slug: "product",
+      slug_vi: "san-pham",
+      sku: "TBLBB00001",
+      stock: 1,
+      price: 100,
+      compare_at_price: null,
+      discount_percent: null,
+      on_sale: false,
+      in_stock: false,
+      packshot_url: null,
+      gallery_urls: [],
+    });
+
+    expect(product.status).toBe("in_stock");
   });
 });

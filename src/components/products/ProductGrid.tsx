@@ -335,7 +335,7 @@ export function ProductGrid({ products, gridClassName }: ProductGridProps) {
                     {product.brand}
                   </div>
                 )}
-              <h3 className="line-clamp-2 text-[11px] font-normal min-h-8 text-balance leading-4 text-nh-ink sm:min-h-9 sm:text-[12px] sm:leading-[18px]">
+              <h3 className="line-clamp-2 min-h-8 text-balance text-[11px] font-normal leading-4 text-nh-ink sm:min-h-9 sm:text-[12px] sm:leading-[18px] md:min-h-10 md:text-sm md:leading-5">
                 <Link className="transition-colors hover:text-nh-red" href={product.href}>
                   {product.name}
                 </Link>

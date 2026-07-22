@@ -287,13 +287,13 @@ export async function getVariantProducts(options: VariantProductQueryOptions = {
 
   switch (options.status) {
     case "in_stock":
-      query = query.or("in_stock.eq.true,sku.ilike.USMUS%");
+      query = query.gt("stock", 0);
       break;
     case "sale":
       query = query.eq("on_sale", true);
       break;
     case "out_of_stock":
-      query = query.eq("in_stock", false);
+      query = query.or("stock.lte.0,stock.is.null");
       break;
     case "new_arrival":
       query = query.eq("filter_is_new_arrival", true);
@@ -315,7 +315,7 @@ export async function getVariantProducts(options: VariantProductQueryOptions = {
       break;
     case "priority":
       query = query
-        .order("in_stock", { ascending: false, nullsFirst: false })
+        .order("stock", { ascending: false, nullsFirst: false })
         .order("filter_is_new_arrival", { ascending: false, nullsFirst: false })
         .order("priority", { ascending: true, nullsFirst: false })
         .order("id", { ascending: true });
@@ -391,13 +391,13 @@ export async function getVariantProductCount(options: Omit<VariantProductQueryOp
 
   switch (options.status) {
     case "in_stock":
-      query = query.or("in_stock.eq.true,sku.ilike.USMUS%");
+      query = query.gt("stock", 0);
       break;
     case "sale":
       query = query.eq("on_sale", true);
       break;
     case "out_of_stock":
-      query = query.eq("in_stock", false);
+      query = query.or("stock.lte.0,stock.is.null");
       break;
     case "new_arrival":
       query = query.eq("filter_is_new_arrival", true);

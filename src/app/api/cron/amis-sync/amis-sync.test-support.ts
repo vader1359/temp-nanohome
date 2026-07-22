@@ -33,7 +33,7 @@ export type AmisProductFixture = {
 
 export type AmisLedgerFixture = {
   readonly product_code: string;
-  readonly amount_summary: number | string;
+  readonly order_quantity: number | string;
 };
 
 type AmisLedgerPage = readonly AmisLedgerFixture[] | null;

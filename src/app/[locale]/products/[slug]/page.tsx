@@ -14,6 +14,8 @@ import { getVariantBySlug, getVariantsByProductId } from "@/lib/queries/variants
 import { getDesignerById } from "@/lib/queries/designers";
 import { localizedText } from "@/lib/i18n/content";
 import { isUsmContactVariant, isUsmVariant } from "@/lib/products/usm";
+import { isInStock } from "@/lib/products/availability";
+import { isContactPrice } from "@/lib/products/price";
 import type { Variant } from "@/types/db";
 import { isSupportedLocale, type Locale } from "@/i18n/routing";
 
@@ -32,7 +34,7 @@ const priceFormatter = new Intl.NumberFormat("vi-VN", {
 const FALLBACK_PRODUCT_IMAGE = "/images/p_lc2.png";
 
 function formatPrice(variant: Pick<Variant, "sku" | "stock">, price: Variant["price"]): string {
-  if (isUsmContactVariant(variant) || price === null || (Number(price) === 0 && !isUsmVariant(variant))) {
+  if (isUsmContactVariant(variant) || isContactPrice(price) || (Number(price) === 0 && !isUsmVariant(variant))) {
     return "Liên hệ";
   }
 
@@ -81,7 +83,7 @@ function getGalleryUrls(value: unknown): readonly unknown[] {
 function hasValidDiscount(variant: Pick<Variant, "price" | "compare_at_price" | "discount_percent" | "sku" | "stock">): boolean {
   const price = Number(variant.price);
   const compareAtPrice = Number(variant.compare_at_price);
-  return !isUsmContactVariant(variant) && price > 0 && compareAtPrice > price && variant.discount_percent !== null;
+  return !isUsmContactVariant(variant) && !isContactPrice(variant.price) && price > 0 && compareAtPrice > price && variant.discount_percent !== null;
 }
 
 type VariantRawSource = { readonly raw?: unknown };
@@ -178,7 +180,7 @@ function toRelatedProduct(variant: RelatedVariant | VariantProductListItem, loca
     oldPrice: discounted ? formatPrice(variant, variant.compare_at_price) : null,
     discount: discounted ? `-${variant.discount_percent}%` : null,
     image: getVariantPackshotUrl(variant) || getImageUrl(getGalleryUrls(variant.gallery_urls)[0]) || FALLBACK_PRODUCT_IMAGE,
-    available: variant.in_stock,
+    available: isInStock(variant),
     href: variantDetailHref(variant, locale),
     tags: variant.on_sale && discounted ? ["Sale"] : undefined,
   };
@@ -228,7 +230,7 @@ function buildSpecColumns(variant: Variant, locale: Locale, labels: ProductSpecL
     [
       { label: labels.productName, value: localizedVariantText(variant, locale, labels.productName) },
       { label: labels.sku, value: variantText(variant.sku, labels.updating) },
-      { label: labels.availability, value: variant.in_stock ? labels.inStock : labels.outOfStock },
+      { label: labels.availability, value: isInStock(variant) ? labels.inStock : labels.outOfStock },
       { label: labels.finish, value: localizedFinish(variant, locale, labels.updating) },
     ],
     [

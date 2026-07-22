@@ -3,6 +3,8 @@ import type { Locale } from "@/i18n/routing";
 import { firstProductImage } from "@/lib/image";
 import type { VariantProductListItem } from "@/lib/queries/products";
 import { variantDetailHref } from "@/lib/queries/variant-url";
+import { isInStock } from "@/lib/products/availability";
+import { isContactPrice } from "@/lib/products/price";
 
 function variantText(value: string | null, fallback = ""): string {
   return value === null || value === "" ? fallback : value;
@@ -25,7 +27,7 @@ const CONTACT_LABELS: Record<string, string> = {
 };
 
 function formatPrice(value: number | null, locale: Locale): string {
-  if (value === null || value === 0) {
+  if (isContactPrice(value) || value === 0) {
     return CONTACT_LABELS[locale] ?? "Contact for price";
   }
   return new Intl.NumberFormat(locale === "ko" ? "ko-KR" : locale === "vi" ? "vi-VN" : "en-US", {
@@ -81,7 +83,7 @@ function formatSubtitle(rawSubtitle: string | null, locale: Locale): string {
 }
 
 function toProductGridItem(variant: VariantProductListItem, locale: Locale): ProductGridItem {
-  const useContactPrice = variant.price === null || variant.price === 0;
+  const useContactPrice = isContactPrice(variant.price) || variant.price === 0;
 
   const rawComparePrice = variant.compare_at_price !== null ? Number(variant.compare_at_price) : 0;
   const rawPrice = variant.price !== null ? Number(variant.price) : 0;
@@ -89,7 +91,7 @@ function toProductGridItem(variant: VariantProductListItem, locale: Locale): Pro
 
   const status: ProductStatusKind = (variant.on_sale && hasValidDiscount)
     ? "sale"
-    : variant.in_stock
+    : isInStock(variant)
       ? "in_stock"
       : "out_of_stock";
 

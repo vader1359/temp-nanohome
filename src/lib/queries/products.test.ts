@@ -4,6 +4,7 @@ type QueryResult = { readonly data: readonly Record<string, never>[] | null; rea
 type QueryMock = PromiseLike<QueryResult> & {
   readonly select: ReturnType<typeof vi.fn>;
   readonly eq: ReturnType<typeof vi.fn>;
+  readonly gt: ReturnType<typeof vi.fn>;
   readonly neq: ReturnType<typeof vi.fn>;
   readonly ilike: ReturnType<typeof vi.fn>;
   readonly in: ReturnType<typeof vi.fn>;
@@ -11,6 +12,7 @@ type QueryMock = PromiseLike<QueryResult> & {
   readonly or: ReturnType<typeof vi.fn>;
   readonly overlaps: ReturnType<typeof vi.fn>;
   readonly range: ReturnType<typeof vi.fn>;
+  readonly rpc: ReturnType<typeof vi.fn>;
 };
 
 const state = vi.hoisted(() => {
@@ -24,6 +26,7 @@ const state = vi.hoisted(() => {
       eqCalls.push([column, value]);
       return chain;
     }),
+    gt: vi.fn(() => chain),
     neq: vi.fn(() => chain),
     ilike: vi.fn(() => chain),
     in: vi.fn((column: string, value: readonly string[]) => {
@@ -40,11 +43,12 @@ const state = vi.hoisted(() => {
       return chain;
     }),
     range: vi.fn(() => chain),
+    rpc: vi.fn(async () => ({ data: null, error: new Error("RPC unavailable in query-builder test") })),
     then: (resolve) => Promise.resolve({ data: [{}], error: null }).then(resolve),
   };
   return {
     chain,
-    createClient: vi.fn(async () => ({ from: state.from })),
+    createClient: vi.fn(async () => ({ from: state.from, rpc: state.chain.rpc })),
     eqCalls,
     from: vi.fn(() => chain),
     inCalls,
@@ -145,7 +149,7 @@ describe("getVariantProducts", () => {
     expect(state.inCalls).toContainEqual(["filter_sub_category", ["table-lamps"]]);
     expect(state.overlapCalls).toContainEqual(["filter_room", ["living-room"]]);
     expect(state.chain.or).toHaveBeenCalledWith(
-      "name_vi.ilike.%lamp%,name.ilike.%lamp%,name_ko.ilike.%lamp%,sku.ilike.%lamp%,finish_vi.ilike.%lamp%,finish.ilike.%lamp%,finish_ko.ilike.%lamp%,brand_name_denorm.ilike.%lamp%",
+      "name_vi.ilike.%lamp%,name.ilike.%lamp%,name_ko.ilike.%lamp%,sku.ilike.%lamp%,finish_vi.ilike.%lamp%,finish.ilike.%lamp%,finish_ko.ilike.%lamp%,filter_category.ilike.%lamp%,filter_sub_category.ilike.%lamp%,filter_brand.ilike.%lamp%,brand_name_denorm.ilike.%lamp%,designer_name.ilike.%lamp%",
     );
     expect(state.eqCalls).toContainEqual(["on_sale", true]);
   });
@@ -156,24 +160,24 @@ describe("getVariantProducts", () => {
     await getVariantProducts({ page: 1 });
 
     // Then: stock status, new-arrival status, and low Supabase priority scores drive the default order.
-    expect(state.chain.order).toHaveBeenNthCalledWith(1, "in_stock", { ascending: false, nullsFirst: false });
+    expect(state.chain.order).toHaveBeenNthCalledWith(1, "stock", { ascending: false, nullsFirst: false });
     expect(state.chain.order).toHaveBeenNthCalledWith(2, "filter_is_new_arrival", { ascending: false, nullsFirst: false });
     expect(state.chain.order).toHaveBeenNthCalledWith(3, "priority", { ascending: true, nullsFirst: false });
     expect(state.chain.order).toHaveBeenNthCalledWith(4, "id", { ascending: true });
   });
 
-  it("keeps USM variants in the in-stock result and count", async () => {
+  it("uses the AMIS stock balance for in-stock and out-of-stock filters", async () => {
     // Given: stock status filters from the UI.
     // When: the listing and its pagination count query the in-stock state.
     await getVariantProducts({ status: "in_stock" });
     await getVariantProductCount({ status: "in_stock" });
     await getVariantProducts({ status: "out_of_stock" });
 
-    // Then: unavailable USMUS variants remain visible without changing the out-of-stock filter.
+    // Then: availability never depends on the legacy in_stock flag.
+    expect(state.chain.gt).toHaveBeenCalledTimes(2);
+    expect(state.chain.gt).toHaveBeenCalledWith("stock", 0);
     expect(state.orCalls).toEqual([
-      "in_stock.eq.true,sku.ilike.USMUS%",
-      "in_stock.eq.true,sku.ilike.USMUS%",
+      "stock.lte.0,stock.is.null",
     ]);
-    expect(state.eqCalls).toContainEqual(["in_stock", false]);
   });
 });

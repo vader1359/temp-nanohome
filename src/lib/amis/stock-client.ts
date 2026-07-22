@@ -70,7 +70,7 @@ async function fetchAmisStockLedgerPage(
 
   return {
     kind: "success",
-    records: parsed.data.data.map((record) => ({ sku: record.product_code, stock: record.amount_summary })),
+    records: parsed.data.data.map((record) => ({ sku: record.product_code, stock: record.order_quantity })),
     totalPages: parsed.data.total_pages,
   };
 }
@@ -91,7 +91,10 @@ function uniqueStockLedgerRecords(records: readonly AmisStockLedgerRecord[]): re
   return [...recordsBySku.values()];
 }
 
-const amisStockLedgerRecordSchema = z.object({ product_code: z.string().min(1), amount_summary: numericValueSchema });
+const amisStockLedgerRecordSchema = z.object({
+  product_code: z.string().min(1),
+  order_quantity: numericValueSchema,
+});
 
 const amisStockLedgerResponseSchema = z.object({
   success: z.boolean(),

@@ -1,5 +1,7 @@
 import type { ProductGridItem } from "@/components/products/ProductGrid";
 import { isUsmContactVariant, isUsmVariant } from "@/lib/products/usm";
+import { isInStock } from "@/lib/products/availability";
+import { isContactPrice } from "@/lib/products/price";
 import type { Variant } from "@/types/db";
 
 const priceFormatter = new Intl.NumberFormat("vi-VN", {
@@ -9,7 +11,7 @@ const priceFormatter = new Intl.NumberFormat("vi-VN", {
 });
 
 export function formatVndPrice(price: number | null): string {
-  if (price === null) {
+  if (isContactPrice(price)) {
     return "Liên hệ";
   }
 
@@ -124,7 +126,7 @@ export function getProductGridImageUrl(variant: ProductGridVariant, options: Pro
 
 export function variantToProductGridItem(variant: ProductGridVariant, options: ProductGridMapperOptions = {}): ProductGridItem {
   const imageUrl = getProductGridImageUrl(variant, options);
-  const useContactPrice = isUsmContactVariant(variant);
+  const useContactPrice = isUsmContactVariant(variant) || isContactPrice(variant.price);
 
   const rawComparePrice = variant.compare_at_price !== null ? Number(variant.compare_at_price) : 0;
   const rawPrice = variant.price !== null ? Number(variant.price) : 0;
@@ -137,7 +139,7 @@ export function variantToProductGridItem(variant: ProductGridVariant, options: P
   const rawSubtitle = variantRawText(variant, "sub_category") || variantRawText(variant, "filter_sub_category") || variantRawText(variant, "category");
   const subtitle = formatSubtitle(rawSubtitle, options.locale);
 
-  const status = (variant.on_sale && hasValidDiscount) ? "sale" : variant.in_stock ? "in_stock" : "out_of_stock";
+  const status = (variant.on_sale && hasValidDiscount) ? "sale" : isInStock(variant) ? "in_stock" : "out_of_stock";
 
   return {
     id: variant.id,
