@@ -34,7 +34,7 @@ function formatPrice(value: number | null, locale: Locale): string {
     currency: "VND",
     maximumFractionDigits: 0,
     style: "currency",
-  }).format(value);
+  }).format(Number(value));
 }
 
 const VIETNAMESE_FACET_LABELS: Record<string, string> = {
