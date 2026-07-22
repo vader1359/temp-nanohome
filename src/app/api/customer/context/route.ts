@@ -2,6 +2,19 @@ import { NextResponse } from "next/server";
 import type { ClientCustomerContext } from "@/lib/contracts/schemas";
 import { customerIdentityCookieNames, customerTokens, issueCustomerIdentity } from "@/lib/customer-context/identity";
 import { createCustomerRepository } from "@/lib/customer-context/repository";
+import { createClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
+
+const responseHeaders = {
+  "Cache-Control": "private, no-store, max-age=0",
+  Vary: "Cookie",
+} as const;
+
+const json = (body: unknown, status = 200): NextResponse => NextResponse.json(body, {
+  status,
+  headers: responseHeaders,
+});
 
 const requestCookies = (request: Request): Readonly<{ visitor?: string; session?: string }> => {
   const values = new Map<string, string>();
@@ -20,17 +33,29 @@ export const GET = async (request: Request): Promise<Response> => {
   const issued = existing === null ? issueCustomerIdentity() : null;
   const bootstrapped = issued === null ? null : await repository.bootstrapIdentity({ visitor: issued.visitorId, session: issued.sessionId });
   const identity = existing ?? bootstrapped?.identity;
-  if (identity === null || identity === undefined) return NextResponse.json({ error: "Identity unavailable" }, { status: 503 });
+  if (identity === null || identity === undefined) return json({ error: "Identity unavailable" }, 503);
+  let verifiedUserId: string | null = null;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (error === null && data.user !== null) verifiedUserId = data.user.id;
+  } catch {
+    return json({ error: "Authentication unavailable" }, 503);
+  }
+  const binding = verifiedUserId === null
+    ? await repository.clearVerifiedUser(identity)
+    : await repository.bindVerifiedUser(identity, verifiedUserId);
+  if (binding === null) return json({ error: "Identity binding unavailable" }, 503);
   const consent = await repository.currentConsent(identity);
   const body: ClientCustomerContext = {
     locale: "vi",
-    consent: { analytics: consent?.analytics ?? false, personalization: consent?.personalization ?? false, aiProcessing: consent?.aiProcessing ?? false, aiConversationStorage: consent?.aiConversationStorage ?? false, roomImageProcessing: consent?.roomImageProcessing ?? false, roomImageStorage: consent?.roomImageStorage ?? false, version: consent?.version ?? "" },
+    consent: { analytics: consent?.analytics ?? false, personalization: consent?.personalization ?? false, aiProcessing: consent?.aiProcessing ?? false, aiConversationStorage: consent?.aiConversationStorage ?? false, roomImageProcessing: consent?.roomImageProcessing ?? false, roomImageStorage: consent?.roomImageStorage ?? false, version: consent?.version ?? "none" },
     capabilities: {
       analyticsTracking: consent?.analytics === true && consent.withdrawn !== true,
       marketingTracking: consent?.marketing === true && consent.withdrawn !== true,
     },
   };
-  const response = NextResponse.json(body);
+  const response = json(body);
   if (lookup.status === "inactive") {
     response.cookies.set(customerIdentityCookieNames.visitor, "", { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 0 });
     response.cookies.set(customerIdentityCookieNames.session, "", { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 0 });

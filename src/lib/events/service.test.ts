@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import { createEventRecorder, parseCustomerEvent } from "./service";
 
 const idempotencyKey = "event_key_0000001";
+const productId = "00000000-0000-4000-8000-000000000021";
+const variantId = "00000000-0000-4000-8000-000000000031";
 
 describe("customer events", () => {
   it("accepts every Plan 01 allowlisted event with safe properties", () => {
     const events = [
       { name: "page_viewed", properties: { routeKey: "/", locale: "vi" }, idempotencyKey },
-      { name: "product_viewed", properties: { productId: "p1", variantId: "v1", placement: "pdp" }, idempotencyKey },
+      { name: "product_viewed", properties: { productId, variantId, placement: "pdp" }, idempotencyKey },
       { name: "search_submitted", properties: { filterKeys: ["brand"], resultCountBucket: "1-9" }, idempotencyKey },
       { name: "recommendation_impression", properties: { requestId: "r1", placement: "home", itemIds: ["v1"] }, idempotencyKey },
       { name: "recommendation_clicked", properties: { requestId: "r1", itemId: "v1", rank: 1 }, idempotencyKey },
@@ -39,6 +41,11 @@ describe("customer events", () => {
   it("requires a bounded idempotency key", () => {
     expect(parseCustomerEvent({ name: "page_viewed", properties: { routeKey: "/", locale: "vi" } }).success).toBe(false);
     expect(parseCustomerEvent({ name: "page_viewed", properties: { routeKey: "/", locale: "vi" }, idempotencyKey: "short" }).success).toBe(false);
+  });
+
+  it("requires canonical UUIDs and PDP placement for product views", () => {
+    expect(parseCustomerEvent({ name: "product_viewed", properties: { productId: "product", variantId, placement: "pdp" }, idempotencyKey }).success).toBe(false);
+    expect(parseCustomerEvent({ name: "product_viewed", properties: { productId, variantId, placement: "home" }, idempotencyKey }).success).toBe(false);
   });
 
   it("rejects forged identity while rejecting other unknown fields", () => {
@@ -98,5 +105,12 @@ describe("customer events", () => {
 
     expect(recorder(event, { essential: true, roomImageProcessing: true })).toEqual({ kind: "consent_denied" });
     expect(recorder(event, { essential: true, roomImageProcessing: true, personalization: true })).toEqual({ kind: "accepted" });
+  });
+
+  it("rejects all optional-purpose events after consent withdrawal", () => {
+    const recorder = createEventRecorder(() => undefined, { limit: 1, windowMs: 60_000 });
+    const event = { name: "product_viewed" as const, properties: { productId, variantId, placement: "pdp" as const }, identity: { visitorId: "visitor", sessionId: "withdrawn", userId: null }, receivedAt: "2026-07-21T00:00:00.000Z", idempotencyKey: "k".repeat(16) };
+
+    expect(recorder(event, { essential: true, analytics: true, personalization: true, withdrawn: true })).toEqual({ kind: "consent_denied" });
   });
 });

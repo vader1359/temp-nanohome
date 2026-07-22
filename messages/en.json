@@ -8,6 +8,18 @@
     "not_found_description": "The page you're looking for doesn't exist or has been moved.",
     "not_found_home": "Return Home"
   },
+  "Privacy": {
+    "title": "Privacy choices",
+    "description": "Continue with essential data only, or allow nanoHome to use analytics, personalization, and AI processing to improve your experience. Both choices are equally available and can be changed at any time.",
+    "storageNotice": "AI conversation storage, room-image processing or storage, and marketing remain off until separately agreed.",
+    "essentialOnly": "Essential data only",
+    "improveExperience": "Improve my experience",
+    "settings": "Privacy settings",
+    "withdraw": "Withdraw optional consent",
+    "close": "Close",
+    "retry": "Try again",
+    "error": "Your choices could not be loaded or saved. Optional purposes remain off."
+  },
   "Nav": {
     "home": "Home",
     "products": "Products"

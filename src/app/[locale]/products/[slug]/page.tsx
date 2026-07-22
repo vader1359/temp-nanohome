@@ -19,6 +19,7 @@ import { isInStock } from "@/lib/products/availability";
 import { isContactPrice } from "@/lib/products/price";
 import type { Variant } from "@/types/db";
 import { isSupportedLocale, type Locale } from "@/i18n/routing";
+import { ProductViewTracker } from "@/components/analytics/product-view-tracker";
 
 interface ProductPageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -254,6 +255,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
   return (
     <main className="flex flex-col">
+      {variant.product_id !== null ? <ProductViewTracker productId={variant.product_id} variantId={variant.id} /> : null}
       <Section1Hero product={buildHeroProduct(variant, locale)} />
       <Section2Specs
         specColumns={buildSpecColumns(variant, locale, specLabels)}

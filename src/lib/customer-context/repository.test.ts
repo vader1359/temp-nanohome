@@ -75,4 +75,27 @@ describe("customer repository", () => {
       p_received_at: "2026-07-21T00:00:00.000Z",
     });
   });
+
+  it("binds only the server-verified user and clears authentication without browser identity input", async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify("bound"), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify("cleared"), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify("rate_limited"), { status: 200 }));
+    const repository = createCustomerRepository(fetcher);
+    const identity = { visitorId: "00000000-0000-4000-8000-000000000201", sessionId: "00000000-0000-4000-8000-000000000202" };
+
+    await expect(repository.bindVerifiedUser(identity, "00000000-0000-4000-8000-000000000061")).resolves.toBe("bound");
+    await expect(repository.clearVerifiedUser(identity)).resolves.toBe("cleared");
+    await expect(repository.appendEvent(identity, { name: "page_viewed", properties: { routeKey: "/", locale: "vi" }, idempotencyKey: "event_key_0000001" }, "2026-07-23T00:00:00.000Z")).resolves.toBe("rate_limited");
+
+    expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual({
+      p_visitor_id: identity.visitorId,
+      p_session_id: identity.sessionId,
+      p_user_id: "00000000-0000-4000-8000-000000000061",
+    });
+    expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).toEqual({
+      p_visitor_id: identity.visitorId,
+      p_session_id: identity.sessionId,
+    });
+  });
 });

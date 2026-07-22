@@ -8,6 +8,18 @@
     "not_found_description": "Trang bạn tìm không tồn tại hoặc đã được di chuyển.",
     "not_found_home": "Về trang chủ"
   },
+  "Privacy": {
+    "title": "Lựa chọn quyền riêng tư",
+    "description": "Bạn có thể tiếp tục chỉ với dữ liệu thiết yếu, hoặc cho phép nanoHome dùng dữ liệu phân tích, cá nhân hóa và xử lý AI để cải thiện trải nghiệm. Hai lựa chọn đều có giá trị như nhau và có thể thay đổi bất cứ lúc nào.",
+    "storageNotice": "Lưu hội thoại AI, xử lý hoặc lưu ảnh phòng và tiếp thị vẫn tắt cho đến khi bạn đồng ý riêng.",
+    "essentialOnly": "Chỉ dữ liệu thiết yếu",
+    "improveExperience": "Cải thiện trải nghiệm",
+    "settings": "Cài đặt quyền riêng tư",
+    "withdraw": "Rút lại đồng ý tùy chọn",
+    "close": "Đóng",
+    "retry": "Thử lại",
+    "error": "Không thể tải hoặc lưu lựa chọn. Các mục tùy chọn vẫn đang tắt."
+  },
   "Nav": {
     "home": "Trang chủ",
     "products": "Sản phẩm"

@@ -6,6 +6,7 @@ import type { CustomerEvent } from "@/lib/events/service";
 type TokenPair = Readonly<{ visitor: string; session: string }>;
 type Identity = Readonly<{ visitorId: string; sessionId: string }>;
 type IdentityLookup = Readonly<{ identity: Identity | null; status: "active" | "inactive" | "missing" }>;
+type IdentityBindingResult = "bound" | "cleared" | "unchanged";
 type Fetcher = typeof fetch;
 const identitySchema = z.object({ visitor_id: z.string().nullable(), session_id: z.string().nullable(), status: z.enum(["active", "inactive", "created", "missing", "mismatch"]) }).strict();
 const consentSchema = z.object({ analytics: z.boolean().optional(), personalization: z.boolean().optional(), ai_processing: z.boolean().optional(), ai_conversation_storage: z.boolean().optional(), room_image_processing: z.boolean().optional(), room_image_storage: z.boolean().optional(), marketing: z.boolean().optional(), policy_version: z.string().optional(), version: z.string().optional(), locale: z.enum(["vi", "en", "ko"]).optional(), source: z.string().optional(), withdrawn_at: z.string().nullable().optional(), withdrawal_reason: z.string().nullable().optional() }).strip();
@@ -14,8 +15,10 @@ export type CustomerRepository = Readonly<{
   resolveIdentity: (tokens: TokenPair) => Promise<IdentityLookup>;
   bootstrapIdentity: (tokens: TokenPair) => Promise<IdentityLookup>;
   currentConsent: (identity: Identity) => Promise<ConsentState | null>;
+  bindVerifiedUser: (identity: Identity, verifiedUserId: string) => Promise<IdentityBindingResult | null>;
+  clearVerifiedUser: (identity: Identity) => Promise<IdentityBindingResult | null>;
   appendConsent: (identity: Identity, consent: ConsentState) => Promise<ConsentState | null>;
-  appendEvent: (identity: Identity, event: CustomerEvent, receivedAt: string) => Promise<"accepted" | "duplicate" | null>;
+  appendEvent: (identity: Identity, event: CustomerEvent, receivedAt: string) => Promise<"accepted" | "duplicate" | "rate_limited" | null>;
 }>;
 
 const hashToken = async (token: string): Promise<string> => {
@@ -75,6 +78,21 @@ export const createCustomerRepository = (fetcher: Fetcher = fetch): CustomerRepo
     resolveIdentity: (tokens) => identity("resolve_customer_identity_v2", tokens),
     bootstrapIdentity: (tokens) => identity("bootstrap_customer_identity_v2", tokens),
     currentConsent: async (value) => parseConsent(await rpc("current_customer_consent", { p_visitor_id: value.visitorId })),
+    bindVerifiedUser: async (value, verifiedUserId) => {
+      const result = await rpc("bind_verified_customer_identity", {
+        p_visitor_id: value.visitorId,
+        p_session_id: value.sessionId,
+        p_user_id: verifiedUserId,
+      });
+      return result === "bound" || result === "unchanged" ? result : null;
+    },
+    clearVerifiedUser: async (value) => {
+      const result = await rpc("clear_verified_customer_identity", {
+        p_visitor_id: value.visitorId,
+        p_session_id: value.sessionId,
+      });
+      return result === "cleared" || result === "unchanged" ? result : null;
+    },
     appendConsent: async (value, consent) => {
       const request = {
         analytics: consent.analytics,
@@ -94,7 +112,7 @@ export const createCustomerRepository = (fetcher: Fetcher = fetch): CustomerRepo
     },
     appendEvent: async (value, event, receivedAt) => {
       const result = await rpc("append_customer_event", { p_visitor_id: value.visitorId, p_session_id: value.sessionId, p_event: event, p_received_at: receivedAt });
-      return result === "accepted" || result === "duplicate" ? result : null;
+      return result === "accepted" || result === "duplicate" || result === "rate_limited" ? result : null;
     },
   };
 };

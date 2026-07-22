@@ -52,7 +52,7 @@ export async function loadPlan07CustomerFeatures(
     const bindingUrl = restUrl(baseUrl, "customer_identity_ledger", {
       select: "user_id,identity_kind",
       visitor_id: `eq.${options.visitorId}`,
-      order: "recorded_at.desc",
+      order: "recorded_at.desc,id.desc",
       limit: "1",
     });
     const bindingResponse = await fetcher(bindingUrl, { cache: "no-store", headers });

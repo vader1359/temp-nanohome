@@ -39,6 +39,7 @@ describe("Plan 07 customer feature loader", () => {
       }],
     });
     expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(new URL(String(fetcher.mock.calls[0]?.[0])).searchParams.get("order")).toBe("recorded_at.desc,id.desc");
     for (const [, init] of fetcher.mock.calls) {
       expect(init).toMatchObject({ cache: "no-store" });
     }

@@ -28,6 +28,8 @@ cp "$repo_root/supabase/tests/vision_persistence_test.sql" \
   "$harness_dir/tests/vision_persistence_test.sql"
 cp "$repo_root/supabase/tests/plan07_customer_personalization_test.sql" \
   "$harness_dir/tests/plan07_customer_personalization_test.sql"
+cp "$repo_root/supabase/tests/customer_event_personalization_pipeline_test.sql" \
+  "$harness_dir/tests/customer_event_personalization_pipeline_test.sql"
 
 if [ "$#" -ne 0 ]; then
   printf '%s\n' 'This local-only harness takes no arguments.' >&2
@@ -43,4 +45,5 @@ fi
   "$harness_dir/tests/amis_customer_memory_test.sql" \
   "$harness_dir/tests/plan04_grounded_chat_test.sql" \
   "$harness_dir/tests/vision_persistence_test.sql" \
-  "$harness_dir/tests/plan07_customer_personalization_test.sql"
+  "$harness_dir/tests/plan07_customer_personalization_test.sql" \
+  "$harness_dir/tests/customer_event_personalization_pipeline_test.sql"

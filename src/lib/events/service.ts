@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ConsentState } from "@/lib/consent/service";
 
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
+const entityId = z.string().uuid();
 const locale = z.union([z.literal("vi"), z.literal("en"), z.literal("ko")]);
 const placement = z.enum(["home", "pdp", "cart", "chat", "room", "search"]);
 const safeKey = z.string().regex(/^[a-z][a-z0-9_]{0,31}$/);
@@ -10,7 +11,7 @@ const idempotencyKey = z.string().regex(/^[A-Za-z0-9_-]{16,128}$/);
 
 const eventSchemas = [
   z.object({ name: z.literal("page_viewed"), properties: z.object({ routeKey: z.string().regex(/^\/[a-z0-9/_-]{0,127}$/), locale }).strict(), idempotencyKey }).strict(),
-  z.object({ name: z.literal("product_viewed"), properties: z.object({ productId: id, variantId: id, placement }).strict(), idempotencyKey }).strict(),
+  z.object({ name: z.literal("product_viewed"), properties: z.object({ productId: entityId, variantId: entityId, placement: z.literal("pdp") }).strict(), idempotencyKey }).strict(),
   z.object({ name: z.literal("search_submitted"), properties: z.object({ filterKeys: keyList, resultCountBucket: z.enum(["0", "1-9", "10-49", "50+"]) }).strict(), idempotencyKey }).strict(),
   z.object({ name: z.literal("recommendation_impression"), properties: z.object({ requestId: id, placement, itemIds: z.array(id).min(1).max(20) }).strict(), idempotencyKey }).strict(),
   z.object({ name: z.literal("recommendation_clicked"), properties: z.object({ requestId: id, itemId: id, rank: z.number().int().min(1).max(100) }).strict(), idempotencyKey }).strict(),
@@ -37,14 +38,17 @@ const requiredPurposes: Readonly<Record<CustomerEventName, readonly (keyof Conse
   checkout_started: ["essential"], preference_updated: ["personalization"], room_analysis_confirmed: ["roomImageProcessing", "personalization"],
 };
 
-const hasPurpose = (consent: ConsentState, name: CustomerEventName): boolean => requiredPurposes[name].every((purpose) => purpose === "essential" || consent[purpose] === true);
+export const hasEventConsent = (consent: ConsentState, name: CustomerEventName): boolean => (
+  consent.withdrawn !== true
+  && requiredPurposes[name].every((purpose) => purpose === "essential" || consent[purpose] === true)
+);
 
 export const createEventRecorder = (sink: EventSink, policy?: EventRatePolicy) => {
   const counts = new Map<string, Readonly<{ count: number; startedAt: number }>>();
   const seen = new Set<string>();
   return (event: RecordedCustomerEvent, consent: ConsentState): EventRecordResult => {
     if (policy === undefined) return { kind: "policy_unavailable" };
-    if (!hasPurpose(consent, event.name)) return { kind: "consent_denied" };
+    if (!hasEventConsent(consent, event.name)) return { kind: "consent_denied" };
     const now = Date.parse(event.receivedAt);
     const bucket = counts.get(event.identity.sessionId);
     const active = bucket !== undefined && now - bucket.startedAt < policy.windowMs ? bucket : { count: 0, startedAt: now };
