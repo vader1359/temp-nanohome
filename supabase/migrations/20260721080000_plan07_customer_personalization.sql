@@ -211,47 +211,47 @@ for each row execute function public.plan07_reclaim_expired_decision();
 create view public.customer_preferences_active
   with (security_invoker = true)
 as
-   select *
-   from public.customer_preferences
-   join public.customer_consent_current using (visitor_id)
-   where deleted_at is null
-      and (expires_at is null or expires_at > now())
-      and customer_consent_current.personalization
-      and customer_consent_current.withdrawn_at is null;
+  select preference.*
+  from public.customer_preferences as preference
+  join public.customer_consent_current as consent using (visitor_id)
+  where preference.deleted_at is null
+    and (preference.expires_at is null or preference.expires_at > now())
+    and consent.personalization
+    and consent.withdrawn_at is null;
 
 create view public.customer_recent_entities_active
   with (security_invoker = true)
 as
-  select *
-  from public.customer_recent_entities
-  join public.customer_consent_current using (visitor_id)
-  where deleted_at is null
-    and expires_at > now()
-    and customer_consent_current.personalization
-    and customer_consent_current.withdrawn_at is null;
+  select recent.*
+  from public.customer_recent_entities as recent
+  join public.customer_consent_current as consent using (visitor_id)
+  where recent.deleted_at is null
+    and recent.expires_at > now()
+    and consent.personalization
+    and consent.withdrawn_at is null;
 
 create view public.customer_affinities_active
   with (security_invoker = true)
 as
-   select *
-   from public.customer_affinities
-   join public.customer_consent_current using (visitor_id)
-   where deleted_at is null
-     and suppressed_at is null
-     and expires_at > now()
-     and customer_consent_current.personalization
-     and customer_consent_current.withdrawn_at is null;
+  select affinity.*
+  from public.customer_affinities as affinity
+  join public.customer_consent_current as consent using (visitor_id)
+  where affinity.deleted_at is null
+    and affinity.suppressed_at is null
+    and affinity.expires_at > now()
+    and consent.personalization
+    and consent.withdrawn_at is null;
 
 create view public.personalization_decisions_active
   with (security_invoker = true)
 as
-   select *
-   from public.personalization_decisions
-   join public.customer_consent_current using (visitor_id)
-   where deleted_at is null
-     and expires_at > now()
-     and customer_consent_current.personalization
-     and customer_consent_current.withdrawn_at is null;
+  select decision.*
+  from public.personalization_decisions as decision
+  join public.customer_consent_current as consent using (visitor_id)
+  where decision.deleted_at is null
+    and decision.expires_at > now()
+    and consent.personalization
+    and consent.withdrawn_at is null;
 
 alter table public.customer_preferences enable row level security;
 alter table public.customer_recent_entities enable row level security;

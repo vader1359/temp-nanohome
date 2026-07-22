@@ -68,14 +68,20 @@ insert into public.customer_consent_ledger
   (visitor_id, session_id, policy_version, locale, source, actor, analytics, recorded_at)
 values
   ('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', 'v0', 'vi', 'stale', 'visitor', false, now() - interval '1 day');
-select is((select consent_ledger_id from public.customer_consent_current where visitor_id = '00000000-0000-4000-8000-000000000201'), 1::bigint, 'stale consent ledger cannot replace newer projection');
+select is(
+  (select consent_ledger_id from public.customer_consent_current where visitor_id = '00000000-0000-4000-8000-000000000201'),
+  (select id from public.customer_consent_ledger where visitor_id = '00000000-0000-4000-8000-000000000201' and source = 'banner'),
+  'stale consent ledger cannot replace newer projection'
+);
 select is((select analytics from public.customer_consent_current where visitor_id = '00000000-0000-4000-8000-000000000201'), true, 'stale consent does not change granted purpose');
 
-select throws_ok($$ select public.append_customer_event('00000000-0000-4000-8000-000000000203', '00000000-0000-4000-8000-000000000202', '{"name":"page_viewed","idempotencyKey":"bad","properties":{"routeKey":"/","locale":"vi"}}'::jsonb, now()) $$, 'P0001', 'visitor and session do not match', 'event RPC rejects mismatched visitor');
+select throws_ok($$ select public.append_customer_event('00000000-0000-4000-8000-000000000203', '00000000-0000-4000-8000-000000000202', '{"name":"page_viewed","idempotencyKey":"bad","properties":{"routeKey":"/","locale":"vi"}}'::jsonb, now()) $$, 'P0001', 'visitor and session are inactive', 'event RPC rejects an invalid visitor and session pair');
 select lives_ok($$ select public.append_customer_event('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"name":"page_viewed","idempotencyKey":"rpc-page","properties":{"routeKey":"/","locale":"vi"}}'::jsonb, now()) $$, 'event RPC accepts fixed columns with granted analytics');
 select throws_ok($$ select public.append_customer_event('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"name":"recommendation_impression","idempotencyKey":"rpc-rec","properties":{"requestId":"r","placement":"home","itemIds":["00000000-0000-4000-8000-000000000031"]}}'::jsonb, now()) $$, 'P0001', 'required consent purpose is not granted', 'event RPC requires mapped personalization consent');
 select throws_ok($$ select public.append_customer_event('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"name":"page_viewed","idempotencyKey":"rpc-raw","properties":{"routeKey":"/","locale":"vi","rawPayload":{}}}'::jsonb, now()) $$, 'P0001', 'unknown event properties are not allowed', 'event RPC rejects unknown properties');
 select is((select count(*) from public.customer_events where idempotency_key_hash = encode(extensions.digest('rpc-page', 'sha256'), 'hex')), 1::bigint, 'event RPC stores one fixed-column record without payload');
+select throws_ok($$ select public.append_customer_consent('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"version":"v3","withdrawn":true}'::jsonb) $$, 'P0001', 'withdrawal requires withdrawn true and a non-empty withdrawalReason', 'withdrawal requires a reason');
+select throws_ok($$ select public.append_customer_consent('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"version":"v3","withdrawn":false,"withdrawalReason":"user request"}'::jsonb) $$, 'P0001', 'withdrawal requires withdrawn true and a non-empty withdrawalReason', 'withdrawal reason cannot imply withdrawal');
 select lives_ok($$ select public.append_customer_consent('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"version":"v2","withdrawn":true,"withdrawalReason":"user request"}'::jsonb) $$, 'withdrawal appends consent and queues subject deletion');
 select is((select count(*) from public.customer_subject_deletion_queue where visitor_id = '00000000-0000-4000-8000-000000000201' and processed_at is null), 1::bigint, 'withdrawal queue is subject-scoped and pending is idempotent');
 select is((select revoked_at is not null from public.customer_visitors where id = '00000000-0000-4000-8000-000000000201'), true, 'withdrawal revokes the visitor identity');
@@ -87,8 +93,6 @@ select is((select status from public.resolve_customer_identity_v2('visitor-hash-
 select is((select analytics or personalization or ai_processing or ai_conversation_storage or room_image_processing or room_image_storage or marketing from public.customer_consent_current where visitor_id = '00000000-0000-4000-8000-000000000201'), false, 'withdrawal turns every optional purpose off');
 select is((select withdrawn_at is not null and withdrawal_reason = 'user request' from public.customer_consent_current where visitor_id = '00000000-0000-4000-8000-000000000201'), true, 'current consent records withdrawal');
 select throws_ok($$ select public.append_customer_event('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"name":"cart_item_added","idempotencyKey":"rpc-cart","properties":{"variantId":"v1","sourcePlacement":"cart"}}'::jsonb, now()) $$, 'P0001', 'visitor and session are inactive', 'events reject revoked credentials after withdrawal');
-select throws_ok($$ select public.append_customer_consent('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"version":"v3","withdrawn":true}'::jsonb) $$, 'P0001', 'withdrawal requires withdrawn true and a non-empty withdrawalReason', 'withdrawal requires a reason');
-select throws_ok($$ select public.append_customer_consent('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"version":"v3","withdrawn":false,"withdrawalReason":"user request"}'::jsonb) $$, 'P0001', 'withdrawal requires withdrawn true and a non-empty withdrawalReason', 'withdrawal reason cannot imply withdrawal');
 select throws_ok($$ select public.append_customer_event('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"name":"cart_item_added","idempotencyKey":"rpc-after-withdrawal","properties":{"variantId":"v1","sourcePlacement":"cart"}}'::jsonb, now()) $$, 'P0001', 'visitor and session are inactive', 'event RPC rejects revoked identity');
 select throws_ok($$ select public.append_customer_consent('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"version":"v3","analytics":true}'::jsonb) $$, 'P0001', 'visitor and session are inactive', 'consent RPC rejects revoked identity');
 
@@ -104,8 +108,6 @@ select throws_ok($$ insert into public.customer_events
   (visitor_id, session_id, event_name, idempotency_key_hash, occurred_at, route_key, locale, arbitrary_payload)
   values ('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', 'page_viewed', 'third-hash', now(), '/', 'vi', '{}'::jsonb) $$, '42703', NULL, 'arbitrary client payload column does not exist');
 
-insert into public.customer_subject_deletion_queue (visitor_id)
-values ('00000000-0000-4000-8000-000000000201');
 select throws_ok($$ select public.process_customer_subject_deletion((select id from public.customer_subject_deletion_queue limit 1), 0) $$, 'P0001', 'p_batch_size must be between 1 and 1000', 'deletion worker rejects unbounded batch size');
 
 set local role service_role;

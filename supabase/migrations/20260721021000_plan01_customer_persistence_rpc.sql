@@ -21,7 +21,9 @@ begin
     room_image_storage = excluded.room_image_storage, marketing = excluded.marketing,
     withdrawn_at = excluded.withdrawn_at, withdrawal_reason = excluded.withdrawal_reason,
     recorded_at = excluded.recorded_at
-  where excluded.consent_ledger_id > public.customer_consent_current.consent_ledger_id;
+  where (excluded.recorded_at, excluded.consent_ledger_id) >
+    (public.customer_consent_current.recorded_at,
+      public.customer_consent_current.consent_ledger_id);
   return new;
 end; $$;
 
