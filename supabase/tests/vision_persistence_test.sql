@@ -1,7 +1,7 @@
 begin;
 
 set local role postgres;
-select plan(49);
+select plan(52);
 
 select ok((select relrowsecurity from pg_class where oid = 'public.vision_analysis_requests'::regclass), 'vision requests have RLS enabled');
 select ok((select relrowsecurity from pg_class where oid = 'public.room_scenes'::regclass), 'room scenes have RLS enabled');
@@ -37,6 +37,7 @@ select ok((select not exists (select 1 from pg_policies where policyname = 'room
 
 select ok((select not exists (select 1 from pg_attribute where attrelid = 'public.vision_analysis_requests'::regclass and attname = 'raw_provider_response')), 'requests do not store raw provider response');
 select ok((select not exists (select 1 from pg_attribute where attrelid = 'public.room_scenes'::regclass and attname = 'room_photo')), 'scenes do not store image bytes');
+select ok((select not exists (select 1 from pg_attribute where attrelid = 'public.vision_analysis_requests'::regclass and attname in ('signed_url', 'signed_url_token', 'authorization_token'))), 'requests do not store signed URLs or authorization tokens');
 select ok((select not exists (select 1 from pg_attribute where attrelid = 'public.product_visual_embeddings'::regclass and attname = 'owner_id')), 'catalog embeddings have no customer owner');
 select ok((select exists (select 1 from pg_attribute where attrelid = 'public.product_visual_embeddings'::regclass and attname = 'embedding')), 'catalog embeddings store a vector');
 select ok((select exists (select 1 from pg_constraint where conrelid = 'public.product_visual_embeddings'::regclass and contype = 'u')), 'catalog embeddings have uniqueness boundary');
