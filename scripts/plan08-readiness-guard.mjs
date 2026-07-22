@@ -8,6 +8,7 @@ const root = resolve(process.argv[2] ?? process.cwd());
 const documents = [
   {
     path: "docs/plans/ai-commerce-personalization-v2/08-build-manifest.md",
+    rejectObsoletePlan02Claims: true,
     markers: [
       "# Plan 08 Build Manifest — Local Integration Readiness",
       "local-only validation",
@@ -27,6 +28,14 @@ const documents = [
       "20260721050000_plan04_grounded_chat_persistence.sql",
       "20260721070000_plan06_vision_persistence.sql",
       "20260721080000_plan07_customer_personalization.sql",
+      "docs/handoffs/worktree-02-commerce-payment-amis.md",
+      "codex/commerce-payment-amis-v3",
+      "cd158cc",
+      "21 local commits",
+      "20260721030000_add_commerce_checkout_ledger.sql",
+      "98 focused tests",
+      "Local receipt complete",
+      "external gates remain blocked",
       "SQL was not locally applied",
       "unavailable live smoke",
       "SQL/Docker unavailable",
@@ -35,6 +44,7 @@ const documents = [
   },
   {
     path: "docs/plans/ai-commerce-personalization-v2/08-conflict-matrix.md",
+    rejectObsoletePlan02Claims: true,
     markers: [
       "# Plan 08 Conflict Matrix — Local Integration Readiness",
       "READY FOR FUTURE REVIEW",
@@ -48,9 +58,9 @@ const documents = [
   },
   {
     path: "docs/plans/ai-commerce-personalization-v2/08-local-readiness-runbook.md",
+    rejectObsoletePlan02Claims: true,
     markers: [
       "# Plan 08 Local Readiness Runbook",
-      "Plan 02 remains absent, vague",
       "Do not run test E2E/browser/sandbox flows",
       "Future-only proof gates",
       "npm run test:plan08-readiness-guard",
@@ -58,10 +68,12 @@ const documents = [
   },
   {
     path: "docs/plans/ai-commerce-personalization-v2/handoffs/08-handoff.md",
+    rejectObsoletePlan02Claims: true,
     markers: [
       "# Plan 08 Handoff — Local Readiness Artifacts",
       "No feature code",
-      "Plan 02 is an incomplete backend-only handoff",
+      "canonical Plan 02 v3 source metadata",
+      "Plan 02 has a complete local v3 receipt",
       "future reviewed integration lane",
       "Revert only the scoped readiness-artifact commits",
     ],
@@ -78,6 +90,13 @@ const forbiddenClaims = [
   "backup proof complete",
   "deployment completed",
   "production enabled",
+];
+
+const obsoletePlan02Claims = [
+  "23ebbd9",
+  "Plan 02 remains absent, vague",
+  "Plan 02 is an incomplete backend-only handoff",
+  "BLOCKED: absent/vague integration handoff",
 ];
 
 const requiredLocalArtifacts = [
@@ -140,6 +159,14 @@ for (const document of documents) {
   for (const forbiddenClaim of forbiddenClaims) {
     if (content.toLowerCase().includes(forbiddenClaim)) {
       failures.push(`${document.path}: restricted claim ${JSON.stringify(forbiddenClaim)}`);
+    }
+  }
+
+  if (document.rejectObsoletePlan02Claims) {
+    for (const obsoleteClaim of obsoletePlan02Claims) {
+      if (content.includes(obsoleteClaim)) {
+        failures.push(`${document.path}: obsolete Plan 02 assertion ${JSON.stringify(obsoleteClaim)}`);
+      }
     }
   }
 
