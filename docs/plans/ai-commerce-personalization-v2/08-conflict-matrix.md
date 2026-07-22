@@ -1,24 +1,25 @@
-# Plan 08 Conflict Matrix — Local Integration Readiness
+# Plan 08 Conflict Matrix — Integrated Local Staging
 
-All rows are local static decisions on Foundation SHA only. Default state is **default off**; no row indicates integrated, merged, validated remotely, or safe to enable.
+Status terms:
 
-| Area | Canonical owner | Requesting plans | Required source evidence | Local static decision | Blocking condition | Feature-default state | Future integration owner |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Migration ordering and immutable history | Plan 00 foundation | 01–08 | Receipt ranges, unique versions, no applied-migration edits, forward-repair policy | READY FOR FUTURE REVIEW | Collision, non-monotonic range, or missing ledger | Default off | Reviewed integration lane |
-| Frozen contracts and fixtures: `CatalogEligibility`, customer contexts, commerce snapshot/references, `CustomerMemory`, recommendation request/response, `RoomScene`, visual similarity, `ChatAnswer` | Respective receipt owner | 00–07 | Versioned contract/fixture receipt and compatibility review | BLOCKED | Plan 02 local contract receipt is documented; cross-lane compatibility is not reviewed | Default off | Contract owners plus integration lane |
-| AMIS exact capabilities | Plan 01 capability policy / Plan 03 port / Plan 02 v3 receipt | 02, 03, 07 | Catalog/stock GET; exact SaleOrder POST/lookup GET boundary; customer memory read-only GET; wildcard mutation denied | BLOCKED | Plan 02 local capability boundary is documented; AMIS tenant and remote authorization evidence remains incomplete | Default off | AMIS owner after tenant approval |
-| Feature flags: identity/events/consent, commerce/AMIS/ZaloPay/refund, memory, chat/storage/tools, recommendation signals, vision/retention, personalization | Future shared configuration owner | 01–07 | Explicit ownership, default-off state, server/client boundary | READY FOR FUTURE REVIEW | A flag lacks default-off state or owner | Default off | Reviewed integration lane |
-| Environment schema and server/client exposure | Future server config owner | 03, 04, 06, 07 | Server-only category inventory and no public secret exposure | BLOCKED | Credential boundary or provider configuration unreviewed | Default off | Security/config owner |
-| i18n: Vietnamese, English, Korean | Shared localization owner | 04, 07 | Key inventory and future missing-key tests; no runtime model-authored UI copy | DEFERRED | Keys and UI surface not implemented in this local lane | Default off | Localization owner |
-| Global providers/layouts and server/client boundaries | Shared application shell owner | 00, 04, 07 | Reviewed provider/layout ownership and hydration boundaries | DEFERRED | No feature code transfer on Foundation-only base | Default off | Application shell owner |
-| Canonical product-card mapper | Commerce presentation owner | 02, 04, 05, 07 | Locale/tracking/price/stock/media/link consistency contract | BLOCKED | Plan 02 local commerce receipt is complete; feature-code transfer and integration/UI work remain out of scope | Default off | Commerce UI owner |
-| Generated types, packages/lockfile, schedules/queues/buckets, RLS/grants/retention/deletion jobs | Platform/data owners | 00, 01, 03, 04, 06, 07 | Generated type source, package review, schedule ownership, SQL/RLS/retention suite | BLOCKED | No reviewed integration base or local SQL proof | Default off | Platform/data integration owners |
-| Evidence, runbooks, metrics, alerts, owners, rollback, external proof gates | Plan 08 readiness owner | 00–07 | Handoff receipts, local command output, named external gates, feature fallback | READY FOR FUTURE REVIEW | Remote, privacy, backup, provider, tenant, sandbox, or rollout proof absent | Default off | Future rollout owner |
+- **MERGED_LOCAL**: committed implementation is present and can be checked locally.
+- **FUNCTIONAL_LOCAL**: mounted in the current website and covered by local validation.
+- **BLOCKED_EXTERNAL**: code may exist, but credentials, remote state, provider, or approval evidence is missing.
+- **DEFERRED**: deliberately outside this merge.
 
-## Resolution rules
+| Area | Status | Resolution / remaining gate |
+| --- | --- | --- |
+| Plan 00–08 branch graph | MERGED_LOCAL | All selected heads are ancestors of `codex/ai-commerce-staging`; Plan 02 uses v3 `cd158cca`, not obsolete v2 |
+| `src/lib/contracts/ports.ts` | MERGED_LOCAL | Kept the canonical Plan 03 space-formatted `CustomerMemoryPort`; API was semantically identical |
+| `supabase/plan00-local/run-clean-reset.sh` | MERGED_LOCAL | Combined both `vision_persistence_test.sql` and `plan07_customer_personalization_test.sql` |
+| Migration versions | MERGED_LOCAL | Program filenames are unique and monotonic by reserved range; no remote application is claimed |
+| PDP recommendations | FUNCTIONAL_LOCAL | Deterministic recommendations are mounted in the existing product-detail page |
+| Commerce/cart/order/payment | MERGED_LOCAL | Routes and adapters exist, but auth/catalog/Supabase holds/AMIS/ZaloPay callback and UI composition remain BLOCKED_EXTERNAL |
+| AMIS customer memory | MERGED_LOCAL | Bounded port exists; tenant-backed reader/sync/repository remains BLOCKED_EXTERNAL |
+| Grounded chat | MERGED_LOCAL | Route/provider contracts exist; launcher, real grounding adapters, persistence, and credentials remain BLOCKED_EXTERNAL |
+| Vision intelligence | MERGED_LOCAL | Contracts and synthetic provider exist; upload, storage, worker, embeddings/model, retention proof remain BLOCKED_EXTERNAL |
+| Personalization | MERGED_LOCAL | Resolver/components exist and default off; provider mount, consent/event repositories, i18n, and live memory adapter are DEFERRED/BLOCKED_EXTERNAL |
+| Generated Supabase types | DEFERRED | Regenerate only after the merged migration chain is validated against an approved database |
+| Production rollout | BLOCKED_EXTERNAL | Requires reviewed credentials, remote SQL/RLS, provider and tenant evidence, monitoring, rollback, and deployment approval |
 
-- **READY FOR FUTURE REVIEW:** explicit evidence and default-off configuration are documented; implementation remains outside this lane.
-- **BLOCKED:** evidence is absent, vague, conflicting, or external to the local Plan 08 scope.
-- **DEFERRED:** a contract deliberately excludes the behavior.
-
-A future integration review must stop on any unresolved BLOCKED row. It may not turn local static evidence into remote proof or enable a feature by default.
+No local pass may be promoted into a claim that a provider, tenant, payment callback, remote database, or production rollout was verified.

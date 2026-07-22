@@ -65,7 +65,7 @@ describe("filter-utils", () => {
     const filters = parseFilters({
       brand: ["usm", "hay"],
       category: "chairs",
-      page: 2,
+      page: "2",
       sort: "price_asc",
     });
     const qs = buildQueryString(filters);

@@ -1,29 +1,24 @@
-# Plan 08 Handoff — Local Readiness Artifacts
+# Plan 08 Handoff — Integrated Local Staging
 
-## Delivery boundary
+## Delivery
 
-This handoff delivers local-only integration-readiness artifacts on Foundation SHA `d56244fd9a7a8cc3e690bd9221ecd51be8d20cb3`:
+The local WSL branch `codex/ai-commerce-staging` merges the committed Plan 00–08 heads on top of `main` commit `e920ab95b73cc80cac971e8ed7fb1afff1866db7`. Plan 02 v3 at `cd158cca` is the selected commerce source. Obsolete Plan 02 v2 and all dirty source-worktree artifacts were excluded.
 
-- `08-build-manifest.md`
-- `08-conflict-matrix.md`
-- `08-local-readiness-runbook.md`
-- `scripts/plan08-readiness-guard.mjs`
-- `package.json` script `test:plan08-readiness-guard`
+Merge order: Plan 00, Plan 01, Plan 02 v3, Plan 03, Plan 05, Plan 04, Plan 06, Plan 07, then Plan 08.
 
-No feature code, migration, flag wiring, generated type, provider, layout, environment value, or external state was transferred.
+## Resolved conflicts
 
-## Guard scenarios
+- `src/lib/contracts/ports.ts`: retained the canonical Plan 03 implementation because the Plan 07 side was identical apart from indentation.
+- `supabase/plan00-local/run-clean-reset.sh`: combined both Vision and Personalization copy/test entries.
 
-The static guard checks required documents, Plan 00–07 receipt rows, canonical Plan 02 v3 source metadata, known local Plan 00/01 receipts and migrations, explicitly unavailable Plan 03–07 receipt/migration paths, required readiness markers, default-off language, local-only/no-transfer constraints, its own target, and duplicate Plan 00/01 migration versions in the actual migration directory. It preserves known historical duplicate prefixes as a declared pre-existing exception and rejects obsolete Plan 02 provenance assertions. It rejects restricted claims of remote proof, E2E completion, provider calls, sandbox/tenant verification, privacy approval, backup proof, deployment, or production enablement.
+## Operational truth
 
-## Current outcome and blockers
+The merged branch is an integration and validation target, not a claim that every feature is live. PDP recommendations are already mounted. Commerce, customer memory, chat, vision, and personalization retain safe fallback/default-off behavior until their adapters, credentials, remote database work, i18n/UI mounts, and external approvals are completed.
 
-**BLOCKED.** Plan 02 has a complete local v3 receipt from `/home/iant1359/develop/temp-nanohome-ai-02-commerce-payment-amis-v3` at `cd158cc`, but it cannot authorize integration or production. Plan 03 and Plan 06 provenance differences require authoritative receipt reconciliation. Docker/local reset, remote SQL/RLS, provider, AMIS tenant, ZaloPay sandbox, privacy, backup/recovery, observability, shared compatibility, deployment, and rollout evidence remain unperformed and must not be inferred from local checks.
+The active `scripts/plan08-readiness-guard.mjs` now validates integrated artifacts rather than rejecting them as it did on the historical Foundation-only lane.
 
-## Next owner
+## External gates
 
-The next owner is a future reviewed integration lane. It may proceed only when every handoff gate is satisfied, the conflict matrix contains no unresolved BLOCKED row, shared files have explicit owners, and all features remain default off pending controlled rollout.
+Remote SQL/RLS and generated types, AMIS tenant proof, ZaloPay sandbox/callback/reconciliation, DeepSeek grounding and credentials, real vision storage/provider, privacy/retention, backup/recovery, monitoring, canary, and deployment remain unverified.
 
-## Rollback
-
-Revert only the scoped readiness-artifact commits. Do not alter migrations, runtime code, flags, secrets, external systems, or unrelated working changes.
+**No push, deploy, production enablement, or remote database change** is included in this handoff.

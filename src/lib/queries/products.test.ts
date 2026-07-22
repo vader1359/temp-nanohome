@@ -18,6 +18,7 @@ const state = vi.hoisted(() => {
   const inCalls: Array<readonly [string, readonly string[]]> = [];
   const orCalls: string[] = [];
   const overlapCalls: Array<readonly [string, readonly string[]]> = [];
+  const rpc = vi.fn(async () => ({ data: null, error: new Error("RPC unavailable") }));
   const chain: QueryMock = {
     select: vi.fn(() => chain),
     eq: vi.fn((column: string, value: string | boolean) => {
@@ -44,12 +45,13 @@ const state = vi.hoisted(() => {
   };
   return {
     chain,
-    createClient: vi.fn(async () => ({ from: state.from })),
+    createClient: vi.fn(async () => ({ from: state.from, rpc: state.rpc })),
     eqCalls,
     from: vi.fn(() => chain),
     inCalls,
     orCalls,
     overlapCalls,
+    rpc,
   };
 });
 
@@ -145,7 +147,7 @@ describe("getVariantProducts", () => {
     expect(state.inCalls).toContainEqual(["filter_sub_category", ["table-lamps"]]);
     expect(state.overlapCalls).toContainEqual(["filter_room", ["living-room"]]);
     expect(state.chain.or).toHaveBeenCalledWith(
-      "name_vi.ilike.%lamp%,name.ilike.%lamp%,name_ko.ilike.%lamp%,sku.ilike.%lamp%,finish_vi.ilike.%lamp%,finish.ilike.%lamp%,finish_ko.ilike.%lamp%,brand_name_denorm.ilike.%lamp%",
+      "name_vi.ilike.%lamp%,name.ilike.%lamp%,name_ko.ilike.%lamp%,sku.ilike.%lamp%,finish_vi.ilike.%lamp%,finish.ilike.%lamp%,finish_ko.ilike.%lamp%,filter_category.ilike.%lamp%,filter_sub_category.ilike.%lamp%,filter_brand.ilike.%lamp%,brand_name_denorm.ilike.%lamp%,designer_name.ilike.%lamp%",
     );
     expect(state.eqCalls).toContainEqual(["on_sale", true]);
   });

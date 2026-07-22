@@ -1,34 +1,33 @@
-# Plan 08 Build Manifest — Local Integration Readiness
+# Plan 08 Build Manifest — Integrated Local Staging
 
-## Decision boundary
+## Status
 
-**Status: BLOCKED.** This manifest reconciles available Plan 00–07 handoff receipts on the Foundation-only base `d56244fd9a7a8cc3e690bd9221ecd51be8d20cb3`. It does not integrate, merge, copy, or validate feature implementation. All feature flags remain **default off**. This is **local-only validation**; no feature-code transfer occurred.
+**LOCAL STAGING INTEGRATED; LIVE ACTIVATION BLOCKED.** The committed heads for Plan 00–08 are merged into `codex/ai-commerce-staging` at `/home/iant1359/develop/temp-nanohome-ai-commerce-staging`. The branch starts from `main` commit `e920ab95b73cc80cac971e8ed7fb1afff1866db7`; the dirty `main` worktree was not changed.
 
-Absent, unverifiable, or vague handoffs block future integration. This document contains no claim of remote migration application, E2E completion, provider call, sandbox or tenant verification, privacy approval, backup proof, deployment, or production enablement.
+This status means the code can be validated together on one local branch. It does not mean payment, AMIS, DeepSeek, vision, remote SQL, deployment, or production has been verified. All risky feature boundaries remain **default off** or fail closed.
 
-## Receipt ledger
+## Merged receipt ledger
 
-| Plan | Lane / expected base | Receipt SHA and source | Scope and public contracts | Migration / local evidence | Flags, shared-file requests, blockers, fallback |
-| --- | --- | --- | --- | --- | --- |
-| 00 | Catalog eligibility foundation; expected base `39340c7052ab0300c6988351d1190d30448a06ca` | `39340c7052ab0300c6988351d1190d30448a06ca`; `handoffs/00-handoff.md` | Frozen `CatalogEligibility` and `src/lib/contracts/*`; contract owner: catalog foundation | `20260721010000_plan00_catalog_eligibility.sql`; range `2026072101xxxx`; SQL remote ledger/fingerprint/backup evidence is BLOCKED | Default off for future dependent flags. Requests: generated DB types, global providers/layouts, server-only env schema, VI/EN/KO messages, package lockfile, schedules/queues/buckets, canonical product-card mapper. Fallback: preserve frozen contract and forward-repair-only migrations. |
-| 01 | Customer data foundation; current Foundation base `d56244fd9a7a8cc3e690bd9221ecd51be8d20cb3` | `d56244fd9a7a8cc3e690bd9221ecd51be8d20cb3`; `handoffs/01-handoff.md` | `ServerCustomerContext`, `ClientCustomerContext`, exact remote capability factory; event route intentionally returns 503 pending policy | `20260721020000`, `20260721020500`, `20260721021000`, `20260721022000`, `20260721023000` Plan 01 migrations; range `2026072102xxxx`; 53 focused tests and local SQL evidence reported; broader diagnostics have existing blockers | Identity/events/consent flags default off. Requests: generated types, server env, providers/layouts, translations. BLOCKED on policy approval and remote evidence. Fallback: retain 503 route and strict capability policy. |
-| 02 | Commerce/payment/AMIS v3 local receipt; expected base `d56244fd9a7a8cc3e690bd9221ecd51be8d20cb3` | Worktree `/home/iant1359/develop/temp-nanohome-ai-02-commerce-payment-amis-v3`; branch `codex/commerce-payment-amis-v3`; head `cd158cc`; `21 local commits`; `docs/handoffs/worktree-02-commerce-payment-amis.md` | Local checkout/cart/orders contracts with deny-safe defaults, exact AMIS SaleOrder write/lookup boundary, and ZaloPay adapter contract; no feature code transferred | `20260721030000_add_commerce_checkout_ledger.sql`; additive ledger receipt; 98 focused tests per reconciliation facts, 80 tests in the source handoff, lint 0 errors/warnings; Docker/remote DB unavailable | **Local receipt complete; integration authorization remains BLOCKED.** Commerce/AMIS/ZaloPay flags default off. No production, durable persistence, tenant, sandbox, remote, or live-success claim. Fallback: deny-safe composition until shared compatibility and external gates pass. |
-| 03 | AMIS customer-memory lane; declared base `e920ab…` requires reconciliation | `eb0ef7f`; `handoffs/03-handoff.md` | Bounded `CustomerMemoryPort`; excludes raw notes/contact exposure/fuzzy matching/direct consumer exposure | `20260721024000_plan03_amis_customer_memory.sql`; range `2026072104xxxx`; 5 focused tests reported; SQL was not locally applied | AMIS memory remains default off. Environment: server-only AMIS warehouse/customer configuration. BLOCKED on exact tenant capability contract and provenance mismatch. Fallback: fail closed through the port. |
-| 04 | Grounded public chat lane | `ac661a9`; `handoffs/04-handoff.md` | Public `ChatAnswer` only; no private data exposure; DeepSeek is text-only/server configured | `20260721050000_plan04_grounded_chat_persistence.sql`; range `2026072105xxxx`; 128 focused tests, lint/build reported; existing typecheck blockers | Chat/storage/tools flags default off. Requests: shared translations, env schema, generated types, providers. BLOCKED on UI/a11y/product-card work and unavailable live smoke. Fallback: no stored conversation and no model call. |
-| 05 | Deterministic PDP recommendations phase 1 | `d5a37cc`; `05-product-recommendations-phase1-handoff.md` | Frozen `RecommendationPort`, request/response fixtures, `pdp-deterministic-v1`; PDP only | No migration; reserved range `2026072106xxxx`; 11 focused tests and lint reported; existing typecheck blockers | Recommendation signals default off. Excludes non-PDP placement, vision, behavior, LTR, redesign. Shared request: canonical product-card mapper. Fallback: deterministic PDP response only. |
-| 06 | Vision persistence lane; receipt differs from recorded local final `2385526` | `78dcc2d`; `handoffs/06-handoff.md` | `VisionProvider`, `RoomScene`, visual-similarity response; no provider selected or called | `20260721070000_plan06_vision_persistence.sql`; range `2026072107xxxx`; 46 focused tests reported; SQL/Docker unavailable | Upload, analysis, visual, evaluation, retention flags default off. Environment: server-only vision provider/retention. BLOCKED on receipt provenance and path/RLS/deletion proof. Fallback: reject provider access. |
-| 07 | Customer personalization lane | `c504611`; `handoffs/07-handoff.md` | `CustomerMemoryPort`; PDP-only recommendation boundary; affinity/room context deferred | `20260721080000_plan07_customer_personalization.sql`; range `2026072108xxxx`; focused tests/lint reported; local Supabase harness blocked | `personalizationEnabled`, `recentlyViewedEnabled`, `explicitPreferencesEnabled`, `customerMemoryEnabled` default off. Requests: shared flags/env/i18n/types/global UI/schedules. BLOCKED on unapplied SQL and external proof. Fallback: no personalization signal. |
+| Plan | Selected source | Integrated scope | Local runtime truth |
+| --- | --- | --- | --- |
+| Plan 00 | `codex/ai-commerce-program-base-v2` at `39340c7052ab` | Catalog eligibility, contracts, baseline SQL harness | Foundation present; source-worktree dirty files were not copied |
+| Plan 01 | `codex/customer-data-foundation-v2` at `d56244fd9a7a` | Customer identity, consent, context, events, remote capability policy | Present with deny-safe persistence policy |
+| Plan 02 | `codex/commerce-payment-amis-v3` at `cd158cca` | Commerce domain/routes, AMIS and ZaloPay adapters, checkout ledger migration | Plan 02 v3 only; local/in-memory composition, not live payment |
+| Plan 03 | `codex/amis-customer-memory-v2` at `eb0ef7fad093` | Bounded customer-memory port, mapper, migration | Fixture/disabled adapter only; no live AMIS memory sync |
+| Plan 04 | `codex/grounded-visual-chatbot-v2` at `ac661a95f6e2` | Public chat route, DeepSeek provider/orchestrator, retrieval/tool contracts | Route falls back safely until grounding and credentials are wired |
+| Plan 05 | `codex/product-recommendations-v2` at `d5a37cc5f2ac` | Deterministic PDP recommendations | Mounted on the existing product detail page |
+| Plan 06 | `codex/vision-intelligence-v2` at `78dcc2d64a50` | Vision contracts/services, synthetic provider, migration | No upload API, worker, or real model; flags are off |
+| Plan 07 | `codex/customer-personalization-v2` at `c504611fed20` | Personalization resolver/components and migration | Components are not globally mounted; flags are off |
+| Plan 08 | `codex/ai-commerce-integration-v2` at `3355b1978f10` | Readiness artifacts and guard | Guard converted from Foundation-only to integrated-staging checks |
 
-## Cross-lane environment categories
+## Merge resolutions
 
-All credentials are server-only; no public prefix is permitted for service-role, AMIS, AI, vision, ZaloPay, or callback secrets. Future integration intake must classify only (never include values): DeepSeek; embeddings; vision provider and retention; ZaloPay App ID/Key1/Key2/callback/redirect/environment/kill switches; AMIS warehouse/customer configuration; feature/model/prompt/algorithm versions; queue/cron/alert secrets.
+- `src/lib/contracts/ports.ts` keeps the canonical Plan 03 `CustomerMemoryPort`; Plan 07 differed only in whitespace.
+- `supabase/plan00-local/run-clean-reset.sh` keeps both Vision and Personalization SQL tests.
+- Migration filenames in the `20260721` program range are unique. Existing historical duplicates outside this program remain untouched.
 
-## Migration and proof policy
+## Validation boundary
 
-Known migration versions are unique and monotonic across their reserved ranges. Historical duplicates remain untouched; applied migrations are immutable and any correction is forward repair only. Future integration must run its own SQL/RLS suite, verify grants and retention/deletion behavior, and retain rollback/runbook evidence. Those gates are BLOCKED here.
+The active staging guard checks all lane artifacts, expected migrations, server-only DeepSeek configuration, and default-off boundaries. Unit tests, TypeScript, UI merge guard, build, and a local HTTP smoke run are separate required commands in the runbook.
 
-The local guard scans actual `supabase/migrations/` filenames for Plan 00/01-era duplicate versions. It preserves the known historical duplicate prefixes `20260710000003` and `20260711000000` as an explicit pre-existing exception; no Plan 02–07 feature migration is copied into this Foundation-only worktree.
-
-## Future intake outcome
-
-**READY FOR FUTURE REVIEW** only when every lane supplies a reviewed receipt, compatible frozen contract/fixture evidence, default-off configuration, owned shared-file request, and required local validation. **DEFERRED** behaviors remain excluded by their listed contract boundaries. Current aggregate outcome remains **BLOCKED** because external gates remain blocked: Docker/local reset, remote SQL/RLS, AMIS tenant, ZaloPay sandbox/live, privacy, backup/recovery, provider, shared integration, canary, reconciliation, rollback, incident, deployment, and production-enablement proof is intentionally unperformed.
+Remote SQL/RLS, generated database types, AMIS tenant access, ZaloPay merchant/sandbox callbacks, DeepSeek grounding, real vision provider/storage, privacy/retention approval, backup recovery, canary, and deployment remain blocked external gates.

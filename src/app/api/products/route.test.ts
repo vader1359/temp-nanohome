@@ -39,7 +39,9 @@ describe("GET /api/products", () => {
       categoryOptions: [],
       roomOptions: [],
     };
-    vi.mocked(productsService.getProductPage).mockResolvedValueOnce(mockData as unknown as ReturnType<typeof productsService.getProductPage>);
+    vi.mocked(productsService.getProductPage).mockResolvedValueOnce(
+      mockData as Awaited<ReturnType<typeof productsService.getProductPage>>,
+    );
 
     const request = new NextRequest("http://localhost/api/products?locale=en&brand=usm");
     const response = await GET(request);
