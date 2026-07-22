@@ -9,9 +9,10 @@ describe("Plan 00 frozen contracts", () => {
     expect(clientCustomerContextSchema.safeParse({ locale: "en", consent, capabilities: { recommendation: true } }).success).toBe(true);
   });
 
-  it("Given identifiers and PII in forbidden locations, When parsed, Then they are rejected", () => {
+  it("Given identifiers, PII, or Plan 01 marketing consent in forbidden locations, When parsed, Then they are rejected", () => {
     expect(serverCustomerContextSchema.safeParse({ visitorId: "v", sessionId: "s", userId: null, locale: "vi", consent, email: "x" }).success).toBe(false);
     expect(clientCustomerContextSchema.safeParse({ locale: "vi", consent, capabilities: {}, visitorId: "v" }).success).toBe(false);
+    expect(clientCustomerContextSchema.safeParse({ locale: "vi", consent: { ...consent, marketing: true }, capabilities: {} }).success).toBe(false);
   });
 
   it("Given placement-specific context cardinality, When parsed, Then only documented tuples pass", () => {

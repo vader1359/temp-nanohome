@@ -1,11 +1,10 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
 
 function PageViewTrackerInner() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const skippedInitialRender = useRef(false);
 
   useEffect(() => {
@@ -14,9 +13,8 @@ function PageViewTrackerInner() {
       return;
     }
     if (typeof window.fbq !== "function") return;
-    const url = searchParams.toString() ? `${pathname}?${searchParams}` : pathname;
-    window.fbq("track", "PageView", { url });
-  }, [pathname, searchParams]);
+    window.fbq("track", "PageView", { path: pathname });
+  }, [pathname]);
 
   return null;
 }
