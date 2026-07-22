@@ -1,22 +1,42 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_VISION_CONFIG,
+  applyCustomerCorrection,
   buildDeepSeekTextPayload,
   canProcessRoomImage,
   canRetainRoomImage,
+  createUploadIntent,
   createSyntheticRoomSceneRecord,
+  deletionScope,
   measurementWithOverride,
+  orchestrateLocalVisionRetrieval,
   parseProviderVisionOutput,
   rankRoomFitCandidates,
   rankVisuallySimilarCandidates,
   retrieveVisualCandidates,
+  redactFailure,
   transitionAnalysisState,
+  transitionLifecycle,
+  validateUploadIntent,
   validateVectorCompatibility,
   visualCandidateSchema,
 } from "./index";
 import type { CatalogEligibility } from "../catalog/eligibility";
 
 const consent = { roomImageProcessing: true, roomImageStorage: true } as const;
+
+it("exports lifecycle contracts from the public vision barrel", () => {
+  // Given: the public Plan 06 vision module.
+  // When: lifecycle functions are resolved through its barrel.
+  // Then: every local lifecycle boundary is available to callers.
+  expect(createUploadIntent).toBeTypeOf("function");
+  expect(validateUploadIntent).toBeTypeOf("function");
+  expect(transitionLifecycle).toBeTypeOf("function");
+  expect(redactFailure).toBeTypeOf("function");
+  expect(applyCustomerCorrection).toBeTypeOf("function");
+  expect(deletionScope).toBeTypeOf("function");
+  expect(orchestrateLocalVisionRetrieval).toBeTypeOf("function");
+});
 
 const eligibleRow = (variantId: string, overrides: Partial<CatalogEligibility> = {}): CatalogEligibility => ({
   variant_id: variantId,
