@@ -14,6 +14,7 @@ const documents = [
       "LOCAL STAGING INTEGRATED",
       "LIVE ACTIVATION BLOCKED",
       "codex/ai-commerce-staging",
+      "fd5b6dad3405",
       "codex/commerce-payment-amis-v3",
       "cd158cca",
       "Plan 00",
@@ -77,6 +78,8 @@ const requiredArtifacts = [
   "src/lib/recommendations/service.ts",
   "src/lib/vision/service.ts",
   "src/lib/personalization/index.ts",
+  "src/components/products/FilterSidebar.tsx",
+  "src/components/products/ProductGrid.tsx",
   "scripts/plan08-readiness-guard.mjs",
 ];
 
@@ -87,11 +90,14 @@ const expectedMigrations = [
   "20260721021000_plan01_customer_persistence_rpc.sql",
   "20260721022000_plan01_customer_persistence_hardening.sql",
   "20260721023000_plan01_identity_race_hardening.sql",
-  "20260721024000_plan03_amis_customer_memory.sql",
+  "20260721040000_plan03_amis_customer_memory.sql",
   "20260721030000_add_commerce_checkout_ledger.sql",
   "20260721050000_plan04_grounded_chat_persistence.sql",
   "20260721070000_plan06_vision_persistence.sql",
   "20260721080000_plan07_customer_personalization.sql",
+  "202607220001_use_amis_stock_for_availability.sql",
+  "202607220002_add_vases_subcategory.sql",
+  "202607220003_add_accessories_subcategories.sql",
 ];
 
 const defaultOffEvidence = [
@@ -149,7 +155,7 @@ if (!existsSync(migrationsDirectory)) {
   for (const migration of expectedMigrations) requireFile(`supabase/migrations/${migration}`, "expected merged migration is missing");
   const versions = new Map();
   for (const filename of readdirSync(migrationsDirectory)) {
-    const match = filename.match(/^(20260721\d{6})_.*\.sql$/);
+    const match = filename.match(/^(2026072[12]\d{4,6})_.*\.sql$/);
     if (match === null) continue;
     const existing = versions.get(match[1]);
     if (existing !== undefined) failures.push(`supabase/migrations: duplicate version ${match[1]} in ${existing} and ${filename}`);

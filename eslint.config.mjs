@@ -58,12 +58,19 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "off",
     },
   },
-  // These server-side integration adapters consume dynamic third-party JSON
-  // and Node-only request properties. Keep the exception narrowly scoped.
+  // These legacy integration tests intentionally model dynamic third-party
+  // payloads and mock the server-only admin boundary. Keep the exception to
+  // the three existing test files; production modules remain fully checked.
   {
-    files: ["src/lib/instagram-sync.ts", "src/lib/remote-read-only.ts"],
+    name: "dynamic-integration-test-mocks",
+    files: [
+      "src/components/cart-sidebar.test.tsx",
+      "src/lib/instagram.test.ts",
+      "src/lib/instagram-sync.test.ts",
+    ],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
+      "no-restricted-imports": "off",
     },
   },
 ]);

@@ -10,8 +10,9 @@ Status terms:
 | Area | Status | Resolution / remaining gate |
 | --- | --- | --- |
 | Plan 00–08 branch graph | MERGED_LOCAL | All selected heads are ancestors of `codex/ai-commerce-staging`; Plan 02 uses v3 `cd158cca`, not obsolete v2 |
+| Latest website main | MERGED_LOCAL | Fetched and merged `origin/main` at `fd5b6dad3405`; local dirty `main` was not checked out or modified |
 | `src/lib/contracts/ports.ts` | MERGED_LOCAL | Kept the canonical Plan 03 space-formatted `CustomerMemoryPort`; API was semantically identical |
-| `supabase/plan00-local/run-clean-reset.sh` | MERGED_LOCAL | Combined both `vision_persistence_test.sql` and `plan07_customer_personalization_test.sql` |
+| `supabase/plan00-local/run-clean-reset.sh` | MERGED_LOCAL | Combined all seven program SQL suites; execution remains blocked while Docker is unavailable |
 | Migration versions | MERGED_LOCAL | Program filenames are unique and monotonic by reserved range; no remote application is claimed |
 | PDP recommendations | FUNCTIONAL_LOCAL | Deterministic recommendations are mounted in the existing product-detail page |
 | Commerce/cart/order/payment | MERGED_LOCAL | Routes and adapters exist, but auth/catalog/Supabase holds/AMIS/ZaloPay callback and UI composition remain BLOCKED_EXTERNAL |
@@ -20,6 +21,7 @@ Status terms:
 | Vision intelligence | MERGED_LOCAL | Contracts and synthetic provider exist; upload, storage, worker, embeddings/model, retention proof remain BLOCKED_EXTERNAL |
 | Personalization | MERGED_LOCAL | Resolver/components exist and default off; provider mount, consent/event repositories, i18n, and live memory adapter are DEFERRED/BLOCKED_EXTERNAL |
 | Generated Supabase types | DEFERRED | Regenerate only after the merged migration chain is validated against an approved database |
+| Data-backed locale pages | BLOCKED_EXTERNAL | Production server starts and routes respond, but the inherited Supabase hostname does not resolve and Vercel Preview has no usable Supabase values |
 | Production rollout | BLOCKED_EXTERNAL | Requires reviewed credentials, remote SQL/RLS, provider and tenant evidence, monitoring, rollback, and deployment approval |
 
 No local pass may be promoted into a claim that a provider, tenant, payment callback, remote database, or production rollout was verified.

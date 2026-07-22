@@ -20,7 +20,7 @@ Raw notes, calls, meetings, tasks, chat, attachments, and consultation cards rem
 
 ## Persistence
 
-Migration `20260721024000_plan03_amis_customer_memory.sql` adds:
+The source lane produced `20260721024000_plan03_amis_customer_memory.sql`. Integrated staging renames it to `20260721040000_plan03_amis_customer_memory.sql` before any remote application so Plan 03 uses its reserved `2026072104xxxx` range and no longer overlaps the Plan 01 `2026072102xxxx` family. The migration adds:
 
 - `customer_amis_links` with constrained lifecycle/method values and unique active customer ownership;
 - `amis_customer_snapshots` with typed allowlisted fields, digests, mapper version, and lifecycle state;

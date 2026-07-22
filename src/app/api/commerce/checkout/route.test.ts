@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { createCommerceLocalServices, type CommerceCatalog } from "@/lib/commerce/commerce-local";
 import { createServerOwnedCommerceRoutes } from "@/lib/commerce/server-owned-routes";
 import { validCatalogEligibility } from "@/lib/commerce/catalog-test-support";
-import { POST, createPostHandler } from "./route";
+import { createPostHandler } from "./handler";
+import { POST } from "./route";
 
 const catalog: CommerceCatalog = {
   async findVariant(variantId) {

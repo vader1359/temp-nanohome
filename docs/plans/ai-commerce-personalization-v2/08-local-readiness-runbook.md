@@ -2,7 +2,7 @@
 
 ## Scope
 
-Use this runbook only in `/home/iant1359/develop/temp-nanohome-ai-commerce-staging` on branch `codex/ai-commerce-staging`. It validates the merged local website without changing `main` or any external system.
+Use this runbook only in `/home/iant1359/develop/temp-nanohome-ai-commerce-staging` on branch `codex/ai-commerce-staging`. It validates Plan 00–08 together with `origin/main` at `fd5b6dad3405` without changing the dirty local `main` worktree or any external system.
 
 ## Preflight
 
@@ -28,7 +28,7 @@ After a successful build, start the production server on a non-production local 
 
 ## Database validation
 
-The merged program migrations and SQL tests are present, but a database reset is not part of the safe default sequence. When Docker/Supabase is available and database mutation is explicitly approved, extend the harness to run the Plan 01 customer-data, Plan 02 checkout-ledger, Plan 03 memory, Plan 04 chat, Plan 06 vision, and Plan 07 personalization suites together.
+The merged program migrations and SQL tests are present, but a database reset is not part of the safe default sequence. The combined harness is already wired for Catalog, Plan 01 customer data, Plan 02 checkout ledger, Plan 03 memory, Plan 04 chat, Plan 06 vision, and Plan 07 personalization. Run it only when Docker/Supabase is available and local database mutation is explicitly approved.
 
 ## Stop conditions
 

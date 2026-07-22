@@ -46,11 +46,11 @@ const checks = [
   },
   {
     file: "src/components/header.tsx",
-    markers: ["site-shell py-4", "font-normal uppercase"],
+    markers: ["site-shell relative py-4", "font-normal uppercase"],
   },
   {
     file: "src/components/product-detail/section-1-hero.tsx",
-    markers: ["aspect-square h-auto min-h-full rounded-none px-0"],
+    markers: ["relative aspect-[1/1]", "object-contain px-12", "lg:basis-1/2"],
   },
   {
     file: "src/components/product-detail/section-4-gallery.tsx",
@@ -68,7 +68,7 @@ const checks = [
   },
   {
     file: "src/app/[locale]/products/page.tsx",
-    markers: ["function titleizeSlug", "filter_sub_category", "sub_category"],
+    markers: ["getProductPage", "parseFilters", "buildQueryKey", "ProductsPage"],
     absent: ["resolveFinishLabel"],
   },
   {
@@ -77,9 +77,9 @@ const checks = [
       "items-end justify-center",
       "object-contain object-bottom",
       "strokeWidth={1.5}",
-      "size-5 text-nh-ink",
-      "mx-1 flex flex-col",
-      "line-clamp-2 text-[13px] font-normal",
+      "size-4 text-nh-ink",
+      "mx-1 flex flex-col items-start",
+      "line-clamp-2 min-h-8",
       "product.brandLogoUrl",
       "bg-[#FBECEC] text-nh-red",
       "bg-[#EAF7EF] text-nh-green",
