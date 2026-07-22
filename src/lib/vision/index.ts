@@ -1,0 +1,18 @@
+export { DEFAULT_VISION_CONFIG } from "./config";
+export { createSyntheticRoomSceneRecord } from "./fixtures";
+export { canProcessRoomImage, canRetainRoomImage, buildDeepSeekTextPayload } from "./privacy";
+export { transitionAnalysisState } from "./state";
+export { measurementWithOverride, parseProviderVisionOutput, validateVectorCompatibility, visualCandidateSchema, observedValueSchema, roomSceneRecordSchema, providerVisionOutputSchema } from "./contracts";
+export { createSyntheticImageEmbeddingProvider, createSyntheticRoomVisionProvider, createSyntheticVisionProvider } from "./provider";
+export { createInMemoryVisionJobBoundary } from "./jobs";
+export { applyCustomerCorrection, createUploadIntent, deletionScope, redactFailure, transitionLifecycle, validateUploadIntent } from "./lifecycle";
+export { rankRoomFitCandidates, rankVisuallySimilarCandidates, retrieveVisualCandidates } from "./retrieval";
+export { orchestrateLocalVisionRetrieval, rankLocalVisualSimilarity, retrieveLocalVisualCandidates } from "./service";
+export type { DeepSeekTextPayload, VisionConsent } from "./privacy";
+export type { AnalysisEvent, AnalysisState, TransitionResult } from "./state";
+export type { MeasurementOverrideResult, ObservedValue, ProviderParseResult, ProviderVisionOutput, RoomSceneRecord, VectorCompatibility, VectorRejectionReason, VectorValidationResult, VisualCandidate } from "./contracts";
+export type { EmbeddingCandidate, RetrievalInput, RetrievalResult, RoomFitInput } from "./retrieval";
+export type { VisionJobBoundary, VisionJobBoundaryDependencies, VisionJobDelivery } from "./jobs";
+export type { FailureCode, FailureResult, LifecycleState, LifecycleTransitionResult, UploadIntentResult, UploadValidationResult } from "./lifecycle";
+export type { ImageEmbeddingProvider, ImageEmbeddingProviderOutcome, RoomVisionProvider, RoomVisionProviderOutcome, SyntheticVisionFixture, VisionProvider, VisionProviderOutcome, VisionProviderRequest } from "./provider";
+export type { LocalVisionRetrievalInput, LocalVisionRetrievalResult } from "./service";
