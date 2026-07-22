@@ -1,18 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { createEventRecorder, parseCustomerEvent } from "./service";
 
+const idempotencyKey = "event_key_0000001";
+
 describe("customer events", () => {
   it("accepts every Plan 01 allowlisted event with safe properties", () => {
     const events = [
-      { name: "page_viewed", properties: { routeKey: "/", locale: "vi" } },
-      { name: "product_viewed", properties: { productId: "p1", variantId: "v1", placement: "pdp" } },
-      { name: "search_submitted", properties: { filterKeys: ["brand"], resultCountBucket: "1-9" } },
-      { name: "recommendation_impression", properties: { requestId: "r1", placement: "home", itemIds: ["v1"] } },
-      { name: "recommendation_clicked", properties: { requestId: "r1", itemId: "v1", rank: 1 } },
-      { name: "cart_item_added", properties: { variantId: "v1", sourcePlacement: "pdp" } },
-      { name: "checkout_started", properties: { cartId: "c1", itemCountBucket: "1" } },
-      { name: "preference_updated", properties: { preferenceKeys: ["style"] } },
-      { name: "room_analysis_confirmed", properties: { analysisId: "a1", correctionFlags: ["room_type"] } },
+      { name: "page_viewed", properties: { routeKey: "/", locale: "vi" }, idempotencyKey },
+      { name: "product_viewed", properties: { productId: "p1", variantId: "v1", placement: "pdp" }, idempotencyKey },
+      { name: "search_submitted", properties: { filterKeys: ["brand"], resultCountBucket: "1-9" }, idempotencyKey },
+      { name: "recommendation_impression", properties: { requestId: "r1", placement: "home", itemIds: ["v1"] }, idempotencyKey },
+      { name: "recommendation_clicked", properties: { requestId: "r1", itemId: "v1", rank: 1 }, idempotencyKey },
+      { name: "cart_item_added", properties: { variantId: "v1", sourcePlacement: "pdp" }, idempotencyKey },
+      { name: "checkout_started", properties: { cartId: "c1", itemCountBucket: "1" }, idempotencyKey },
+      { name: "preference_updated", properties: { preferenceKeys: ["style"] }, idempotencyKey },
+      { name: "room_analysis_confirmed", properties: { analysisId: "a1", correctionFlags: ["room_type"] }, idempotencyKey },
     ] as const;
 
     expect(events.every((event) => parseCustomerEvent(event).success)).toBe(true);
@@ -22,15 +24,21 @@ describe("customer events", () => {
     const parsed = parseCustomerEvent({
       name: "page_viewed",
       properties: { routeKey: "/vi", locale: "vi" },
+      idempotencyKey,
     });
 
     expect(parsed.success).toBe(true);
   });
 
   it("rejects unknown, PII, and oversized event data", () => {
-    expect(parseCustomerEvent({ name: "unknown", properties: {} }).success).toBe(false);
-    expect(parseCustomerEvent({ name: "page_viewed", properties: { email: "a@example.com" } }).success).toBe(false);
-    expect(parseCustomerEvent({ name: "page_viewed", properties: { routeKey: "x".repeat(300), locale: "vi" } }).success).toBe(false);
+    expect(parseCustomerEvent({ name: "unknown", properties: {}, idempotencyKey }).success).toBe(false);
+    expect(parseCustomerEvent({ name: "page_viewed", properties: { email: "a@example.com" }, idempotencyKey }).success).toBe(false);
+    expect(parseCustomerEvent({ name: "page_viewed", properties: { routeKey: "x".repeat(300), locale: "vi" }, idempotencyKey }).success).toBe(false);
+  });
+
+  it("requires a bounded idempotency key", () => {
+    expect(parseCustomerEvent({ name: "page_viewed", properties: { routeKey: "/", locale: "vi" } }).success).toBe(false);
+    expect(parseCustomerEvent({ name: "page_viewed", properties: { routeKey: "/", locale: "vi" }, idempotencyKey: "short" }).success).toBe(false);
   });
 
   it("rejects forged identity while rejecting other unknown fields", () => {
@@ -40,10 +48,11 @@ describe("customer events", () => {
       sessionId: "forged-session",
       userId: "forged-user",
       properties: { routeKey: "/", locale: "vi" },
+      idempotencyKey,
     });
 
     expect(result.success).toBe(false);
-    expect(parseCustomerEvent({ name: "page_viewed", debug: true, properties: { routeKey: "/", locale: "vi" } }).success).toBe(false);
+    expect(parseCustomerEvent({ name: "page_viewed", debug: true, properties: { routeKey: "/", locale: "vi" }, idempotencyKey }).success).toBe(false);
   });
 
   it("denies collection when an approved rate policy is absent", () => {

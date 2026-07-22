@@ -16,7 +16,7 @@ describe("POST /api/customer/events", () => {
     const response = await POST(new Request("https://app.test/api/customer/events", {
       method: "POST",
       headers: { origin: "https://app.test", cookie: "nano_visitor_id=" + "a".repeat(64) + "; nano_session_id=" + "b".repeat(64) },
-      body: JSON.stringify({ name: "page_viewed", properties: { routeKey: "/", locale: "vi" } }),
+      body: JSON.stringify({ name: "page_viewed", properties: { routeKey: "/", locale: "vi" }, idempotencyKey: "event_key_0000001" }),
     }));
 
     expect(response.status).toBe(503);

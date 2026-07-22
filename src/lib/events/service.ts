@@ -6,7 +6,7 @@ const locale = z.union([z.literal("vi"), z.literal("en"), z.literal("ko")]);
 const placement = z.enum(["home", "pdp", "cart", "chat", "room", "search"]);
 const safeKey = z.string().regex(/^[a-z][a-z0-9_]{0,31}$/);
 const keyList = z.array(safeKey).max(20);
-const idempotencyKey = z.string().regex(/^[A-Za-z0-9_-]{16,128}$/).optional();
+const idempotencyKey = z.string().regex(/^[A-Za-z0-9_-]{16,128}$/);
 
 const eventSchemas = [
   z.object({ name: z.literal("page_viewed"), properties: z.object({ routeKey: z.string().regex(/^\/[a-z0-9/_-]{0,127}$/), locale }).strict(), idempotencyKey }).strict(),

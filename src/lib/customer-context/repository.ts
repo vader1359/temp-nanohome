@@ -62,7 +62,10 @@ const parseConsent = (value: unknown): ConsentState | null => {
 export const createCustomerRepository = (fetcher: Fetcher = fetch): CustomerRepository => {
   const rpc = createRpcClient(fetcher);
   const identity = async (name: string, tokens: TokenPair): Promise<IdentityLookup> => {
-    const row = identitySchema.safeParse(first(await rpc(name, { visitor_token_hash: await hashToken(tokens.visitor), session_token_hash: await hashToken(tokens.session) })));
+    const row = identitySchema.safeParse(first(await rpc(name, {
+      p_visitor_token_hash: await hashToken(tokens.visitor),
+      p_session_token_hash: await hashToken(tokens.session),
+    })));
     if (!row.success) return { identity: null, status: "missing" };
     if (row.data.status !== "active" && row.data.status !== "created") return { identity: null, status: row.data.status === "inactive" ? "inactive" : "missing" };
     if (row.data.visitor_id === null || row.data.session_id === null) return { identity: null, status: "missing" };
@@ -71,7 +74,7 @@ export const createCustomerRepository = (fetcher: Fetcher = fetch): CustomerRepo
   return {
     resolveIdentity: (tokens) => identity("resolve_customer_identity_v2", tokens),
     bootstrapIdentity: (tokens) => identity("bootstrap_customer_identity_v2", tokens),
-    currentConsent: async (value) => parseConsent(await rpc("current_customer_consent", { visitor_id: value.visitorId })),
+    currentConsent: async (value) => parseConsent(await rpc("current_customer_consent", { p_visitor_id: value.visitorId })),
     appendConsent: async (value, consent) => {
       const request = {
         analytics: consent.analytics,
@@ -87,10 +90,10 @@ export const createCustomerRepository = (fetcher: Fetcher = fetch): CustomerRepo
         withdrawn: consent.withdrawn,
         withdrawalReason: consent.withdrawalReason,
       };
-      return parseConsent(await rpc("append_customer_consent", { visitor_id: value.visitorId, session_id: value.sessionId, consent: request }));
+      return parseConsent(await rpc("append_customer_consent", { p_visitor_id: value.visitorId, p_session_id: value.sessionId, p_consent: request }));
     },
     appendEvent: async (value, event, receivedAt) => {
-      const result = await rpc("append_customer_event", { visitor_id: value.visitorId, session_id: value.sessionId, event, received_at: receivedAt });
+      const result = await rpc("append_customer_event", { p_visitor_id: value.visitorId, p_session_id: value.sessionId, p_event: event, p_received_at: receivedAt });
       return result === "accepted" || result === "duplicate" ? result : null;
     },
   };
