@@ -5,6 +5,7 @@ import { DeferredInstagramGallery } from "@/components/sections/deferred-instagr
 import { FeaturedProducts } from "@/components/sections/featured-products";
 import { Hero } from "@/components/sections/hero";
 import { Newsletter } from "@/components/sections/newsletter";
+import { CustomerPersonalizationPanel } from "@/components/personalization/customer-personalization-panel";
 import { ProductsGrid } from "@/components/sections/products-grid";
 import { Rooms } from "@/components/sections/rooms";
 import { variantToProductGridItem } from "@/lib/products/mapper";
@@ -147,6 +148,7 @@ export default async function Page({ params }: PageProps) {
         bestSellerProducts={bestSellerProducts}
         newArrivalProducts={newArrivalProducts}
       />
+      <CustomerPersonalizationPanel locale={locale} />
       <About />
       <FeaturedProducts products={featuredProducts} />
       <Rooms />

@@ -2,7 +2,28 @@ begin;
 
 set local role postgres;
 
-select plan(26);
+select plan(28);
+
+select is(
+  (select format_type(atttypid, atttypmod)
+   from pg_attribute
+   where attrelid = 'public.customer_recent_entities'::regclass
+     and attname = 'entity_id'),
+  (select format_type(atttypid, atttypmod)
+   from pg_attribute
+   where attrelid = 'public.products'::regclass
+     and attname = 'id'),
+  'recent entity IDs use the real product ID database type');
+select is(
+  (select format_type(atttypid, atttypmod)
+   from pg_attribute
+   where attrelid = 'public.customer_recent_entities'::regclass
+     and attname = 'entity_id'),
+  (select format_type(atttypid, atttypmod)
+   from pg_attribute
+   where attrelid = 'public.variants'::regclass
+     and attname = 'id'),
+  'recent entity IDs use the real variant ID database type');
 
 select ok((select relrowsecurity from pg_class where oid = 'public.customer_preferences'::regclass), 'preferences have RLS enabled');
 select ok((select relrowsecurity from pg_class where oid = 'public.customer_recent_entities'::regclass), 'recent entities have RLS enabled');
