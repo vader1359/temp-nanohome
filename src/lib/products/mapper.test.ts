@@ -121,4 +121,27 @@ describe("variantToProductGridItem", () => {
     expect(variantToProductGridItem(variant, { locale: "vi" }).subtitle).toBe("Bình hoa");
     expect(variantToProductGridItem(variant, { locale: "ko" }).subtitle).toBe("화병");
   });
+
+  it("localizes the Accessories sub-category vocabulary", () => {
+    const variant = {
+      id: "accessory",
+      name: "Cushion",
+      name_vi: "Gối",
+      slug: "cushion",
+      slug_vi: "goi",
+      sku: "ACCFH00031",
+      stock: 1,
+      price: 100,
+      compare_at_price: null,
+      discount_percent: null,
+      on_sale: false,
+      in_stock: true,
+      packshot_url: null,
+      gallery_urls: [],
+      raw: { filter_sub_category: "cushions" },
+    };
+
+    expect(variantToProductGridItem(variant, { locale: "vi" }).subtitle).toBe("Gối/Cushion");
+    expect(variantToProductGridItem(variant, { locale: "ko" }).subtitle).toBe("쿠션");
+  });
 });

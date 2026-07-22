@@ -52,10 +52,40 @@ const VIETNAMESE_FACET_LABELS: Record<string, string> = {
   tables: "Bàn",
   usm: "USM",
   vases: "Bình hoa",
+  candles: "Chân nến & nến",
+  books: "Sách",
+  cushions: "Gối/Cushion",
+  throws: "Khăn/Chăn",
+  miniatures: "Miniature",
+  rugs: "Thảm",
+  "home-fragrance": "Home Fragrance",
+  organizers: "Organizer",
+  "tote-bags": "Tote bag",
+  drinkware: "Drinkware",
+  pet: "Pet collection",
+  decoration: "Decoration",
+  "kitchen-textiles": "Kitchen Textiles",
+  kids: "For kids",
   "wall-lamps": "Đèn tường",
 };
 
-const KOREAN_FACET_LABELS: Record<string, string> = { vases: "화병" };
+const KOREAN_FACET_LABELS: Record<string, string> = {
+  vases: "화병",
+  candles: "촛대 & 캔들",
+  books: "도서",
+  cushions: "쿠션",
+  throws: "담요",
+  miniatures: "미니어처",
+  rugs: "러그",
+  "home-fragrance": "홈 프래그런스",
+  organizers: "정리함",
+  "tote-bags": "토트백",
+  drinkware: "음료 용품",
+  pet: "반려동물",
+  decoration: "장식",
+  "kitchen-textiles": "키친 텍스타일",
+  kids: "키즈",
+};
 
 function titleizeSlug(value: string): string {
   const special: Record<string, string> = {
