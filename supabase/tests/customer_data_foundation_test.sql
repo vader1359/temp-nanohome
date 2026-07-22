@@ -2,7 +2,7 @@ begin;
 
 set local role postgres;
 
-select plan(50);
+select plan(51);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.customer_visitors'::regclass),
@@ -44,6 +44,10 @@ select ok(
   not has_function_privilege('anon', 'public.append_customer_event(uuid, uuid, jsonb, timestamptz)', 'execute'),
   'anon cannot execute event RPC'
 );
+select ok(
+  position('extensions.digest' in pg_get_functiondef('public.append_customer_event(uuid, uuid, jsonb, timestamptz)'::regprocedure)) > 0,
+  'event RPC schema-qualifies pgcrypto digest under its restricted search path'
+);
 
 insert into public.customer_visitors (id, visitor_token_hash)
 values ('00000000-0000-4000-8000-000000000201', 'visitor-hash-only');
@@ -71,7 +75,7 @@ select throws_ok($$ select public.append_customer_event('00000000-0000-4000-8000
 select lives_ok($$ select public.append_customer_event('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"name":"page_viewed","idempotencyKey":"rpc-page","properties":{"routeKey":"/","locale":"vi"}}'::jsonb, now()) $$, 'event RPC accepts fixed columns with granted analytics');
 select throws_ok($$ select public.append_customer_event('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"name":"recommendation_impression","idempotencyKey":"rpc-rec","properties":{"requestId":"r","placement":"home","itemIds":["00000000-0000-4000-8000-000000000031"]}}'::jsonb, now()) $$, 'P0001', 'required consent purpose is not granted', 'event RPC requires mapped personalization consent');
 select throws_ok($$ select public.append_customer_event('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"name":"page_viewed","idempotencyKey":"rpc-raw","properties":{"routeKey":"/","locale":"vi","rawPayload":{}}}'::jsonb, now()) $$, 'P0001', 'unknown event properties are not allowed', 'event RPC rejects unknown properties');
-select is((select count(*) from public.customer_events where idempotency_key_hash = encode(digest('rpc-page', 'sha256'), 'hex')), 1::bigint, 'event RPC stores one fixed-column record without payload');
+select is((select count(*) from public.customer_events where idempotency_key_hash = encode(extensions.digest('rpc-page', 'sha256'), 'hex')), 1::bigint, 'event RPC stores one fixed-column record without payload');
 select lives_ok($$ select public.append_customer_consent('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000202', '{"version":"v2","withdrawn":true,"withdrawalReason":"user request"}'::jsonb) $$, 'withdrawal appends consent and queues subject deletion');
 select is((select count(*) from public.customer_subject_deletion_queue where visitor_id = '00000000-0000-4000-8000-000000000201' and processed_at is null), 1::bigint, 'withdrawal queue is subject-scoped and pending is idempotent');
 select is((select revoked_at is not null from public.customer_visitors where id = '00000000-0000-4000-8000-000000000201'), true, 'withdrawal revokes the visitor identity');
