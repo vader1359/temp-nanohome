@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { isSupportedLocale, routing } from "@/i18n/routing";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/sections/footer";
+import { PublicChatWidget } from "@/components/chat/public-chat-widget";
 import { Providers } from "../providers";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -62,6 +63,7 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
               <Header />
               {children}
               <Footer />
+              <PublicChatWidget locale={locale} />
             </AuthProvider>
           </Suspense>
         </Providers>

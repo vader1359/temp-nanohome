@@ -17,6 +17,66 @@ const fallbackText = {
   ko: "승인된 공개 정보를 바탕으로 적합한 제품을 찾도록 도와드릴 수 있습니다.",
 } as const;
 
+const maximumRequestBodyBytes = 8 * 1024;
+
+class RequestBodyError extends Error {
+  readonly status: 400 | 413;
+
+  constructor(status: 400 | 413) {
+    super(status === 413 ? "request_too_large" : "invalid_request_body");
+    this.name = "RequestBodyError";
+    this.status = status;
+  }
+}
+
+function noStore(status: number): Response {
+  return new Response(null, {
+    status,
+    headers: { "Cache-Control": "no-store" },
+  });
+}
+
+function isSameOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (origin === null) return false;
+  try {
+    return new URL(origin).origin === new URL(request.url).origin;
+  } catch {
+    return false;
+  }
+}
+
+async function readBoundedJson(request: Request): Promise<unknown> {
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > maximumRequestBodyBytes) {
+    throw new RequestBodyError(413);
+  }
+  if (request.body === null) throw new RequestBodyError(400);
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let size = 0;
+  let text = "";
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      size += chunk.value.byteLength;
+      if (size > maximumRequestBodyBytes) {
+        await reader.cancel();
+        throw new RequestBodyError(413);
+      }
+      text += decoder.decode(chunk.value, { stream: true });
+    }
+    text += decoder.decode();
+    return JSON.parse(text) as unknown;
+  } catch (error) {
+    if (error instanceof RequestBodyError) throw error;
+    throw new RequestBodyError(400);
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 type SharedChatWork = {
   promise: Promise<readonly PublicChatEvent[]>;
   readonly controller: AbortController;
@@ -123,22 +183,33 @@ function awaitForCaller(requestKey: string, work: SharedChatWork, signal: AbortS
 }
 
 export async function POST(request: Request): Promise<Response> {
+  if (!isSameOrigin(request)) return noStore(403);
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return new Response(null, { status: 400, headers: { "Cache-Control": "no-store" } });
+    body = await readBoundedJson(request);
+  } catch (error) {
+    return noStore(error instanceof RequestBodyError ? error.status : 400);
   }
   const parsed = publicChatRequestSchema.safeParse(body);
-  if (!parsed.success) return new Response(null, { status: 400, headers: { "Cache-Control": "no-store" } });
+  if (!parsed.success) return noStore(400);
   const input = parsed.data;
   const id = responseId(input.messageRef);
   if (request.signal.aborted) return chatResponse(cancelled(id));
+
+  const dependencies = getServerChatDependencies(input.locale);
+  if (!await dependencies.authorizeAiProcessing(request)) return noStore(403);
+  if (dependencies.rateLimit !== undefined) {
+    try {
+      if (!await dependencies.rateLimit(request)) return noStore(429);
+    } catch {
+      return noStore(503);
+    }
+  }
+
   const policy = policyFor(input.question, input.locale);
   if (policy !== undefined) return chatResponse(fallbackEvents(id, policy.text));
   if (!configEnabled()) return chatResponse(fallbackEvents(id, fallbackText[input.locale]));
 
-  const dependencies = getServerChatDependencies();
   if (dependencies.grounding.kind === "unavailable") return chatResponse(fallbackEvents(id, fallbackText[input.locale]));
 
   const requestKey = key(input);

@@ -44,7 +44,7 @@ describe("bounded public chat orchestration", () => {
       policyDecision: { kind: "handoff", reasonCode: "unsupported_request", text: "Safe fallback." },
     });
 
-    expect(result.blocks).toEqual([{ type: "product_cards", products: [{ variantId: "chair-01", canonicalId: "chair", title: "Public chair", canonicalLink: "/products/chair", image: { canonicalImageId: "chair-image", alt: "Public chair" } }] }]);
+    expect(result.blocks).toEqual([{ type: "product_cards", products: [{ variantId: "chair-01", canonicalId: "chair", title: "Public chair", canonicalLink: "/products/chair", image: { canonicalImageId: "chair-image", alt: "Public chair" }, price: { mode: "contact" }, stock: { state: "unknown" }, attributes: {} }] }]);
   });
 
   it("propagates the caller signal to every provider call", async () => {

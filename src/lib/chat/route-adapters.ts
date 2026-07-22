@@ -1,17 +1,23 @@
 import "server-only";
 
+import { hasCurrentAiProcessingConsent } from "./consent-adapter";
+import { createPublicCatalogAdapters } from "./catalog-adapter";
+import type { PublicChatLocale } from "./contracts";
 import { ApprovedSourceStore, type RetrievalLocale } from "./retrieval";
 import type { PublicChatServerRegistries } from "./resolution";
+import { getApprovedPublicSitePage } from "./site-page-adapter";
 import type { PublicChatToolAdapters } from "./tools/public-tools";
 
 export type ServerChatDependencies = Readonly<{
   readonly grounding: { readonly kind: "unavailable"; readonly reason: "catalog_adapter_not_configured" } | { readonly kind: "available" };
   readonly registries: PublicChatServerRegistries;
   readonly retrieval: ApprovedSourceStore;
+  readonly authorizeAiProcessing: (request: Request) => Promise<boolean>;
+  readonly rateLimit?: (request: Request) => Promise<boolean>;
   readonly tools: PublicChatToolAdapters;
 }>;
 
-export type ServerChatDependenciesProvider = () => ServerChatDependencies;
+export type ServerChatDependenciesProvider = (locale: PublicChatLocale) => ServerChatDependencies;
 
 const unavailableTools: PublicChatToolAdapters = {
   catalog: {
@@ -28,14 +34,34 @@ export function createServerChatDependencies(): ServerChatDependencies {
     grounding: { kind: "unavailable", reason: "catalog_adapter_not_configured" },
     registries: { products: [], sources: [], images: [] },
     retrieval: new ApprovedSourceStore(),
+    authorizeAiProcessing: async () => false,
     tools: unavailableTools,
   };
 }
 
-let serverChatDependenciesProvider: ServerChatDependenciesProvider = createServerChatDependencies;
+export function createLiveServerChatDependencies(locale: PublicChatLocale): ServerChatDependencies {
+  return {
+    grounding: { kind: "available" },
+    registries: { products: [], sources: [], images: [] },
+    retrieval: new ApprovedSourceStore(),
+    authorizeAiProcessing: hasCurrentAiProcessingConsent,
+    tools: {
+      catalog: createPublicCatalogAdapters(locale),
+      site: { page: async (sectionKey, requestedLocale) => getApprovedPublicSitePage(sectionKey, requestedLocale) },
+      handoff: {
+        create: async () => {
+          throw new Error("Staff handoff is not configured");
+        },
+      },
+    },
+  };
+}
 
-export function getServerChatDependencies(): ServerChatDependencies {
-  return serverChatDependenciesProvider();
+let serverChatDependenciesProvider: ServerChatDependenciesProvider =
+  createLiveServerChatDependencies;
+
+export function getServerChatDependencies(locale: PublicChatLocale = "vi"): ServerChatDependencies {
+  return serverChatDependenciesProvider(locale);
 }
 
 export function setServerChatDependenciesProvider(provider: ServerChatDependenciesProvider): () => void {

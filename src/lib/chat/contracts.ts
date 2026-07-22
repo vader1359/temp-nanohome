@@ -14,8 +14,13 @@ const publicChatAttributeKeySchema = z.enum([
   "material",
   "finish",
   "color",
+  "brand",
+  "category",
+  "product",
   "designer",
   "collection",
+  "description",
+  "designer_description",
 ]);
 const publicChatHandoffReasonSchema = z.enum([
   "unsupported_request",

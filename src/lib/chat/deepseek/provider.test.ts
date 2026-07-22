@@ -24,9 +24,12 @@ describe("DeepSeek provider boundary", () => {
     const body = z.object({ messages: z.array(z.object({ content: z.string() })), thinking: z.unknown().optional() }).parse(JSON.parse(String(requests[0]?.body)));
     expect(body.thinking).toBeUndefined();
     expect(JSON.parse(String(requests[0]?.body)).max_tokens).toBe(800);
+    expect(JSON.parse(String(requests[0]?.body)).model).toBe("deepseek-v4-flash");
     expect(body.messages.map(({ content }) => content).join(" ")).not.toContain("https://example.com");
     expect(body.messages.map(({ content }) => content).join(" ")).toContain("Ignore prior instructions");
     expect(body.messages.map(({ content }) => content).join(" ")).toContain("Public details");
+    expect(String(requests[0]?.body)).not.toMatch(/image_url|image_bytes|signed_url/iu);
+    expect(String(requests[0]?.body)).not.toContain("data:image/");
   });
 
   it("parses keep-alives and hides reasoning content in SSE", () => {
@@ -74,7 +77,7 @@ describe("DeepSeek provider boundary", () => {
     const signal = new AbortController().signal;
     await requestDeepSeek({
       apiKey: "secret",
-      model: "deepseek-reasoner",
+      model: "deepseek-v4-pro",
       signal,
       fetcher: async (_input, init) => {
         requests.push(init);
@@ -87,7 +90,7 @@ describe("DeepSeek provider boundary", () => {
     });
 
     const body = JSON.parse(String(requests[0]?.body)) as { model: string };
-    expect(body.model).toBe("deepseek-reasoner");
+    expect(body.model).toBe("deepseek-v4-pro");
     expect(requests[0]?.signal).not.toBe(signal);
   });
 

@@ -1,11 +1,28 @@
 import "server-only";
 
 import { z } from "zod";
+import { isCloudinaryUrl, isR2PublicMediaUrl } from "@/lib/image";
 
 import { publicChatToolCallSchema, type PublicChatToolCall, type PublicChatLocale } from "../contracts";
 
 const publicIdentifierSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/);
-const publicAttributeKeySchema = z.enum(["dimensions", "material", "finish", "color", "designer", "collection"]);
+const publicAttributeKeySchema = z.enum([
+  "dimensions",
+  "material",
+  "finish",
+  "color",
+  "brand",
+  "category",
+  "product",
+  "designer",
+  "collection",
+  "description",
+  "designer_description",
+]);
+const publicImageSourceSchema = z.string().min(2).max(2_000).refine(
+  (value) => isCloudinaryUrl(value) || isR2PublicMediaUrl(value),
+  "Catalog image is not an approved public media URL",
+);
 const publicCatalogPriceSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("fixed"), amount: z.number().finite().nonnegative(), currency: z.string().min(1).max(12) }).strict(),
   z.object({ mode: z.literal("contact") }).strict(),
@@ -17,7 +34,7 @@ const publicCatalogRecordSchema = z
     variantId: publicIdentifierSchema,
     title: z.string().min(1).max(300),
     canonicalLink: z.string().min(2).max(2_000).regex(/^\/(?!\/)/),
-    image: z.object({ id: publicIdentifierSchema, alt: z.string().min(1).max(300) }).strict(),
+    image: z.object({ id: publicIdentifierSchema, alt: z.string().min(1).max(300), src: publicImageSourceSchema.optional() }).strict(),
     price: publicCatalogPriceSchema,
     stock: z.object({ state: z.enum(["available", "unavailable", "unknown"]) }).strict(),
     attributes: z.record(z.string().max(100), z.string().max(300)).refine(
@@ -48,7 +65,7 @@ export type PublicCatalogRecord = {
   readonly variantId: string;
   readonly title: string;
   readonly canonicalLink: string;
-  readonly image: { readonly id: string; readonly alt: string };
+  readonly image: { readonly id: string; readonly alt: string; readonly src?: string };
   readonly price: PublicCatalogPrice;
   readonly stock: PublicCatalogStock;
   readonly attributes: Readonly<Record<string, string>>;

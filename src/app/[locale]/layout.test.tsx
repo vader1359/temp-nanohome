@@ -84,6 +84,9 @@ vi.mock("@/components/header", () => ({
 vi.mock("@/components/sections/footer", () => ({
   Footer: () => <div data-testid="footer" />,
 }));
+vi.mock("@/components/chat/public-chat-widget", () => ({
+  PublicChatWidget: ({ locale }: { locale: string }) => <div data-locale={locale} data-testid="public-chat-widget" />,
+}));
 
 // Mock Supabase Server Client setup
 vi.mock("@/lib/supabase/server", () => ({
@@ -121,6 +124,8 @@ describe("RootLayout auth bootstrap", () => {
     expect(hoisted.toasterOffset).toBe("168px");
     expect(hoisted.toasterMobileOffset).toBe("96px");
     expect(hoisted.isAuthenticated).toBe(true);
+    expect(screen.getByTestId("public-chat-widget")).toHaveAttribute("data-locale", "vi");
+    expect(screen.getByTestId("footer")).toBeInTheDocument();
   });
 
   it("leaves the UI unauthenticated when no session exists", async () => {

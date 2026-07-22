@@ -5,10 +5,55 @@ import type { RenderSafePublicChatAnswer } from "./resolution";
 const identifierSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/);
 const textSchema = z.string().min(1).max(1_000).refine((value) => !/<[^>]*>|!\[[^\]]*\]\([^)]*\)|\b(?:https?|ftp):\/\/|\bjavascript:/i.test(value));
 const responseIdSchema = z.string().regex(/^chat_[a-f0-9]{32}$/);
+const catalogPriceSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("fixed"), amount: z.number().finite().nonnegative(), currency: z.string().min(1).max(12) }).strict(),
+  z.object({ mode: z.literal("contact") }).strict(),
+  z.object({ mode: z.literal("unavailable") }).strict(),
+]);
+const catalogStockSchema = z.object({ state: z.enum(["available", "unavailable", "unknown"]) }).strict();
+const attributeKeySchema = z.enum([
+  "dimensions",
+  "material",
+  "finish",
+  "color",
+  "brand",
+  "category",
+  "product",
+  "designer",
+  "collection",
+  "description",
+  "designer_description",
+]);
+const imageSourceSchema = z.string().min(2).max(2_000).refine((value) => {
+  if (value.startsWith("/images/") && !value.startsWith("//")) return true;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+    if (url.hostname === "res.cloudinary.com" && url.pathname.startsWith("/nanohome-web/")) return true;
+    const publicMediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL;
+    return publicMediaUrl !== undefined && url.origin === new URL(publicMediaUrl).origin;
+  } catch {
+    return false;
+  }
+});
+const attributesSchema = z.record(z.string().max(100), textSchema).refine(
+  (attributes) => Object.keys(attributes).every((key) => attributeKeySchema.safeParse(key).success),
+  "Catalog attributes are not allowlisted",
+);
+const safeProductSchema = z.object({
+  variantId: identifierSchema,
+  title: textSchema,
+  canonicalId: identifierSchema.optional(),
+  canonicalLink: z.string().regex(/^\/(?!\/)/).optional(),
+  image: z.object({ canonicalImageId: identifierSchema, alt: textSchema, src: imageSourceSchema.optional() }).strict().optional(),
+  price: catalogPriceSchema.optional(),
+  stock: catalogStockSchema.optional(),
+  attributes: attributesSchema.optional(),
+}).strict();
 const safeBlockSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("product_cards"), products: z.array(z.object({ variantId: identifierSchema, title: textSchema, canonicalId: identifierSchema.optional(), canonicalLink: z.string().regex(/^\/(?!\/)/).optional(), image: z.object({ canonicalImageId: identifierSchema, alt: textSchema }).strict().optional() }).strict()).min(1).max(8).readonly() }).strict(),
-  z.object({ type: z.literal("comparison"), products: z.array(z.object({ variantId: identifierSchema, title: textSchema, canonicalId: identifierSchema.optional(), canonicalLink: z.string().regex(/^\/(?!\/)/).optional(), image: z.object({ canonicalImageId: identifierSchema, alt: textSchema }).strict().optional() }).strict()).min(2).max(4).readonly(), attributeKeys: z.array(z.enum(["dimensions", "material", "finish", "color", "designer", "collection"])).min(1).max(6).readonly() }).strict(),
-  z.object({ type: z.literal("image_gallery"), images: z.array(z.object({ canonicalImageId: identifierSchema, alt: textSchema }).strict()).min(1).max(8).readonly() }).strict(),
+  z.object({ type: z.literal("product_cards"), products: z.array(safeProductSchema).min(1).max(8).readonly() }).strict(),
+  z.object({ type: z.literal("comparison"), products: z.array(safeProductSchema).min(2).max(4).readonly(), attributeKeys: z.array(attributeKeySchema).min(1).max(6).readonly() }).strict(),
+  z.object({ type: z.literal("image_gallery"), images: z.array(z.object({ canonicalImageId: identifierSchema, alt: textSchema, src: imageSourceSchema.optional() }).strict()).min(1).max(8).readonly() }).strict(),
   z.object({ type: z.literal("link_list"), sources: z.array(z.object({ sourceId: identifierSchema, label: textSchema }).strict()).min(1).max(8).readonly() }).strict(),
   z.object({ type: z.literal("staff_handoff"), reasonCode: z.enum(["unsupported_request", "staff_confirmation_required"]) }).strict(),
 ]);

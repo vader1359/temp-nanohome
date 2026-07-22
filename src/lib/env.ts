@@ -31,7 +31,12 @@ const envSchema = z.object({
 
   // --- DeepSeek public-chat provider (server-only, optional) ---
   DEEPSEEK_API_KEY: optionalEnvString,
-  DEEPSEEK_MODEL: z.enum(["deepseek-chat", "deepseek-reasoner"]).optional(),
+  DEEPSEEK_MODEL: z.enum([
+    "deepseek-v4-flash",
+    "deepseek-v4-pro",
+    "deepseek-chat",
+    "deepseek-reasoner",
+  ]).optional(),
 
   // --- Instagram Graph API (server-only, optional) ---
   INSTAGRAM_ACCESS_TOKEN: optionalEnvString,

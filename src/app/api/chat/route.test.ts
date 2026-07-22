@@ -3,6 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const orchestration = vi.hoisted(() => ({
   orchestrate: vi.fn(),
 }));
+const consent = vi.hoisted(() => ({
+  authorize: vi.fn(async () => true),
+}));
+
+vi.mock("@/lib/chat/consent-adapter", () => ({ hasCurrentAiProcessingConsent: consent.authorize }));
 
 vi.mock("@/lib/chat/deepseek/orchestrator", () => ({
   orchestratePublicChat: orchestration.orchestrate,
@@ -16,7 +21,7 @@ import { POST } from "./route";
 function request(body: unknown, signal?: AbortSignal): Request {
   const routeRequest = new Request("http://localhost/api/chat", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", origin: "http://localhost" },
     body: JSON.stringify(body),
   });
   if (signal !== undefined) Object.defineProperty(routeRequest, "signal", { value: signal });
@@ -35,6 +40,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
   vi.clearAllMocks();
+  consent.authorize.mockResolvedValue(true);
 });
 
 function readyDependencies(): { readonly restore: () => void; readonly sourceId: string } {
@@ -58,6 +64,7 @@ function readyDependencies(): { readonly restore: () => void; readonly sourceId:
       ...dependencies,
       grounding: { kind: "available" },
       registries: { ...dependencies.registries, sources: [{ sourceId: source.sourceId, label: "Catalog guide" }] },
+      authorizeAiProcessing: async () => true,
     })),
     sourceId: source.sourceId,
   };
@@ -216,9 +223,14 @@ describe("POST /api/chat", () => {
     // Given
     vi.stubEnv("CHAT_ENABLED", "true");
     vi.stubEnv("DEEPSEEK_API_KEY", "test-key");
+    const restore = setServerChatDependenciesProvider(() => ({
+      ...createServerChatDependencies(),
+      authorizeAiProcessing: async () => true,
+    }));
 
     // When
     const response = await POST(request({ question: "Help me choose a chair", locale: "en", messageRef: "unavailable-grounding" }));
+    restore();
 
     // Then
     expect((await events(response)).map((event) => event.type)).toEqual(["message_started", "text_delta", "message_completed"]);
@@ -353,8 +365,13 @@ describe("POST /api/chat", () => {
     expect(orchestration.orchestrate).toHaveBeenCalledTimes(1);
 
     ready.restore();
+    const restoreUnavailable = setServerChatDependenciesProvider(() => ({
+      ...createServerChatDependencies(),
+      authorizeAiProcessing: async () => true,
+    }));
 
     const secondResponse = await POST(request(body));
+    restoreUnavailable();
 
     // Then
     expect(orchestration.orchestrate).toHaveBeenCalledTimes(1);

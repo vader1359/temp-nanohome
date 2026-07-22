@@ -62,6 +62,19 @@ describe("env parser", () => {
     expect(env.INSTAGRAM_BUSINESS_ACCOUNT_ID).toBeUndefined();
   });
 
+  it.each(["deepseek-v4-flash", "deepseek-v4-pro"] as const)(
+    "accepts the supported DeepSeek V4 model %s",
+    async (model) => {
+      const { env } = await importEnvWith({ ...FULL_ENV, DEEPSEEK_MODEL: model });
+      expect(env.DEEPSEEK_MODEL).toBe(model);
+    },
+  );
+
+  it("temporarily accepts a legacy DeepSeek model name for safe runtime remapping", async () => {
+    const { env } = await importEnvWith({ ...FULL_ENV, DEEPSEEK_MODEL: "deepseek-chat" });
+    expect(env.DEEPSEEK_MODEL).toBe("deepseek-chat");
+  });
+
   it("throws when SUPABASE_SERVICE_ROLE_KEY is missing", async () => {
     // Given: env without the required service role key.
     const broken = { ...FULL_ENV, SUPABASE_SERVICE_ROLE_KEY: undefined };

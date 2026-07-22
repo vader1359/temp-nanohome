@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { PublicChatAnswer } from "./contracts";
 import type { PublicChatPolicyDecision } from "./policy";
+import type { PublicCatalogRecord } from "./tools/public-tools";
 
 export type PublicChatProduct = {
   readonly variantId: string;
@@ -9,6 +10,9 @@ export type PublicChatProduct = {
   readonly canonicalId?: string;
   readonly canonicalLink?: string;
   readonly image?: PublicChatImage;
+  readonly price?: PublicCatalogRecord["price"];
+  readonly stock?: PublicCatalogRecord["stock"];
+  readonly attributes?: Readonly<Record<string, string>>;
 };
 
 export type PublicChatSource = {
@@ -19,6 +23,7 @@ export type PublicChatSource = {
 export type PublicChatImage = {
   readonly canonicalImageId: string;
   readonly alt: string;
+  readonly src?: string;
 };
 
 export type PublicChatServerRegistries = {
@@ -32,7 +37,7 @@ export type RenderSafePublicChatBlock =
   | {
       readonly type: "comparison";
       readonly products: readonly PublicChatProduct[];
-      readonly attributeKeys: readonly ("dimensions" | "material" | "finish" | "color" | "designer" | "collection")[];
+      readonly attributeKeys: readonly ("dimensions" | "material" | "finish" | "color" | "brand" | "category" | "product" | "designer" | "collection" | "description" | "designer_description")[];
     }
   | { readonly type: "image_gallery"; readonly images: readonly PublicChatImage[] }
   | { readonly type: "link_list"; readonly sources: readonly PublicChatSource[] }
@@ -75,7 +80,7 @@ const canonicalVariantSchema = z.object({
   canonicalId: identifierSchema,
   title: z.string().min(1).max(1_000).refine(isRenderSafeText),
   canonicalLink: z.string().min(2).max(2_000).regex(/^\/(?!\/)/),
-  image: z.object({ canonicalImageId: identifierSchema, alt: z.string().min(1).max(1_000).refine(isRenderSafeText) }).strict(),
+  image: z.object({ canonicalImageId: identifierSchema, alt: z.string().min(1).max(1_000).refine(isRenderSafeText), src: z.string().min(2).max(2_000).optional() }).strict(),
   eligible: z.boolean(),
   current: z.boolean(),
 }).strict();
@@ -200,10 +205,15 @@ export async function resolvePublicChatAnswerWithCatalog(
       title: variant.title,
       canonicalId: variant.canonicalId,
       canonicalLink: variant.canonicalLink,
-      image: { canonicalImageId: variant.image.canonicalImageId, alt: variant.image.alt },
+      image: variant.image.src === undefined
+        ? { canonicalImageId: variant.image.canonicalImageId, alt: variant.image.alt }
+        : { canonicalImageId: variant.image.canonicalImageId, alt: variant.image.alt, src: variant.image.src },
     })),
     sources: [],
-    images: canonicalVariants.map(({ image }) => ({ canonicalImageId: image.canonicalImageId, alt: image.alt })),
+    images: canonicalVariants.map(({ image }) => image.src === undefined
+      ? { canonicalImageId: image.canonicalImageId, alt: image.alt }
+      : { canonicalImageId: image.canonicalImageId, alt: image.alt, src: image.src },
+    ),
   };
   return resolvePublicChatAnswer(answer, registries, policyDecision);
 }
