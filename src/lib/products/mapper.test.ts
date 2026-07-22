@@ -99,36 +99,13 @@ describe("variantToProductGridItem", () => {
     expect(product.status).toBe("in_stock");
   });
 
-  it("localizes the vases sub-category", () => {
-    const variant = {
-      id: "vase",
-      name: "Vase",
-      name_vi: "Bình hoa",
-      slug: "vase",
-      slug_vi: "binh-hoa",
-      sku: "ACCMT00003",
-      stock: 1,
-      price: 100,
-      compare_at_price: null,
-      discount_percent: null,
-      on_sale: false,
-      in_stock: true,
-      packshot_url: null,
-      gallery_urls: [],
-      raw: { filter_sub_category: "vases" },
-    };
-
-    expect(variantToProductGridItem(variant, { locale: "vi" }).subtitle).toBe("Bình hoa");
-    expect(variantToProductGridItem(variant, { locale: "ko" }).subtitle).toBe("화병");
-  });
-
-  it("localizes the Accessories sub-category vocabulary", () => {
-    const variant = {
+  it("localizes the complete Accessories hierarchy in every supported locale", () => {
+    const baseVariant = {
       id: "accessory",
-      name: "Cushion",
-      name_vi: "Gối",
-      slug: "cushion",
-      slug_vi: "goi",
+      name: "Accessory",
+      name_vi: "Phụ kiện",
+      slug: "accessory",
+      slug_vi: "phu-kien",
       sku: "ACCFH00031",
       stock: 1,
       price: 100,
@@ -138,10 +115,32 @@ describe("variantToProductGridItem", () => {
       in_stock: true,
       packshot_url: null,
       gallery_urls: [],
-      raw: { filter_sub_category: "cushions" },
     };
 
-    expect(variantToProductGridItem(variant, { locale: "vi" }).subtitle).toBe("Gối/Cushion");
-    expect(variantToProductGridItem(variant, { locale: "ko" }).subtitle).toBe("쿠션");
+    const translations = [
+      ["accessories", "Phụ kiện", "Accessories", "액세서리"],
+      ["vases", "Bình hoa", "Vases", "화병"],
+      ["candles", "Chân nến & nến", "Candles & Candle Holders", "촛대 & 캔들"],
+      ["books", "Sách", "Books", "도서"],
+      ["cushions", "Gối", "Cushions", "쿠션"],
+      ["throws", "Khăn & chăn", "Throws & Blankets", "담요"],
+      ["miniatures", "Mô hình thu nhỏ", "Miniatures", "미니어처"],
+      ["rugs", "Thảm", "Rugs", "러그"],
+      ["home-fragrance", "Hương thơm nhà cửa", "Home Fragrance", "홈 프래그런스"],
+      ["organizers", "Đồ lưu trữ & sắp xếp", "Organizers", "수납 & 정리용품"],
+      ["tote-bags", "Túi tote", "Tote Bags", "토트백"],
+      ["drinkware", "Ly & bình nước", "Drinkware", "컵 & 물병"],
+      ["pet", "Bộ sưu tập thú cưng", "Pet Collection", "반려동물 컬렉션"],
+      ["decoration", "Đồ trang trí", "Decoration", "장식 소품"],
+      ["kitchen-textiles", "Đồ vải nhà bếp", "Kitchen Textiles", "키친 텍스타일"],
+      ["kids", "Dành cho trẻ em", "For Kids", "어린이용"],
+    ] as const;
+
+    for (const [subCategory, vi, en, ko] of translations) {
+      const variant = { ...baseVariant, id: subCategory, raw: { filter_sub_category: subCategory } };
+      expect(variantToProductGridItem(variant, { locale: "vi" }).subtitle).toBe(vi);
+      expect(variantToProductGridItem(variant, { locale: "en" }).subtitle).toBe(en);
+      expect(variantToProductGridItem(variant, { locale: "ko" }).subtitle).toBe(ko);
+    }
   });
 });

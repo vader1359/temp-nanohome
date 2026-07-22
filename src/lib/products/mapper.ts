@@ -36,6 +36,7 @@ export function variantRawText(variant: { readonly raw?: Variant["raw"] | null }
 }
 
 const VIETNAMESE_FACET_LABELS: Record<string, string> = {
+  accessories: "Phụ kiện",
   chairs: "Ghế",
   decor: "Trang trí",
   desks: "Bàn làm việc",
@@ -54,22 +55,42 @@ const VIETNAMESE_FACET_LABELS: Record<string, string> = {
   vases: "Bình hoa",
   candles: "Chân nến & nến",
   books: "Sách",
-  cushions: "Gối/Cushion",
-  throws: "Khăn/Chăn",
-  miniatures: "Miniature",
+  cushions: "Gối",
+  throws: "Khăn & chăn",
+  miniatures: "Mô hình thu nhỏ",
   rugs: "Thảm",
-  "home-fragrance": "Home Fragrance",
-  organizers: "Organizer",
-  "tote-bags": "Tote bag",
-  drinkware: "Drinkware",
-  pet: "Pet collection",
-  decoration: "Decoration",
-  "kitchen-textiles": "Kitchen Textiles",
-  kids: "For kids",
+  "home-fragrance": "Hương thơm nhà cửa",
+  organizers: "Đồ lưu trữ & sắp xếp",
+  "tote-bags": "Túi tote",
+  drinkware: "Ly & bình nước",
+  pet: "Bộ sưu tập thú cưng",
+  decoration: "Đồ trang trí",
+  "kitchen-textiles": "Đồ vải nhà bếp",
+  kids: "Dành cho trẻ em",
   "wall-lamps": "Đèn tường",
 };
 
+const ENGLISH_FACET_LABELS: Record<string, string> = {
+  accessories: "Accessories",
+  vases: "Vases",
+  candles: "Candles & Candle Holders",
+  books: "Books",
+  cushions: "Cushions",
+  throws: "Throws & Blankets",
+  miniatures: "Miniatures",
+  rugs: "Rugs",
+  "home-fragrance": "Home Fragrance",
+  organizers: "Organizers",
+  "tote-bags": "Tote Bags",
+  drinkware: "Drinkware",
+  pet: "Pet Collection",
+  decoration: "Decoration",
+  "kitchen-textiles": "Kitchen Textiles",
+  kids: "For Kids",
+};
+
 const KOREAN_FACET_LABELS: Record<string, string> = {
+  accessories: "액세서리",
   vases: "화병",
   candles: "촛대 & 캔들",
   books: "도서",
@@ -78,13 +99,13 @@ const KOREAN_FACET_LABELS: Record<string, string> = {
   miniatures: "미니어처",
   rugs: "러그",
   "home-fragrance": "홈 프래그런스",
-  organizers: "정리함",
+  organizers: "수납 & 정리용품",
   "tote-bags": "토트백",
-  drinkware: "음료 용품",
-  pet: "반려동물",
-  decoration: "장식",
+  drinkware: "컵 & 물병",
+  pet: "반려동물 컬렉션",
+  decoration: "장식 소품",
   "kitchen-textiles": "키친 텍스타일",
-  kids: "키즈",
+  kids: "어린이용",
 };
 
 function titleizeSlug(value: string): string {
@@ -112,6 +133,9 @@ function formatSubtitle(rawSubtitle: string, locale?: string): string {
   }
   if (locale === "ko" && KOREAN_FACET_LABELS[slug]) {
     return KOREAN_FACET_LABELS[slug];
+  }
+  if (locale === "en" && ENGLISH_FACET_LABELS[slug]) {
+    return ENGLISH_FACET_LABELS[slug];
   }
   return titleizeSlug(rawSubtitle);
 }
