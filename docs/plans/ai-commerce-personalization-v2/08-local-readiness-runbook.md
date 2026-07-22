@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-This procedure evaluates documentation and static local artifacts only. Current status is **BLOCKED**: the worktree is Foundation SHA `d56244fd9a7a8cc3e690bd9221ecd51be8d20cb3`, Plan 02 has an incomplete handoff, and all external gates remain unperformed. It does not integrate feature code.
+This procedure evaluates documentation and static local artifacts only. Current status is **BLOCKED**: the worktree is Foundation SHA `d56244fd9a7a8cc3e690bd9221ecd51be8d20cb3`, Plan 02 has a complete local v3 receipt but cross-lane and external gates remain unperformed. It does not integrate feature code.
 
 ## Preflight
 
@@ -31,7 +31,7 @@ A passing local check is not E2E completion, remote migration proof, sandbox ver
 
 Stop and leave the outcome **BLOCKED** when any of the following occurs:
 
-- Plan 02 remains absent, vague, or lacks contracts, migrations, flags, environment categories, test evidence, or rollback ownership.
+- The canonical Plan 02 v3 receipt is absent or vague; the local receipt is complete, but cross-lane compatibility and external AMIS/ZaloPay proof remain blocked.
 - A receipt SHA provenance mismatch has no authoritative receipt.
 - A migration collision, altered applied migration, or contract/fixture incompatibility appears.
 - A flag lacks a default-off state, a secret crosses a public boundary, or a shared-file request has no owner.

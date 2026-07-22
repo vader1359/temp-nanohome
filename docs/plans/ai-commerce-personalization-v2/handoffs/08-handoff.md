@@ -14,11 +14,11 @@ No feature code, migration, flag wiring, generated type, provider, layout, envir
 
 ## Guard scenarios
 
-The static guard checks required documents, Plan 00–07 receipt rows, known local Plan 00/01 receipts and migrations, explicitly unavailable Plan 03–07 receipt/migration paths, required readiness markers, default-off language, local-only/no-transfer constraints, its own target, and duplicate Plan 00/01 migration versions in the actual migration directory. It preserves known historical duplicate prefixes as a declared pre-existing exception. It rejects restricted claims of remote proof, E2E completion, provider calls, sandbox/tenant verification, privacy approval, backup proof, deployment, or production enablement.
+The static guard checks required documents, Plan 00–07 receipt rows, canonical Plan 02 v3 source metadata, known local Plan 00/01 receipts and migrations, explicitly unavailable Plan 03–07 receipt/migration paths, required readiness markers, default-off language, local-only/no-transfer constraints, its own target, and duplicate Plan 00/01 migration versions in the actual migration directory. It preserves known historical duplicate prefixes as a declared pre-existing exception and rejects obsolete Plan 02 provenance assertions. It rejects restricted claims of remote proof, E2E completion, provider calls, sandbox/tenant verification, privacy approval, backup proof, deployment, or production enablement.
 
 ## Current outcome and blockers
 
-**BLOCKED.** Plan 02 is an incomplete backend-only handoff and cannot support an integration decision. Plan 03 and Plan 06 provenance differences require authoritative receipt reconciliation. Remote SQL/RLS, provider, AMIS tenant, ZaloPay sandbox, privacy, backup/recovery, observability, and rollout evidence remain unperformed and must not be inferred from local checks.
+**BLOCKED.** Plan 02 has a complete local v3 receipt from `/home/iant1359/develop/temp-nanohome-ai-02-commerce-payment-amis-v3` at `cd158cc`, but it cannot authorize integration or production. Plan 03 and Plan 06 provenance differences require authoritative receipt reconciliation. Docker/local reset, remote SQL/RLS, provider, AMIS tenant, ZaloPay sandbox, privacy, backup/recovery, observability, shared compatibility, deployment, and rollout evidence remain unperformed and must not be inferred from local checks.
 
 ## Next owner
 
