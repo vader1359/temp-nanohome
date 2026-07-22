@@ -51,8 +51,11 @@ const VIETNAMESE_FACET_LABELS: Record<string, string> = {
   "table-lamps": "Đèn bàn",
   tables: "Bàn",
   usm: "USM",
+  vases: "Bình hoa",
   "wall-lamps": "Đèn tường",
 };
+
+const KOREAN_FACET_LABELS: Record<string, string> = { vases: "화병" };
 
 function titleizeSlug(value: string): string {
   const special: Record<string, string> = {
@@ -76,6 +79,9 @@ function formatSubtitle(rawSubtitle: string, locale?: string): string {
   const slug = rawSubtitle.toLowerCase().trim();
   if (locale === "vi" && VIETNAMESE_FACET_LABELS[slug]) {
     return VIETNAMESE_FACET_LABELS[slug];
+  }
+  if (locale === "ko" && KOREAN_FACET_LABELS[slug]) {
+    return KOREAN_FACET_LABELS[slug];
   }
   return titleizeSlug(rawSubtitle);
 }

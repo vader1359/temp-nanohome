@@ -98,4 +98,27 @@ describe("variantToProductGridItem", () => {
 
     expect(product.status).toBe("in_stock");
   });
+
+  it("localizes the vases sub-category", () => {
+    const variant = {
+      id: "vase",
+      name: "Vase",
+      name_vi: "Bình hoa",
+      slug: "vase",
+      slug_vi: "binh-hoa",
+      sku: "ACCMT00003",
+      stock: 1,
+      price: 100,
+      compare_at_price: null,
+      discount_percent: null,
+      on_sale: false,
+      in_stock: true,
+      packshot_url: null,
+      gallery_urls: [],
+      raw: { filter_sub_category: "vases" },
+    };
+
+    expect(variantToProductGridItem(variant, { locale: "vi" }).subtitle).toBe("Bình hoa");
+    expect(variantToProductGridItem(variant, { locale: "ko" }).subtitle).toBe("화병");
+  });
 });

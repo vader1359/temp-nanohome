@@ -65,8 +65,11 @@ const VIETNAMESE_FACET_LABELS: Record<string, string> = {
   "table-lamps": "Đèn bàn",
   tables: "Bàn",
   usm: "USM",
+  vases: "Bình hoa",
   "wall-lamps": "Đèn tường",
 };
+
+const KOREAN_FACET_LABELS: Record<string, string> = { vases: "화병" };
 
 function titleizeSlug(value: string): string {
   const special: Record<string, string> = {
@@ -114,7 +117,7 @@ function facetLabel(
   }
 
   if (locale === "ko") {
-    return variantText(category?.name_ko, variantText(category?.name, variantText(category?.name_vi, titleizeSlug(slug))));
+    return variantText(category?.name_ko, variantText(category?.name, variantText(category?.name_vi, KOREAN_FACET_LABELS[slug] ?? titleizeSlug(slug))));
   }
 
   return variantText(category?.name, variantText(category?.name_vi, titleizeSlug(slug)));
