@@ -174,25 +174,32 @@ export function FilterSidebar({
           {categoryOptions.flatMap((category) => category.subCategories).length > 0 ? (
             <CardSection title={t("subCategory")}>
               <div className={cn("gap-1", variant === "modal" ? "grid grid-cols-2" : "flex flex-col")}>
-                {categoryOptions.flatMap((category) => category.subCategories).map((subCategory) => {
-                  const checked = selectedSubCategories.has(subCategory.slug);
-                  return (
-                    <button
-                      className={cn(
-                        "flex min-h-[24px] w-full items-center bg-transparent text-left text-[11px] font-medium uppercase leading-4",
-                        checked ? "text-nh-accent" : "text-nh-muted"
-                      )}
-                      aria-pressed={checked}
-                      data-filter-subcategory=""
-                      data-filter-value={subCategory.slug}
-                      key={subCategory.slug}
-                      type="button"
-                      onClick={() => toggleSubCategory(subCategory.slug)}
-                    >
-                      {subCategory.name}
-                    </button>
-                  );
-                })}
+                {categoryOptions.map((category) => (
+                  <div className="flex min-w-0 flex-col gap-1" key={`subcategory-group-${category.slug}`}>
+                    {category.subCategories.map((subCategory) => {
+                      const checked = selectedSubCategories.has(subCategory.slug);
+                      const isAccessoriesChild = category.slug === "accessories" && subCategory.slug !== "accessories";
+                      return (
+                        <button
+                          className={cn(
+                            "flex min-h-[24px] w-full items-center bg-transparent text-left text-[11px] font-medium uppercase leading-4",
+                            isAccessoriesChild && "ml-3 w-[calc(100%-0.75rem)] border-l border-nh-border pl-3",
+                            checked ? "text-nh-accent" : "text-nh-muted"
+                          )}
+                          aria-pressed={checked}
+                          data-filter-subcategory=""
+                          data-filter-parent={isAccessoriesChild ? "accessories" : undefined}
+                          data-filter-value={subCategory.slug}
+                          key={subCategory.slug}
+                          type="button"
+                          onClick={() => toggleSubCategory(subCategory.slug)}
+                        >
+                          {subCategory.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </CardSection>
           ) : null}

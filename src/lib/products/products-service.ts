@@ -101,6 +101,29 @@ const KOREAN_FACET_LABELS: Record<string, string> = {
   kids: "키즈",
 };
 
+const ACCESSORIES_SUBCATEGORY_ORDER = [
+  "accessories",
+  "vases",
+  "candles",
+  "books",
+  "cushions",
+  "throws",
+  "miniatures",
+  "rugs",
+  "home-fragrance",
+  "organizers",
+  "tote-bags",
+  "drinkware",
+  "pet",
+  "decoration",
+  "kitchen-textiles",
+  "kids",
+] as const;
+
+const ACCESSORIES_SUBCATEGORY_RANK = new Map<string, number>(
+  ACCESSORIES_SUBCATEGORY_ORDER.map((slug, index) => [slug, index]),
+);
+
 function titleizeSlug(value: string): string {
   const special: Record<string, string> = {
     hay: "HAY",
@@ -321,6 +344,12 @@ export async function getProductPage(locale: string, filters: CanonicalFilters):
       name: facetLabel(cat, supportedLocale, categoryBySlug),
       subCategories: Array.from(subCategorySlugs.entries())
         .filter(([, parentCat]) => parentCat === cat)
+        .sort(([leftSlug], [rightSlug]) => {
+          if (cat !== "accessories") return leftSlug.localeCompare(rightSlug);
+          const leftRank = ACCESSORIES_SUBCATEGORY_RANK.get(leftSlug) ?? Number.MAX_SAFE_INTEGER;
+          const rightRank = ACCESSORIES_SUBCATEGORY_RANK.get(rightSlug) ?? Number.MAX_SAFE_INTEGER;
+          return leftRank - rightRank || leftSlug.localeCompare(rightSlug);
+        })
         .map(([slug]) => {
           return {
             slug,

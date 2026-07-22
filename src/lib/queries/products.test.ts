@@ -67,7 +67,7 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: state.createClient,
 }));
 
-import { getProducts, getVariantProductCount, getVariantProducts } from "./products";
+import { getProducts, getVariantProductCount, getVariantProductFacets, getVariantProducts } from "./products";
 
 beforeEach(() => {
   state.eqCalls.length = 0;
@@ -179,5 +179,14 @@ describe("getVariantProducts", () => {
     expect(state.orCalls).toEqual([
       "stock.lte.0,stock.is.null",
     ]);
+  });
+});
+
+describe("getVariantProductFacets", () => {
+  it("paginates the complete validated facet dataset", async () => {
+    await getVariantProductFacets();
+
+    expect(state.chain.order).toHaveBeenCalledWith("id", { ascending: true });
+    expect(state.chain.range).toHaveBeenCalledWith(0, 999);
   });
 });
