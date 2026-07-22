@@ -1,0 +1,50 @@
+export {
+  chatAnswerSchema,
+  clientCustomerContextSchema,
+  commerceReferencesSchema,
+  commerceOrderSnapshotSchema,
+  customerMemorySchema,
+  recommendationRequestSchema,
+  recommendationResponseSchema,
+  roomSceneSchema,
+  serverCustomerContextSchema,
+  visualSimilarityResponseSchema,
+} from "./schemas";
+export type {
+  ChatAnswer,
+  ClientCustomerContext,
+  CommerceReferences,
+  CommerceOrderSnapshot,
+  CustomerMemory,
+  RecommendationRequest,
+  RecommendationResponse,
+  RoomScene,
+  ServerCustomerContext,
+  VisualSimilarityResponse,
+} from "./schemas";
+export type {
+  CustomerMemoryPort,
+  InventoryAvailability,
+  InventoryProvider,
+  OperationalOrderProvider,
+  PaymentRequest,
+  PaymentResponse,
+  RecommendationPort,
+  VisionProvider,
+  VisualSimilarityPort,
+  ZaloPayGateway,
+} from "./ports";
+export { isCartEligible, isCatalogEligibleFor, isPaymentEligible, isRecommendationEligible, isStorefrontEligible, isVisualMatchEligible, parseCatalogEligibilityRow } from "../catalog/eligibility";
+export type { CatalogEligibility, CatalogEligibilityCapability } from "../catalog/eligibility";
+export {
+  chatAnswerFixture,
+  clientCustomerContextFixture,
+  commerceOrderSnapshotFixture,
+  commerceReferencesFixture,
+  customerMemoryFixture,
+  recommendationRequestFixture,
+  recommendationResponseFixture,
+  roomSceneFixture,
+  serverCustomerContextFixture,
+  visualSimilarityResponseFixture,
+} from "./fixtures";
