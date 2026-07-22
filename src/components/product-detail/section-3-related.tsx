@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.css";
 import { ProductCard, toWishlistItem, type ProductGridItem } from "@/components/products/product-card";
-import { relatedSet as fallbackRelatedSet, type RelatedProduct } from "./mock-data";
+import type { RelatedProduct } from "./mock-data";
 import { useWishlist } from "@/components/wishlist/wishlist-context";
 
 interface Section3RelatedProps {
@@ -16,7 +16,7 @@ interface Section3RelatedProps {
 
 function toProductGridItem(product: RelatedProduct, index: number): ProductGridItem {
   return {
-    id: product.name || String(index),
+    id: product.id ?? (product.name || String(index)),
     brand: product.brand,
     name: product.name,
     subtitle: product.category,
@@ -30,7 +30,7 @@ function toProductGridItem(product: RelatedProduct, index: number): ProductGridI
   };
 }
 
-export function Section3Related({ products = fallbackRelatedSet }: Section3RelatedProps) {
+export function Section3Related({ products = [] }: Section3RelatedProps) {
   const t = useTranslations("ProductDetail");
   const { hasItem, toggleItem } = useWishlist();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -51,6 +51,10 @@ export function Section3Related({ products = fallbackRelatedSet }: Section3Relat
       "(min-width: 1024px)": { slides: { perView: 4, spacing: 24 } },
     },
   });
+
+  if (products.length === 0) {
+    return null;
+  }
 
   const maxIdx = slider.current?.track.details?.maxIdx ?? 0;
   const canPrev = loaded && currentSlide > 0;

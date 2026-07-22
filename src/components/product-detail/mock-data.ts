@@ -46,6 +46,7 @@ export const product = {
 const brandWordmark = (name: string) => name;
 
 export type RelatedProduct = {
+  id?: string;
   name: string;
   brand: string;
   category: string;
