@@ -6,7 +6,7 @@
 - Local-only foundation. No external provider was selected or called, no remote mutation occurred, and no remote Supabase migration, deployment, push, merge, account configuration, generated type update, lockfile update, shared contract update, translation update, or product-code change occurred.
 - Plan 00's `CatalogEligibility` contract is a dependency. Retrieval uses its recommendation and visual-match eligibility plus fresh-stock checks.
 - Scoped local commits: `04e677e`, `6e69440`, `171e8d3`, `826120f`, and `1a52499`.
-- Final local head SHA: `1a52499` (`Document local vision verification handoff`).
+- Final local head SHA: `2385526` (`Record final vision commit handoff`).
 
 ## Implemented local artifacts
 
