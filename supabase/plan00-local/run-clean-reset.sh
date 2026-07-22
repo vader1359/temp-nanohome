@@ -18,6 +18,8 @@ cp "$repo_root/supabase/tests/catalog_eligibility_test.sql" \
   "$harness_dir/tests/catalog_eligibility_test.sql"
 cp "$repo_root/supabase/tests/vision_persistence_test.sql" \
   "$harness_dir/tests/vision_persistence_test.sql"
+cp "$repo_root/supabase/tests/plan07_customer_personalization_test.sql" \
+  "$harness_dir/tests/plan07_customer_personalization_test.sql"
 
 if [ "$#" -ne 0 ]; then
   printf '%s\n' 'This local-only harness takes no arguments.' >&2
@@ -27,4 +29,5 @@ fi
 "$supabase_bin" db reset --local --no-seed --yes --workdir "$harness_dir"
 "$supabase_bin" test db --local --workdir "$harness_dir" \
   "$harness_dir/tests/catalog_eligibility_test.sql" \
-  "$harness_dir/tests/vision_persistence_test.sql"
+  "$harness_dir/tests/vision_persistence_test.sql" \
+  "$harness_dir/tests/plan07_customer_personalization_test.sql"
