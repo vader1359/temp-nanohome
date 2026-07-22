@@ -333,7 +333,7 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
   const submit = async (rawQuestion: string) => {
     const submittedQuestion = rawQuestion.trim();
     if (submittedQuestion.length === 0 || pending) return;
-    const messageRef = `web-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    const messageRef = `web-${entries.length}`;
     const assistantId = `${messageRef}-assistant`;
     const emptyEntry: TranscriptEntry = {
       id: assistantId,

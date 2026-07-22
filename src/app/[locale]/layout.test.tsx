@@ -36,6 +36,7 @@ vi.mock("next-intl/server", () => ({
 // Mock next-intl client capabilities
 vi.mock("next-intl", () => ({
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useTranslations: () => (key: string) => key,
 }));
 
 vi.mock("@/components/ui/sonner", () => ({
