@@ -13,6 +13,8 @@ import { variantDetailHref } from "@/lib/queries/variant-url";
 import { normalizeSearchQuery } from "@/lib/queries/search-input";
 import { firstProductImage } from "@/lib/image";
 import { isUsmContactVariant, isUsmVariant } from "@/lib/products/usm";
+import { isInStock } from "@/lib/products/availability";
+import { isContactPrice } from "@/lib/products/price";
 import type { Variant } from "@/types/db";
 import { isSupportedLocale, type Locale } from "@/i18n/routing";
 import { type CanonicalFilters, PAGE_SIZE } from "./filter-utils";
@@ -63,8 +65,84 @@ const VIETNAMESE_FACET_LABELS: Record<string, string> = {
   "table-lamps": "Đèn bàn",
   tables: "Bàn",
   usm: "USM",
+  vases: "Bình hoa",
+  candles: "Chân nến & nến",
+  books: "Sách",
+  cushions: "Gối",
+  throws: "Khăn & chăn",
+  miniatures: "Mô hình thu nhỏ",
+  rugs: "Thảm",
+  "home-fragrance": "Hương thơm nhà cửa",
+  organizers: "Đồ lưu trữ & sắp xếp",
+  "tote-bags": "Túi tote",
+  drinkware: "Ly & bình nước",
+  pet: "Bộ sưu tập thú cưng",
+  decoration: "Đồ trang trí",
+  "kitchen-textiles": "Đồ vải nhà bếp",
+  kids: "Dành cho trẻ em",
   "wall-lamps": "Đèn tường",
 };
+
+const ENGLISH_FACET_LABELS: Record<string, string> = {
+  accessories: "Accessories",
+  vases: "Vases",
+  candles: "Candles & Candle Holders",
+  books: "Books",
+  cushions: "Cushions",
+  throws: "Throws & Blankets",
+  miniatures: "Miniatures",
+  rugs: "Rugs",
+  "home-fragrance": "Home Fragrance",
+  organizers: "Organizers",
+  "tote-bags": "Tote Bags",
+  drinkware: "Drinkware",
+  pet: "Pet Collection",
+  decoration: "Decoration",
+  "kitchen-textiles": "Kitchen Textiles",
+  kids: "For Kids",
+};
+
+const KOREAN_FACET_LABELS: Record<string, string> = {
+  accessories: "액세서리",
+  vases: "화병",
+  candles: "촛대 & 캔들",
+  books: "도서",
+  cushions: "쿠션",
+  throws: "담요",
+  miniatures: "미니어처",
+  rugs: "러그",
+  "home-fragrance": "홈 프래그런스",
+  organizers: "수납 & 정리용품",
+  "tote-bags": "토트백",
+  drinkware: "컵 & 물병",
+  pet: "반려동물 컬렉션",
+  decoration: "장식 소품",
+  "kitchen-textiles": "키친 텍스타일",
+  kids: "어린이용",
+};
+
+const ACCESSORIES_SUBCATEGORY_ORDER = [
+  "accessories",
+  "vases",
+  "candles",
+  "books",
+  "cushions",
+  "throws",
+  "miniatures",
+  "rugs",
+  "home-fragrance",
+  "organizers",
+  "tote-bags",
+  "drinkware",
+  "pet",
+  "decoration",
+  "kitchen-textiles",
+  "kids",
+] as const;
+
+const ACCESSORIES_SUBCATEGORY_RANK = new Map<string, number>(
+  ACCESSORIES_SUBCATEGORY_ORDER.map((slug, index) => [slug, index]),
+);
 
 function titleizeSlug(value: string): string {
   const special: Record<string, string> = {
@@ -112,10 +190,10 @@ function facetLabel(
   }
 
   if (locale === "ko") {
-    return variantText(category?.name_ko, variantText(category?.name, variantText(category?.name_vi, titleizeSlug(slug))));
+    return variantText(category?.name_ko, variantText(category?.name, variantText(category?.name_vi, KOREAN_FACET_LABELS[slug] ?? titleizeSlug(slug))));
   }
 
-  return variantText(category?.name, variantText(category?.name_vi, titleizeSlug(slug)));
+  return variantText(category?.name, variantText(category?.name_vi, ENGLISH_FACET_LABELS[slug] ?? titleizeSlug(slug)));
 }
 
 function getImageUrl(variant: VariantProductListItem): string {
@@ -211,13 +289,13 @@ export async function getProductPage(locale: string, filters: CanonicalFilters):
   const fmt = buildPriceFormatter(supportedLocale);
 
   function formatPrice(variant: Pick<VariantProductListItem, "sku" | "stock">, price: Variant["price"]): string {
-    if (isUsmContactVariant(variant) || price === null || (Number(price) === 0 && !isUsmVariant(variant))) return t("contactForPrice");
+    if (isUsmContactVariant(variant) || isContactPrice(price) || (Number(price) === 0 && !isUsmVariant(variant))) return t("contactForPrice");
     return fmt.format(Number(price));
   }
 
   function toGridItem(variant: VariantProductListItem): ProductGridItem {
     const brand = variant.brand_id ? brandById.get(variant.brand_id) : undefined;
-    const useContactPrice = isUsmContactVariant(variant);
+    const useContactPrice = isUsmContactVariant(variant) || isContactPrice(variant.price);
 
     const rawComparePrice = variant.compare_at_price !== null ? Number(variant.compare_at_price) : 0;
     const rawPrice = variant.price !== null ? Number(variant.price) : 0;
@@ -225,7 +303,7 @@ export async function getProductPage(locale: string, filters: CanonicalFilters):
 
     const status: ProductStatusKind = (variant.on_sale && hasValidDiscount)
       ? "sale"
-      : variant.in_stock
+      : isInStock(variant)
         ? "in_stock"
         : "out_of_stock";
 
@@ -286,6 +364,12 @@ export async function getProductPage(locale: string, filters: CanonicalFilters):
       name: facetLabel(cat, supportedLocale, categoryBySlug),
       subCategories: Array.from(subCategorySlugs.entries())
         .filter(([, parentCat]) => parentCat === cat)
+        .sort(([leftSlug], [rightSlug]) => {
+          if (cat !== "accessories") return leftSlug.localeCompare(rightSlug);
+          const leftRank = ACCESSORIES_SUBCATEGORY_RANK.get(leftSlug) ?? Number.MAX_SAFE_INTEGER;
+          const rightRank = ACCESSORIES_SUBCATEGORY_RANK.get(rightSlug) ?? Number.MAX_SAFE_INTEGER;
+          return leftRank - rightRank || leftSlug.localeCompare(rightSlug);
+        })
         .map(([slug]) => {
           return {
             slug,

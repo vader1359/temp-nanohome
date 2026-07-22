@@ -221,7 +221,7 @@ describe("POST /api/cron/amis-sync hardening", () => {
     // Given: AMIS returns stock for a SKU that has no local variant.
     setRouteEnv();
     vi.stubGlobal("fetch", createAmisFetchMock([[]], [[
-      { product_code: "REMOTE-ONLY", amount_summary: 9 },
+      { product_code: "REMOTE-ONLY", order_quantity: 9 },
     ]]));
     const { POST } = await import("./route");
 
@@ -243,7 +243,7 @@ describe("POST /api/cron/amis-sync hardening", () => {
       { id: "variant-2", sku: "DUPLICATE", stock: 1 },
     );
     vi.stubGlobal("fetch", createAmisFetchMock([[]], [[
-      { product_code: "DUPLICATE", amount_summary: 2 },
+      { product_code: "DUPLICATE", order_quantity: 2 },
     ]]));
     const { POST } = await import("./route");
 

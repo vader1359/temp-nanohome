@@ -125,7 +125,7 @@ export function ProductCard({
             {product.brand}
           </div>
         )}
-        <h3 className="line-clamp-2 min-h-8 text-[9px] font-light leading-4 text-nh-ink sm:min-h-9 sm:text-[12px] sm:leading-[18px]">
+        <h3 className="line-clamp-2 min-h-8 text-[9px] font-light leading-4 text-nh-ink sm:min-h-9 sm:text-[12px] sm:leading-[18px] md:min-h-10 md:text-sm md:leading-5">
           <Link className="transition-colors hover:text-nh-red" href={product.href}>
             {product.name}
           </Link>

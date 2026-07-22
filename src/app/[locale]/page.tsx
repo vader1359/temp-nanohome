@@ -8,6 +8,7 @@ import { Newsletter } from "@/components/sections/newsletter";
 import { ProductsGrid } from "@/components/sections/products-grid";
 import { Rooms } from "@/components/sections/rooms";
 import { variantToProductGridItem } from "@/lib/products/mapper";
+import { isInStock } from "@/lib/products/availability";
 import { getInstagramPosts } from "@/lib/instagram";
 import { getBrands } from "@/lib/queries/brands";
 import { getVariantProducts, getVariantProductsBySkus } from "@/lib/queries/products";
@@ -89,11 +90,11 @@ export default async function Page({ params }: PageProps) {
   const trendingBySku = new Map(trendingRaw.map((variant) => [variant.sku, variant]));
   const trendingSelected = TRENDING_SKUS
     .map((sku) => trendingBySku.get(sku))
-    .filter((variant): variant is (typeof trendingRaw)[number] => variant?.in_stock === true);
+    .filter((variant): variant is (typeof trendingRaw)[number] => variant !== undefined && isInStock(variant));
   const bestSellerBySku = new Map(bestSellerRaw.map((variant) => [variant.sku, variant]));
   const bestSellerSelected = BEST_SELLER_SKUS
     .map((sku) => bestSellerBySku.get(sku))
-    .filter((variant): variant is (typeof bestSellerRaw)[number] => variant?.in_stock === true);
+    .filter((variant): variant is (typeof bestSellerRaw)[number] => variant !== undefined && isInStock(variant));
 
   const newArrivalSelected = getRandomSubset(finalNewArrivalRaw, Math.min(8, finalNewArrivalRaw.length));
 

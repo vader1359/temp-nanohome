@@ -91,7 +91,9 @@ export function FilterSidebar({
   return (
     <aside className={cn(
       "w-full flex-col gap-4 self-start",
-      variant === "desktop" ? "hidden lg:sticky lg:top-6 lg:flex lg:w-[212px] lg:shrink-0" : "flex",
+      variant === "desktop"
+        ? "hidden lg:sticky lg:top-6 lg:flex lg:max-h-[calc(100dvh-3rem)] lg:w-[212px] lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-gutter:stable]"
+        : "flex",
     )}>
       <div>
         <div className="flex w-full flex-col gap-4 pr-5">
@@ -174,25 +176,33 @@ export function FilterSidebar({
           {categoryOptions.flatMap((category) => category.subCategories).length > 0 ? (
             <CardSection title={t("subCategory")}>
               <div className={cn("gap-1", variant === "modal" ? "grid grid-cols-2" : "flex flex-col")}>
-                {categoryOptions.flatMap((category) => category.subCategories).map((subCategory) => {
-                  const checked = selectedSubCategories.has(subCategory.slug);
-                  return (
-                    <button
-                      className={cn(
-                        "flex min-h-[24px] w-full items-center bg-transparent text-left text-[11px] font-medium uppercase leading-4",
-                        checked ? "text-nh-accent" : "text-nh-muted"
-                      )}
-                      aria-pressed={checked}
-                      data-filter-subcategory=""
-                      data-filter-value={subCategory.slug}
-                      key={subCategory.slug}
-                      type="button"
-                      onClick={() => toggleSubCategory(subCategory.slug)}
-                    >
-                      {subCategory.name}
-                    </button>
-                  );
-                })}
+                {categoryOptions.map((category) => (
+                  <div className="flex min-w-0 flex-col gap-1" key={`subcategory-group-${category.slug}`}>
+                    {category.subCategories.map((subCategory) => {
+                      const checked = selectedSubCategories.has(subCategory.slug);
+                      const isAccessoriesChild = category.slug === "accessories" && subCategory.slug !== "accessories";
+                      return (
+                        <button
+                          className={cn(
+                            "flex min-h-[24px] w-full items-center bg-transparent text-left text-[11px] font-medium uppercase leading-4",
+                            isAccessoriesChild && "ml-3 w-[calc(100%-0.75rem)]",
+                            checked ? "text-nh-accent" : "text-nh-muted"
+                          )}
+                          aria-pressed={checked}
+                          data-filter-subcategory=""
+                          data-filter-parent={isAccessoriesChild ? "accessories" : undefined}
+                          data-filter-value={subCategory.slug}
+                          key={subCategory.slug}
+                          type="button"
+                          onClick={() => toggleSubCategory(subCategory.slug)}
+                        >
+                          {isAccessoriesChild ? <span aria-hidden="true" className="mr-2 size-1 shrink-0 bg-current" /> : null}
+                          {subCategory.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </CardSection>
           ) : null}

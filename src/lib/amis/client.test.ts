@@ -78,8 +78,8 @@ function amisEnvFor(baseUrl: string): Env {
 }
 
 describe("fetchAmisStockLedger", () => {
-  it("fetches every ledger page and parses finite numeric amount summaries", async () => {
-    // Given: AMIS returns two ledger pages with numeric and numeric-string amounts.
+  it("fetches every ledger page and parses finite numeric order quantities", async () => {
+    // Given: AMIS returns two ledger pages with numeric and numeric-string order quantities.
     const ledgerPages: string[] = [];
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(String(input));
@@ -101,7 +101,7 @@ describe("fetchAmisStockLedger", () => {
           success: false,
           code: 0,
           total_pages: 2,
-          data: [{ product_code: "SKU-1", amount_summary: "4" }],
+          data: [{ product_code: "SKU-1", order_quantity: "4", amount_summary: 0 }],
         });
       }
 
@@ -110,8 +110,8 @@ describe("fetchAmisStockLedger", () => {
         code: 0,
         total_pages: 2,
         data: [
-          { product_code: "SKU-1", amount_summary: 7 },
-          { product_code: "SKU-2", amount_summary: 9 },
+          { product_code: "SKU-1", order_quantity: 7, amount_summary: 0 },
+          { product_code: "SKU-2", order_quantity: 9, amount_summary: 0 },
         ],
       });
     });
