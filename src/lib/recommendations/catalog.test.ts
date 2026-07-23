@@ -28,5 +28,14 @@ describe("getCatalogEligibility", () => {
     await expect(getCatalogEligibility()).resolves.toEqual([
       expect.objectContaining({ variant_id: "variant-one" }),
     ]);
+    expect(remoteFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/rest/v1/catalog_eligibility?select=*"),
+      expect.objectContaining({
+        headers: {
+          apikey: "service-role-test",
+          Authorization: "Bearer service-role-test",
+        },
+      }),
+    );
   });
 });
