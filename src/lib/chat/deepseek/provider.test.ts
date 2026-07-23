@@ -71,6 +71,25 @@ describe("DeepSeek provider boundary", () => {
     expect(String(requests[0]?.body)).toContain("never use search_products");
   });
 
+  it("instructs the provider to answer after a successful catalog result", async () => {
+    const requests: RequestInit[] = [];
+    await requestDeepSeek({
+      apiKey: "secret",
+      fetcher: async (_input, init) => {
+        requests.push(init);
+        return new Response("data: [DONE]\n\n", { headers: { "content-type": "text/event-stream" } });
+      },
+      question: "Find a chair",
+      locale: "en",
+      evidence: [],
+      toolResults: [{
+        kind: "catalog",
+        records: [{ canonicalId: "chair", variantId: "chair-one", title: "Chair", canonicalLink: "/products/chair", image: { id: "chair-image", alt: "Chair" }, price: { mode: "contact" }, stock: { state: "unknown" }, attributes: {} }],
+      }],
+    });
+    expect(String(requests[0]?.body)).toContain("Return kind answer now and do not call another tool");
+  });
+
   it("joins multiple data lines in one SSE event before parsing JSON", () => {
     const parsed = parseDeepSeekStream("data: {\"choices\":[{\"delta\":\ndata: {\"content\":\"hello\"}}]}\n\n");
     expect(parsed).toBe("hello");
