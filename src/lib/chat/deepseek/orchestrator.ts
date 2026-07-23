@@ -39,6 +39,12 @@ const verifiedCommercialText: Readonly<Record<PublicChatLocale, string>> = {
   ko: "현재 가격과 재고 여부는 아래 카드의 검증된 제품 데이터로만 표시됩니다.",
 };
 
+const catalogResultText: Readonly<Record<PublicChatLocale, string>> = {
+  vi: "Dưới đây là các sản phẩm phù hợp từ danh mục hiện có. Bạn có thể mở từng sản phẩm để xem chi tiết.",
+  en: "Here are suitable products from the current catalog. Open a product to see its details.",
+  ko: "현재 카탈로그에서 적합한 제품을 찾았습니다. 각 제품을 열어 자세한 내용을 확인해 보세요.",
+};
+
 const commercialClaimPattern =
   /(?:\b(?:price|cost|stock|available|availability|sold out|in stock|out of stock)\b|giá|tồn kho|còn hàng|hết hàng|có sẵn|가격|재고|품절|구매 가능|(?:vnd|krw|usd)\b|[₫₩$])/iu;
 
@@ -97,6 +103,20 @@ function fallback(input: OrchestratorInput): RenderSafePublicChatAnswer {
   return { text: input.policyDecision.text, blocks: [], evidence: [], followUps: [] };
 }
 
+function resolvedCatalogResult(
+  input: OrchestratorInput,
+  toolResults: readonly PublicChatToolResult[],
+): RenderSafePublicChatAnswer | undefined {
+  const latest = toolResults.at(-1);
+  if (latest?.kind !== "catalog" || latest.records.length === 0) return undefined;
+  return resolve({
+    text: catalogResultText[input.locale],
+    blocks: [{ type: "product_cards", variantIds: latest.records.slice(0, 8).map((record) => record.variantId) }],
+    evidence: [],
+    followUps: [],
+  }, input, toolResults);
+}
+
 function resolve(
   answer: PublicChatAnswer,
   input: OrchestratorInput,
@@ -153,6 +173,8 @@ export async function orchestratePublicChat(input: OrchestratorInput): Promise<R
       input.onToolStarted?.(result.data.call.name);
       toolResults = [...toolResults, await executeTool(result.data.call, input.signal)];
       if (input.signal?.aborted) return fallback(input);
+      const catalogResult = resolvedCatalogResult(input, toolResults);
+      if (catalogResult !== undefined) return catalogResult;
     } catch {
       return fallback(input);
     }

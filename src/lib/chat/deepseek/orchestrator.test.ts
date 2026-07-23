@@ -47,6 +47,23 @@ describe("bounded public chat orchestration", () => {
     expect(result.blocks).toEqual([{ type: "product_cards", products: [{ variantId: "chair-01", canonicalId: "chair", title: "Public chair", canonicalLink: "/products/chair", image: { canonicalImageId: "chair-image", alt: "Public chair" }, price: { mode: "contact" }, stock: { state: "unknown" }, attributes: {} }] }]);
   });
 
+  it("returns canonical product cards immediately after a successful catalog tool result", async () => {
+    const result = await orchestratePublicChat({
+      question: "Find chairs",
+      locale: "vi",
+      apiKey: "secret",
+      provider: async () => ({ kind: "tool_call", call: { name: "search_catalog", arguments: { query: "chair", limit: 1 } } }),
+      executeTool: async () => ({
+        kind: "catalog",
+        records: [{ canonicalId: "chair", variantId: "chair-01", title: "Public chair", canonicalLink: "/vi/products/chair", image: { id: "chair-image", alt: "Public chair" }, price: { mode: "contact" }, stock: { state: "unknown" }, attributes: {} }],
+      }),
+      registries: { products: [], sources: [], images: [] },
+      policyDecision: { kind: "handoff", reasonCode: "unsupported_request", text: "Safe fallback." },
+    });
+    expect(result.text).toContain("danh mục hiện có");
+    expect(result.blocks).toEqual([expect.objectContaining({ type: "product_cards", products: [expect.objectContaining({ variantId: "chair-01" })] })]);
+  });
+
   it("propagates the caller signal to every provider call", async () => {
     const controller = new AbortController();
     const signals: (AbortSignal | undefined)[] = [];
