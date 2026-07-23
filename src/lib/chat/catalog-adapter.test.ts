@@ -4,6 +4,7 @@ import type { CatalogEligibility } from "@/lib/catalog/eligibility";
 import type { VariantProductListItem } from "@/lib/queries/products";
 
 import {
+  catalogSearchQueries,
   createPublicCatalogAdapters,
   type PublicCatalogAdapterDependencies,
 } from "./catalog-adapter";
@@ -115,6 +116,13 @@ function dependencies(
 }
 
 describe("live public catalog chat adapter", () => {
+  it("expands Vietnamese product-type queries before the original phrase", () => {
+    expect(catalogSearchQueries("Ghế nào phù hợp cho phòng khách?")).toEqual([
+      "chair",
+      "Ghế nào phù hợp cho phòng khách?",
+    ]);
+  });
+
   it.each([
     ["vi", "Ghế Việt", "/vi/products/ghe-viet", "Gỗ sồi"],
     ["en", "English Chair", "/en/products/english-chair", "Oak"],

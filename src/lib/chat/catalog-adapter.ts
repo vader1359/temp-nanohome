@@ -44,6 +44,22 @@ const defaultDependencies: PublicCatalogAdapterDependencies = {
   loadVariantsBySkus: getVariantProductsBySkus,
 };
 
+const searchAliases: readonly Readonly<{ readonly pattern: RegExp; readonly query: string }>[] = [
+  { pattern: /ghế/iu, query: "chair" },
+  { pattern: /bàn/iu, query: "table" },
+  { pattern: /đèn/iu, query: "lamp" },
+  { pattern: /sofa/iu, query: "sofa" },
+  { pattern: /giường/iu, query: "bed" },
+  { pattern: /tủ/iu, query: "cabinet" },
+  { pattern: /bình hoa/iu, query: "vase" },
+];
+
+export function catalogSearchQueries(query: string): readonly string[] {
+  const normalized = query.trim();
+  const aliases = searchAliases.flatMap(({ pattern, query: alias }) => pattern.test(normalized) ? [alias] : []);
+  return [...new Set([...aliases, normalized])].filter((item) => item.length > 0).slice(0, 3);
+}
+
 function throwIfAborted(signal?: AbortSignal): void {
   if (!signal?.aborted) return;
   const error = new Error("Catalog request aborted");
@@ -202,17 +218,20 @@ export function createPublicCatalogAdapters(
   return {
     search: async (query, limit, signal) => {
       throwIfAborted(signal);
-      const [rows, variants] = await Promise.all([
+      const [rows, variantLists] = await Promise.all([
         loadEligibility(),
-        dependencies.searchVariants(query, limit),
+        Promise.all(catalogSearchQueries(query).map((candidate) => dependencies.searchVariants(candidate, limit))),
       ]);
       throwIfAborted(signal);
       const eligibilityByVariant = new Map(rows.map((row) => [row.variant_id, row]));
-      return variants.flatMap((variant) => {
+      const seenVariantIds = new Set<string>();
+      return variantLists.flat().flatMap((variant) => {
+        if (seenVariantIds.has(variant.id)) return [];
+        seenVariantIds.add(variant.id);
         const row = eligibilityByVariant.get(variant.id);
         const record = row === undefined ? undefined : toCatalogRecord(row, variant, locale);
         return record === undefined ? [] : [record];
-      });
+      }).slice(0, limit);
     },
     details: async (canonicalIds, signal) => {
       throwIfAborted(signal);
