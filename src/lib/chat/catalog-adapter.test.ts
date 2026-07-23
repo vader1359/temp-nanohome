@@ -123,6 +123,31 @@ describe("live public catalog chat adapter", () => {
     ]);
   });
 
+  it("expands English room queries to the catalog product type", () => {
+    expect(catalogSearchQueries("living room chair")).toEqual([
+      "chair",
+      "living room chair",
+    ]);
+  });
+
+  it("keeps unsupported-media rows parseable without making them eligible", async () => {
+    const adapter = createPublicCatalogAdapters(
+      "vi",
+      dependencies([
+        eligibility({ has_supported_media: false, image_url: null }),
+      ], [variant({ gallery_urls: null as never })]),
+    );
+
+    const records = await adapter.search("Ghế phòng khách", 1);
+
+    expect(records).toEqual([expect.objectContaining({
+      variantId: "variant-one",
+      image: { id: "variant-one", alt: "Ghế Việt" },
+      eligible: false,
+      current: true,
+    })]);
+  });
+
   it.each([
     ["vi", "Ghế Việt", "/vi/products/ghe-viet", "Gỗ sồi"],
     ["en", "English Chair", "/en/products/english-chair", "Oak"],

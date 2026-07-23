@@ -20,5 +20,14 @@ export async function getCatalogEligibility(): Promise<readonly CatalogEligibili
   if (!Array.isArray(data)) {
     throw new Error("Catalog eligibility response was not an array");
   }
-  return data.map((row) => parseCatalogEligibilityRow(row));
+  // A legacy/incomplete view row must never make the whole public catalog
+  // unavailable. Each row is independently schema-validated and malformed
+  // rows are excluded (fail-closed) before an adapter can surface a card.
+  return data.flatMap((row) => {
+    try {
+      return [parseCatalogEligibilityRow(row)];
+    } catch {
+      return [];
+    }
+  });
 }

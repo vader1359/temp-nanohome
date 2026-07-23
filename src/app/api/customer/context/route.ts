@@ -25,6 +25,15 @@ const requestCookies = (request: Request): Readonly<{ visitor?: string; session?
   return { visitor: values.get(customerIdentityCookieNames.visitor), session: values.get(customerIdentityCookieNames.session) };
 };
 
+function hasSupabaseAuthCookie(request: Request): boolean {
+  return (request.headers.get("cookie") ?? "")
+    .split(";")
+    .some((cookie) => {
+      const name = cookie.trim().split("=", 1)[0] ?? "";
+      return name.startsWith("sb-") && name.includes("auth-token");
+    });
+}
+
 export const GET = async (request: Request): Promise<Response> => {
   const repository = createCustomerRepository(fetch);
   const tokens = customerTokens(requestCookies(request));
@@ -35,12 +44,14 @@ export const GET = async (request: Request): Promise<Response> => {
   const identity = existing ?? bootstrapped?.identity;
   if (identity === null || identity === undefined) return json({ error: "Identity unavailable" }, 503);
   let verifiedUserId: string | null = null;
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.auth.getUser();
-    if (error === null && data.user !== null) verifiedUserId = data.user.id;
-  } catch {
-    return json({ error: "Authentication unavailable" }, 503);
+  if (hasSupabaseAuthCookie(request)) {
+    try {
+      const supabase = await createClient();
+      const { data, error } = await supabase.auth.getUser();
+      if (error === null && data.user !== null) verifiedUserId = data.user.id;
+    } catch {
+      return json({ error: "Authentication unavailable" }, 503);
+    }
   }
   const binding = verifiedUserId === null
     ? await repository.clearVerifiedUser(identity)

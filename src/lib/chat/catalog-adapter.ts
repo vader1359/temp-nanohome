@@ -46,12 +46,18 @@ const defaultDependencies: PublicCatalogAdapterDependencies = {
 
 const searchAliases: readonly Readonly<{ readonly pattern: RegExp; readonly query: string }>[] = [
   { pattern: /ghế/iu, query: "chair" },
+  { pattern: /chairs?/iu, query: "chair" },
   { pattern: /bàn/iu, query: "table" },
+  { pattern: /tables?/iu, query: "table" },
   { pattern: /đèn/iu, query: "lamp" },
+  { pattern: /lamps?/iu, query: "lamp" },
   { pattern: /sofa/iu, query: "sofa" },
   { pattern: /giường/iu, query: "bed" },
+  { pattern: /beds?/iu, query: "bed" },
   { pattern: /tủ/iu, query: "cabinet" },
+  { pattern: /cabinets?/iu, query: "cabinet" },
   { pattern: /bình hoa/iu, query: "vase" },
+  { pattern: /vases?/iu, query: "vase" },
 ];
 
 export function catalogSearchQueries(query: string): readonly string[] {
@@ -165,10 +171,13 @@ function toCatalogRecord(
     localizedVariantText(variant, locale, "name") ||
     localizedVariantText(variant, locale, "short_name");
   if (title.length === 0) return undefined;
+  const galleryUrls = Array.isArray(variant.gallery_urls)
+    ? variant.gallery_urls
+    : [];
   const imageUrl = firstProductImage([
     row.image_url,
     variant.packshot_url,
-    ...variant.gallery_urls,
+    ...galleryUrls,
     variant.cldr_media_lifestyle_1,
     variant.cldr_media_lifestyle_2,
     variant.media_long,
@@ -182,13 +191,71 @@ function toCatalogRecord(
     variantId: row.variant_id,
     title,
     canonicalLink: `/${locale}${variantDetailHref(variant, locale)}`,
-    image: { id: row.variant_id, alt: title, src: imageUrl },
+    // Public chat schemas accept only approved public media.  Do not let an
+    // unsupported image from one non-eligible variant invalidate the whole
+    // catalog result before eligible records can be filtered in.
+    image: hasCanonicalImage
+      ? { id: row.variant_id, alt: title, src: imageUrl }
+      : { id: row.variant_id, alt: title },
     price: priceFor(row),
     stock: stockFor(row),
     attributes: attributesFor(variant, row, locale),
     eligible: row.recommendation && hasCanonicalImage,
     current: row.catalog_approved_validated,
   };
+}
+
+// This is deliberately a narrow recovery path. It is used only when the
+// catalog RPC returned a variant with a matching eligibility row, but that
+// expanded variant cannot be rendered as a normal card. It never turns an
+// unmatched eligibility row into a product result.
+function eligibilityFallbackRecord(
+  row: CatalogEligibility,
+  locale: PublicChatLocale,
+): CatalogAdapterRecord | undefined {
+  const title = safeText(
+    locale === "vi"
+      ? row.localized_name ?? row.variant_name ?? row.localized_product_name ?? row.product_name
+      : row.variant_name ?? row.localized_name ?? row.product_name ?? row.localized_product_name,
+  );
+  if (title.length === 0) return undefined;
+  const imageUrl = firstProductImage([row.image_url]);
+  const hasCanonicalImage = row.has_supported_media && imageUrl !== "/images/placeholder.webp";
+  const slug = safeText(row.variant_slug) || row.variant_id;
+  const attributes: Record<string, string> = {};
+  const brand = safeText(row.brand_name);
+  const product = safeText(
+    locale === "vi"
+      ? row.localized_product_name ?? row.product_name
+      : row.product_name ?? row.localized_product_name,
+  );
+  if (brand.length > 0) attributes.brand = brand;
+  if (product.length > 0) attributes.product = product;
+  return {
+    canonicalId: row.product_id ?? row.variant_id,
+    variantId: row.variant_id,
+    title,
+    canonicalLink: `/${locale}/products/${encodeURIComponent(slug)}`,
+    image: hasCanonicalImage
+      ? { id: row.variant_id, alt: title, src: imageUrl }
+      : { id: row.variant_id, alt: title },
+    price: priceFor(row),
+    stock: stockFor(row),
+    attributes,
+    eligible: row.recommendation && hasCanonicalImage,
+    current: row.catalog_approved_validated,
+  };
+}
+
+function eligibilityMatchesSearch(row: CatalogEligibility, query: string): boolean {
+  const normalizedQuery = query.toLocaleLowerCase();
+  return [
+    row.localized_name,
+    row.variant_name,
+    row.localized_product_name,
+    row.product_name,
+    row.brand_name,
+  ].some((value) => typeof value === "string" && value.toLocaleLowerCase().includes(normalizedQuery));
 }
 
 function preferredRow(
@@ -224,14 +291,35 @@ export function createPublicCatalogAdapters(
       ]);
       throwIfAborted(signal);
       const eligibilityByVariant = new Map(rows.map((row) => [row.variant_id, row]));
+      const variants = variantLists.flat();
       const seenVariantIds = new Set<string>();
-      return variantLists.flat().flatMap((variant) => {
+      const variantRecords = variants.flatMap((variant) => {
         if (seenVariantIds.has(variant.id)) return [];
         seenVariantIds.add(variant.id);
         const row = eligibilityByVariant.get(variant.id);
         const record = row === undefined ? undefined : toCatalogRecord(row, variant, locale);
         return record === undefined ? [] : [record];
-      }).slice(0, limit);
+      });
+      const hasEligibleRecord = variantRecords.some(
+        (record) => record.eligible && record.current,
+      );
+      if (hasEligibleRecord) return variantRecords.slice(0, limit);
+
+      const matchedVariantIds = new Set(
+        variants.flatMap((variant) => eligibilityByVariant.has(variant.id) ? [variant.id] : []),
+      );
+      const fallbackRecords = catalogSearchQueries(query).flatMap((candidate) => rows
+        .filter(
+          (row) => matchedVariantIds.has(row.variant_id) && eligibilityMatchesSearch(row, candidate),
+        )
+        .flatMap((row) => {
+          const record = eligibilityFallbackRecord(row, locale);
+          return record === undefined ? [] : [record];
+        }));
+      const seenFallbackIds = new Set<string>();
+      return fallbackRecords
+        .filter((record) => !seenFallbackIds.has(record.variantId) && (seenFallbackIds.add(record.variantId), true))
+        .slice(0, limit);
     },
     details: async (canonicalIds, signal) => {
       throwIfAborted(signal);

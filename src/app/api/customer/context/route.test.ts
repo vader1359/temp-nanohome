@@ -17,6 +17,19 @@ beforeEach(() => {
 });
 
 describe("GET /api/customer/context", () => {
+  it("does not request auth for an anonymous customer", async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ visitor_id: "new-visitor", session_id: "new-session", status: "created" }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify("unchanged"), { status: 200 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+
+    const response = await GET(new Request("https://app.test/api/customer/context"));
+
+    expect(response.status).toBe(200);
+    expect(auth.getUser).not.toHaveBeenCalled();
+  });
+
   it("fails closed when identity persistence is unavailable", async () => {
     const response = await GET(new Request("https://app.test/api/customer/context"));
     const body = await response.json();
@@ -34,7 +47,7 @@ describe("GET /api/customer/context", () => {
     vi.stubGlobal("fetch", fetcher);
 
     const response = await GET(new Request("https://app.test/api/customer/context", {
-      headers: { cookie: `nano_visitor_id=${"a".repeat(64)}; nano_session_id=${"b".repeat(64)}` },
+      headers: { cookie: `nano_visitor_id=${"a".repeat(64)}; nano_session_id=${"b".repeat(64)}; sb-test-auth-token=token` },
     }));
 
     expect(response.status).toBe(200);
@@ -65,7 +78,7 @@ describe("GET /api/customer/context", () => {
     vi.stubGlobal("fetch", fetcher);
 
     const response = await GET(new Request("https://app.test/api/customer/context", {
-      headers: { cookie: `nano_visitor_id=${"a".repeat(64)}; nano_session_id=${"b".repeat(64)}` },
+      headers: { cookie: `nano_visitor_id=${"a".repeat(64)}; nano_session_id=${"b".repeat(64)}; sb-test-auth-token=token` },
     }));
 
     expect(response.status).toBe(200);
