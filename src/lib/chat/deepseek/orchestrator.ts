@@ -23,7 +23,9 @@ type OrchestratorInput = Readonly<{
   onToolStarted?: (name: PublicChatToolCall["name"]) => void;
 }>;
 
-const maximumRounds = 2;
+// A grounded answer can need a catalog search followed by canonical detail lookup.
+// Reserve the third bounded round for the model to render that verified result.
+const maximumRounds = 3;
 const providerResultSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("answer"), answer: publicChatAnswerSchema }).strict(),
   z.object({ kind: z.literal("tool_call"), call: publicChatToolCallSchema }).strict(),

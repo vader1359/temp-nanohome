@@ -20,7 +20,7 @@ describe("bounded public chat orchestration", () => {
       registries: { products: [], sources: [], images: [] },
       policyDecision: { kind: "refusal", reasonCode: "untrusted_instruction", text: "I can only use approved public website information and server-authorized tools." },
     });
-    expect(calls).toBe(2);
+    expect(calls).toBe(3);
     expect(result.text).toContain("approved public");
   });
 
