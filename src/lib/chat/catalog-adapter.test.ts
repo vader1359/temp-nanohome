@@ -229,6 +229,10 @@ describe("live public catalog chat adapter", () => {
       "supabase/migrations/20260723120000_secure_public_chat_catalog_boundary.sql",
       "utf8",
     );
+    const placeholderPriceSql = readFileSync(
+      "supabase/migrations/20260723130000_hide_public_chat_placeholder_prices.sql",
+      "utf8",
+    );
 
     expect(adapterSource).not.toContain("getCatalogEligibility");
     expect(adapterSource).not.toContain("catalog_eligibility?select=*");
@@ -241,6 +245,15 @@ describe("live public catalog chat adapter", () => {
     expect(boundarySql).toContain("public_stock_state text");
     expect(boundarySql).toContain("public_price_mode text");
     expect(boundarySql).not.toMatch(/\b(?:stock|reason_codes|sku)\s+(?:integer|numeric|text)\b/iu);
+    expect(placeholderPriceSql).toContain(
+      "searched.public_price between 0 and 1 then null",
+    );
+    expect(placeholderPriceSql).toContain(
+      "searched.public_price between 0 and 1 then 'contact'",
+    );
+    expect(placeholderPriceSql).toContain(
+      "revoke all on function public.search_public_chat_catalog_before_placeholder_price_guard",
+    );
   });
 
   it("rejects broad one-character scans but permits exact identifiers", () => {
@@ -349,6 +362,25 @@ describe("live public catalog chat adapter", () => {
     expect(records[0]?.price).not.toEqual({ mode: "fixed", amount: 1, currency: "VND" });
     expect(records[0]?.stock).not.toEqual({ state: "available", quantity: 999 });
   });
+
+  it.each([0, 1])(
+    "treats the catalog placeholder price %s as contact-only",
+    async (publicPrice) => {
+      const adapter = createPublicCatalogAdapters(
+        "vi",
+        dependencies([
+          variant({
+            public_price: publicPrice,
+            public_price_mode: "fixed",
+          }),
+        ]),
+      );
+
+      const records = await adapter.search("ghế", 1);
+
+      expect(records[0]?.price).toEqual({ mode: "contact" });
+    },
+  );
 
   it("resolves exact canonical product and variant IDs for details and comparison", async () => {
     const deps = dependencies();

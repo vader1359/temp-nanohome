@@ -201,11 +201,19 @@ function localizedVariantText(
 function priceFor(variant: PublicChatCatalogVariant): PublicCatalogRecord["price"] {
   if (
     variant.public_price_mode === "fixed" &&
-    variant.public_price !== null
+    variant.public_price !== null &&
+    variant.public_price > 1
   ) {
     return { mode: "fixed", amount: variant.public_price, currency: "VND" };
   }
-  if (variant.public_price_mode === "contact") return { mode: "contact" };
+  if (
+    variant.public_price_mode === "contact" ||
+    (variant.public_price_mode === "fixed" &&
+      variant.public_price !== null &&
+      variant.public_price <= 1)
+  ) {
+    return { mode: "contact" };
+  }
   return { mode: "unavailable" };
 }
 

@@ -190,7 +190,7 @@ function uniqueBy<T>(
 
 function priceLabel(product: ChatProduct, locale: PublicChatLocale): string {
   const text = labels[locale];
-  if (product.price?.mode === "fixed") {
+  if (product.price?.mode === "fixed" && product.price.amount > 1) {
     const numberLocale = locale === "vi" ? "vi-VN" : locale === "ko" ? "ko-KR" : "en-US";
     try {
       return new Intl.NumberFormat(numberLocale, {
@@ -202,7 +202,10 @@ function priceLabel(product: ChatProduct, locale: PublicChatLocale): string {
       return `${product.price.amount.toLocaleString(numberLocale)} ${product.price.currency}`;
     }
   }
-  return product.price?.mode === "contact" ? text.contactPrice : text.unavailablePrice;
+  return product.price?.mode === "contact" ||
+    (product.price?.mode === "fixed" && product.price.amount <= 1)
+    ? text.contactPrice
+    : text.unavailablePrice;
 }
 
 function stockLabel(product: ChatProduct, locale: PublicChatLocale): string {

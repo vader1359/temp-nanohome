@@ -83,6 +83,19 @@ describe("PublicChatWidget", () => {
             price: { mode: "fixed", amount: 12_500_000, currency: "VND" },
             stock: { state: "available" },
             attributes: { brand: "Brand", designer: "Jane Designer", collection: "Icons" },
+          }, {
+            variantId: "variant-placeholder-price",
+            canonicalId: "product-placeholder-price",
+            title: "Ghế cần liên hệ",
+            canonicalLink: "/vi/products/ghe-can-lien-he",
+            image: {
+              canonicalImageId: "variant-placeholder-price",
+              alt: "Ghế cần liên hệ",
+              src: "https://res.cloudinary.com/nanohome-web/image/upload/products/contact-chair",
+            },
+            price: { mode: "fixed", amount: 0, currency: "VND" },
+            stock: { state: "unknown" },
+            attributes: { brand: "Brand" },
           }],
         },
       }),
@@ -110,6 +123,8 @@ describe("PublicChatWidget", () => {
     );
     expect(screen.getByRole("link", { name: "Xem sản phẩm: Ghế Việt" })).toHaveAttribute("href", "/vi/products/ghe-viet");
     expect(screen.getByText(/12[.\s]500[.\s]000/)).toBeInTheDocument();
+    expect(screen.getByText("Liên hệ để biết giá")).toBeInTheDocument();
+    expect(screen.queryByText(/^0(?:[.\s]0+)?\s*₫$/u)).not.toBeInTheDocument();
     expect(screen.getByText("Có sẵn theo dữ liệu hiện tại")).toBeInTheDocument();
     expect(screen.getByText(/Danh mục công khai/u)).toBeInTheDocument();
     expect(document.querySelector("script")).toBeNull();
