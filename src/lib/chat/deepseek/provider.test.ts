@@ -38,6 +38,16 @@ describe("DeepSeek provider boundary", () => {
     expect(parsed).not.toContain("secret thought");
   });
 
+  it("accepts the documented V4 streaming envelope while ignoring provider metadata and reasoning", () => {
+    const parsed = parseDeepSeekStream(
+      'data: {"id":"completion","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant","content":null,"reasoning_content":"private reasoning"},"logprobs":null,"finish_reason":null}]}\n\n' +
+      'data: {"id":"completion","choices":[{"index":0,"delta":{"content":"public answer","reasoning_content":null},"logprobs":null,"finish_reason":null}]}\n\n' +
+      'data: [DONE]\n\n',
+    );
+    expect(parsed).toBe("public answer");
+    expect(parsed).not.toContain("private reasoning");
+  });
+
   it("consumes an SSE provider response without exposing reasoning content", async () => {
     const requests: RequestInit[] = [];
     const result = await requestDeepSeek({
@@ -57,6 +67,8 @@ describe("DeepSeek provider boundary", () => {
 
     expect(result).toEqual({ kind: "answer", answer: { text: "Public answer.", blocks: [], evidence: [], followUps: [] } });
     expect(JSON.parse(String(requests[0]?.body)).stream).toBe(true);
+    expect(String(requests[0]?.body)).toContain("search_catalog");
+    expect(String(requests[0]?.body)).toContain("never use search_products");
   });
 
   it("joins multiple data lines in one SSE event before parsing JSON", () => {
