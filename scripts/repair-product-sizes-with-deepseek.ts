@@ -34,11 +34,11 @@ function toMillimetres(value: number, unit: string): number | null {
 
 function proposedSize(evidence: string): { value?: string; reason?: string } {
   const source = evidence.replace(/×/g, "x");
-  const declaredUnits = [...source.matchAll(/\b(mm|cm|m|in|inch|inches)\b|\"/gi)].map((match) => match[0].toLowerCase());
+  const declaredUnits = [...source.matchAll(/(?<![a-z])(?:mm|cm|m|inches|inch|in)\b|\"/gi)].map((match) => match[0].toLowerCase());
   const uniqueUnits = [...new Set(declaredUnits)];
   if (uniqueUnits.length !== 1) return { reason: uniqueUnits.length === 0 ? "no explicit unit in evidence" : "mixed units in evidence" };
   const unit = uniqueUnits[0]!;
-  const axisMatches = [...source.matchAll(/(?:^|[\s,(])((?:W|D|H|SH|AH|DH|TH|CL))\s*[:=]?\s*(\d+(?:[.,]\d+)?)/gi)];
+  const axisMatches = [...source.matchAll(/(?:^|[\s,(]|[x*]\s*)((?:W|D|H|SH|AH|DH|TH|CL))\s*[:=]?\s*(\d+(?:[.,]\d+)?)/gi)];
   const parsed = new Map<string, number>();
   for (const match of axisMatches) {
     const axis = match[1]!.toUpperCase();
@@ -48,6 +48,25 @@ function proposedSize(evidence: string): { value?: string; reason?: string } {
     if (parsed.has(axis) && parsed.get(axis) !== millimetres) return { reason: `conflicting ${axis} values` };
     parsed.set(axis, millimetres);
   }
+  const diameterMatches = [...source.matchAll(/(?:Ø|Φ|\b(?:DIA(?:METER)?\.?|DI|DK))\s*[:=]?\s*(\d+(?:[.,]\d+)?)/gi)];
+  if (diameterMatches.length > 0) {
+    const diameters = diameterMatches.map((match) => toMillimetres(Number(match[1]!.replace(",", ".")), unit));
+    if (diameters.some((value) => value === null)) return { reason: "unsupported diameter unit" };
+    const uniqueDiameters = [...new Set(diameters as number[])];
+    if (uniqueDiameters.length !== 1) return { reason: "conflicting diameter values" };
+    const diameter = uniqueDiameters[0]!;
+
+    if (!parsed.has("W") && !parsed.has("D")) {
+      parsed.set("W", diameter);
+      parsed.set("D", diameter);
+    } else if (!parsed.has("W")) {
+      parsed.set("W", diameter);
+    } else if (!parsed.has("D")) {
+      parsed.set("D", diameter);
+    } else if (parsed.get("W") !== diameter && parsed.get("D") !== diameter) {
+      return { reason: "diameter conflicts with W and D" };
+    }
+  }
   if (parsed.size === 0) {
     const ordered = new RegExp("(\\d+(?:[.,]\\d+)?)\\s*(?:x|\\*)\\s*(\\d+(?:[.,]\\d+)?)(?:\\s*(?:x|\\*)\\s*(\\d+(?:[.,]\\d+)?))?\\s*" + unit.replace('"', '\\"'), "i").exec(source);
     if (ordered) {
@@ -56,13 +75,7 @@ function proposedSize(evidence: string): { value?: string; reason?: string } {
       const labels = values.length === 3 ? ["W", "D", "H"] : ["W", "D"];
       return { value: labels.map((label, index) => `${label}${normalizeNumber(values[index]!)} mm`).map((part) => part.replace(/ mm$/, "")).join(" x ") + " mm" };
     }
-    const diameter = /(?:Ø|\bdia(?:meter)?\.?\s*)(\d+(?:[.,]\d+)?)/i.exec(source);
-    if (!diameter) return { reason: "no labelled dimensions" };
-    const millimetres = toMillimetres(Number(diameter[1]!.replace(",", ".")), unit);
-    if (millimetres === null) return { reason: "unsupported diameter unit" };
-    const h = /(?:^|[\s,(])H\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i.exec(source);
-    const height = h ? toMillimetres(Number(h[1]!.replace(",", ".")), unit) : null;
-    return { value: height === null ? `Ø${normalizeNumber(millimetres)} mm` : `Ø${normalizeNumber(millimetres)} x H${normalizeNumber(height)} mm` };
+    return { reason: "no labelled dimensions" };
   }
   const primary = ["W", "D", "H"].flatMap((axis) => parsed.has(axis) ? `${axis}${normalizeNumber(parsed.get(axis)!)} mm` : []);
   if (primary.length === 0) return { reason: "only auxiliary dimensions found" };
