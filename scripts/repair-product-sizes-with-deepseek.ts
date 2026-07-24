@@ -38,16 +38,52 @@ function proposedSize(evidence: string): { value?: string; reason?: string } {
   const uniqueUnits = [...new Set(declaredUnits)];
   if (uniqueUnits.length !== 1) return { reason: uniqueUnits.length === 0 ? "no explicit unit in evidence" : "mixed units in evidence" };
   const unit = uniqueUnits[0]!;
-  const axisMatches = [...source.matchAll(/(?:^|[\s,(]|[x*]\s*)((?:W|D|H|SH|AH|DH|TH|CL))\s*[:=]?\s*(\d+(?:[.,]\d+)?)/gi)];
-  const parsed = new Map<string, number>();
+  const axisToken = "(?:SH|AH|DH|TH|CL|W|D|H|L|R|C)";
+  if (new RegExp(`${axisToken}\\s*[:=]?\\s*\\d+(?:[.,]\\d+)?\\s*(?:/|-)\\s*\\d+(?:[.,]\\d+)?`, "i").test(source)) {
+    return { reason: "range dimension requires review" };
+  }
+  if (new RegExp(`${axisToken}\\s*\\.\\s*\\d|${axisToken}\\s*[:=]?\\s*\\d+,\\s+\\d`, "i").test(source)) {
+    return { reason: "malformed decimal dimension requires review" };
+  }
+  const optionalInlineUnit = "(?:(?:mm|cm|m|inches|inch|in|\\\")\\s*)?";
+  if (new RegExp(`${axisToken}\\s*[:=]?\\s*\\d+(?:[.,]\\d+)?\\s*${optionalInlineUnit}(?:x|\\*)\\s*\\d`, "i").test(source)) {
+    return { reason: "unlabelled axis requires review" };
+  }
+  const axisMatches = [...source.matchAll(/(?:^|[\s,(]|[x*/]\s*)((?:SH|AH|DH|TH|CL|W|D|H|L|R|C))\s*[:=]?\s*(\d+(?:[.,]\d+)?)/gi)];
+  const sourceAxes = new Map<string, number>();
   for (const match of axisMatches) {
     const axis = match[1]!.toUpperCase();
     const rawNumber = Number(match[2]!.replace(",", "."));
     const millimetres = toMillimetres(rawNumber, unit);
     if (!Number.isFinite(rawNumber) || millimetres === null) return { reason: "unsupported measurement" };
-    if (parsed.has(axis) && parsed.get(axis) !== millimetres) return { reason: `conflicting ${axis} values` };
-    parsed.set(axis, millimetres);
+    if (sourceAxes.has(axis) && sourceAxes.get(axis) !== millimetres) return { reason: `conflicting ${axis} values` };
+    sourceAxes.set(axis, millimetres);
   }
+  const parsed = new Map<string, number>();
+  const setCanonical = (axis: string, value: number | undefined): string | null => {
+    if (value === undefined) return null;
+    if (parsed.has(axis) && parsed.get(axis) !== value) return `conflicting canonical ${axis} values`;
+    parsed.set(axis, value);
+    return null;
+  };
+  let mappingError: string | null = null;
+  if (sourceAxes.has("L")) {
+    mappingError ??= setCanonical("W", sourceAxes.get("L"));
+    mappingError ??= setCanonical("D", sourceAxes.get("W"));
+    mappingError ??= setCanonical("D", sourceAxes.get("D"));
+  } else if (sourceAxes.has("R")) {
+    mappingError ??= setCanonical("W", sourceAxes.get("D") ?? sourceAxes.get("W"));
+    mappingError ??= setCanonical("D", sourceAxes.get("R"));
+  } else {
+    mappingError ??= setCanonical("W", sourceAxes.get("W"));
+    mappingError ??= setCanonical("D", sourceAxes.get("D"));
+  }
+  mappingError ??= setCanonical("H", sourceAxes.get("H"));
+  mappingError ??= setCanonical("H", sourceAxes.get("C"));
+  for (const axis of ["SH", "AH", "DH", "TH", "CL"]) {
+    mappingError ??= setCanonical(axis, sourceAxes.get(axis));
+  }
+  if (mappingError) return { reason: mappingError };
   const diameterMatches = [...source.matchAll(/(?:Ø|Φ|\b(?:DIA(?:METER)?\.?|DI|DK))\s*[:=]?\s*(\d+(?:[.,]\d+)?)/gi)];
   if (diameterMatches.length > 0) {
     const diameters = diameterMatches.map((match) => toMillimetres(Number(match[1]!.replace(",", ".")), unit));
@@ -55,6 +91,12 @@ function proposedSize(evidence: string): { value?: string; reason?: string } {
     const uniqueDiameters = [...new Set(diameters as number[])];
     if (uniqueDiameters.length !== 1) return { reason: "conflicting diameter values" };
     const diameter = uniqueDiameters[0]!;
+    const unlabelledHeight = /(?:Ø|Φ|\b(?:DIA(?:METER)?\.?|DI|DK))\s*[:=]?\s*\d+(?:[.,]\d+)?\s*(?:(?:mm|cm|m|inches|inch|in|")\s*)?(?:x|\*)\s*(?![a-z])(\d+(?:[.,]\d+)?)/i.exec(source);
+    if (unlabelledHeight && !parsed.has("H")) {
+      const height = toMillimetres(Number(unlabelledHeight[1]!.replace(",", ".")), unit);
+      if (height === null) return { reason: "unsupported diameter height unit" };
+      parsed.set("H", height);
+    }
 
     if (!parsed.has("W") && !parsed.has("D")) {
       parsed.set("W", diameter);
