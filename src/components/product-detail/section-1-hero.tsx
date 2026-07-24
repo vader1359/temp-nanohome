@@ -20,6 +20,7 @@ interface Section1HeroProps {
   product?: typeof fallbackProduct & {
     brandLogoUrl?: string | null;
     id?: string;
+    size?: string | null;
     sku?: string;
   };
 }
@@ -383,7 +384,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
               {t("sizeDetails")}
             </span>
             <span className="whitespace-pre-line text-[14px] leading-[22px] text-[#111]">
-              {t("sizeFallback")}
+              {product.size || t("updating")}
             </span>
           </div>
 
