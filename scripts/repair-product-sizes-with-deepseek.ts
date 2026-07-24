@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 type Table = "products" | "variants";
 type CatalogRow = { id: string; sku?: string | null; name: string; size: string | null; updated_at: string };
@@ -12,11 +13,21 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const BATCH_SIZE = 25;
 const CONCURRENCY = 3;
 
-if (!SUPABASE_URL || !SUPABASE_KEY || !DEEPSEEK_API_KEY) throw new Error("Missing Supabase or DeepSeek server environment");
-
 const args = new Set(process.argv.slice(2));
 const apply = args.has("--apply");
 const artifactDirectory = path.resolve(process.cwd(), "outputs/product-size-audit", new Date().toISOString().replace(/[:.]/g, "-"));
+
+type Measurement = { values: readonly [number] | readonly [number, number] };
+type TextSpan = { start: number; end: number };
+
+const NUMBER_PATTERN = String.raw`\d+(?:[.,]\d+)?`;
+const RANGE_SEPARATOR_PATTERN = String.raw`(?:\/|-|–|—|~)`;
+const MEASUREMENT_PATTERN = `${NUMBER_PATTERN}(?:\\s*${RANGE_SEPARATOR_PATTERN}\\s*${NUMBER_PATTERN})?`;
+const UNIT_PATTERN = String.raw`(?:mm|cm|m|inches|inch|in|")`;
+const AXIS_PATTERN = String.raw`(?:SH|AH|DH|TH|CL|W|D|H|L|R|C)`;
+const DIAMETER_PATTERN = String.raw`(?:DIAMETER|DIA\.?|DI|DK|Ø|Φ)`;
+const MARKER_PATTERN = `(?:${DIAMETER_PATTERN}|${AXIS_PATTERN})`;
+const MARKER_PREFIX_PATTERN = String.raw`(?:^|[\s,(;:]|[x*/]\s*)`;
 
 function normalizeNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)));
@@ -32,104 +43,250 @@ function toMillimetres(value: number, unit: string): number | null {
   }
 }
 
-function proposedSize(evidence: string): { value?: string; reason?: string } {
-  const source = evidence.replace(/×/g, "x");
-  const declaredUnits = [...source.matchAll(/(?<![a-z])(?:mm|cm|m|inches|inch|in)\b|\"/gi)].map((match) => match[0].toLowerCase());
+function canonicalUnit(rawUnit: string): string {
+  const unit = rawUnit.toLowerCase();
+  return unit === "\"" || unit === "inch" || unit === "inches" ? "in" : unit;
+}
+
+function unitBearingClauses(source: string): { text: string; start: number; end: number }[] {
+  const clauses: { text: string; start: number; end: number }[] = [];
+  let clauseStart = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index]!;
+    const decimalComma = character === "," && /\d/.test(source[index - 1] ?? "") && /\d/.test(source[index + 1] ?? "");
+    if (character !== ";" && character !== "\n" && (character !== "," || decimalComma)) continue;
+    clauses.push({ text: source.slice(clauseStart, index), start: clauseStart, end: index });
+    clauseStart = index + 1;
+  }
+  clauses.push({ text: source.slice(clauseStart), start: clauseStart, end: source.length });
+  return clauses.filter((clause) => new RegExp(`(?<![a-z])${UNIT_PATTERN}\\b|\"`, "i").test(clause.text));
+}
+
+function hasMalformedDimensionNumber(source: string): boolean {
+  return unitBearingClauses(source).some(({ text }) => {
+    if (/\d+\s*[.,]{2,}\s*\d/u.test(text)) return true;
+    if (/\d+\s+[.,]\s*\d|\d+[.,]\s+\d/u.test(text)) return true;
+    if (/\d+[.,]\d+[.,]\d+/u.test(text)) return true;
+    if (/(?<!\d)[1-9]\d{0,2}[.,]\d{3}(?!\d)/u.test(text)) return true;
+    if (new RegExp(`${MARKER_PATTERN}\\s*[:=]?\\s*[.,]\\s*\\d`, "iu").test(text)) return true;
+    if (new RegExp(`${MARKER_PATTERN}\\s*[:=]?\\s*\\d+\\s+\\d+`, "iu").test(text)) return true;
+    return /\d+\s+\d+\s*(?:x|\*)/iu.test(text);
+  });
+}
+
+function parseMeasurement(rawMeasurement: string, unit: string): Measurement | null {
+  const values = rawMeasurement
+    .split(new RegExp(`\\s*${RANGE_SEPARATOR_PATTERN}\\s*`, "u"))
+    .map((rawValue) => toMillimetres(Number(rawValue.replace(",", ".")), unit));
+  if ((values.length !== 1 && values.length !== 2) || values.some((value) => value === null || !Number.isFinite(value))) return null;
+  return values.length === 1
+    ? { values: [values[0]!] }
+    : { values: [values[0]!, values[1]!] };
+}
+
+function measurementsEqual(left: Measurement, right: Measurement): boolean {
+  return left.values.length === right.values.length && left.values.every((value, index) => value === right.values[index]);
+}
+
+function formatMeasurement(measurement: Measurement): string {
+  return measurement.values.map(normalizeNumber).join("/");
+}
+
+function markerKind(rawMarker: string): string {
+  const marker = rawMarker.toUpperCase();
+  return /^(?:DIAMETER|DIA\.?|DI|DK|Ø|Φ)$/u.test(marker) ? "DIAMETER" : marker;
+}
+
+function isDimensionRelatedNumber(source: string, span: TextSpan, recognizedSpans: readonly TextSpan[]): boolean {
+  if (recognizedSpans.some((recognized) => spanContains(recognized, span))) return true;
+  const previous = source.slice(0, span.start).match(/(\S)\s*$/u)?.[1];
+  const next = source.slice(span.end).match(/^\s*(\S)/u)?.[1];
+  if ((previous && /[x*/\-–—~]/iu.test(previous)) || (next && /[x*/\-–—~]/iu.test(next))) return true;
+  return new RegExp(`^\\s*${UNIT_PATTERN}\\b|^\\s*\"`, "iu").test(source.slice(span.end));
+}
+
+function numericOccurrences(source: string, recognizedSpans: readonly TextSpan[]): TextSpan[] {
+  return unitBearingClauses(source).flatMap((clause) =>
+    [...clause.text.matchAll(new RegExp(NUMBER_PATTERN, "gu"))].map((match) => ({
+      start: clause.start + match.index!,
+      end: clause.start + match.index! + match[0].length,
+    })).filter((span) => isDimensionRelatedNumber(source, span, recognizedSpans)),
+  );
+}
+
+function spanContains(span: TextSpan, candidate: TextSpan): boolean {
+  return candidate.start >= span.start && candidate.end <= span.end;
+}
+
+function dimensionSignature(source: string): { markers: string[]; numbers: string[] } {
+  const markers: string[] = [];
+  const numbers: string[] = [];
+  const markerRegex = new RegExp(`${MARKER_PREFIX_PATTERN}(${MARKER_PATTERN})\\s*[:=]?\\s*(${MEASUREMENT_PATTERN})`, "giu");
+  const normalizedSource = source.replace(/×/gu, "x").replace(/[\u200B-\u200D\uFEFF]/gu, "");
+  for (const clause of unitBearingClauses(normalizedSource)) {
+    const clauseMarkerSpans: TextSpan[] = [];
+    for (const match of clause.text.matchAll(markerRegex)) {
+      markers.push(`${markerKind(match[1]!)}:${match[2]!.replaceAll(",", ".").replace(new RegExp(`\\s*${RANGE_SEPARATOR_PATTERN}\\s*`, "gu"), "/")}`);
+      clauseMarkerSpans.push({ start: clause.start + match.index!, end: clause.start + match.index! + match[0].length });
+    }
+    for (const match of clause.text.matchAll(new RegExp(NUMBER_PATTERN, "gu"))) {
+      const span = { start: clause.start + match.index!, end: clause.start + match.index! + match[0].length };
+      if (isDimensionRelatedNumber(normalizedSource, span, clauseMarkerSpans)) numbers.push(match[0].replace(",", "."));
+    }
+  }
+  return { markers, numbers };
+}
+
+function multisetContains(actual: readonly string[], expected: readonly string[]): boolean {
+  const counts = new Map<string, number>();
+  for (const value of actual) counts.set(value, (counts.get(value) ?? 0) + 1);
+  for (const value of expected) {
+    const available = counts.get(value) ?? 0;
+    if (available === 0) return false;
+    counts.set(value, available - 1);
+  }
+  return true;
+}
+
+export function hasCompleteDimensionEvidence(name: string, evidence: string): boolean {
+  if (!name.includes(evidence)) return false;
+  const expected = dimensionSignature(name);
+  const actual = dimensionSignature(evidence);
+  return multisetContains(actual.markers, expected.markers) && multisetContains(actual.numbers, expected.numbers);
+}
+
+export function proposedSize(evidence: string): { value?: string; reason?: string } {
+  const source = evidence.replace(/×/gu, "x").replace(/[\u200B-\u200D\uFEFF]/gu, "");
+  const declaredUnits = [...source.matchAll(new RegExp(`(?<![a-z])${UNIT_PATTERN}\\b|\"`, "gi"))].map((match) => canonicalUnit(match[0]));
   const uniqueUnits = [...new Set(declaredUnits)];
   if (uniqueUnits.length !== 1) return { reason: uniqueUnits.length === 0 ? "no explicit unit in evidence" : "mixed units in evidence" };
+  if (hasMalformedDimensionNumber(source)) return { reason: "malformed decimal dimension requires review" };
   const unit = uniqueUnits[0]!;
-  const axisToken = "(?:SH|AH|DH|TH|CL|W|D|H|L|R|C)";
-  if (new RegExp(`${axisToken}\\s*[:=]?\\s*\\d+(?:[.,]\\d+)?\\s*(?:/|-)\\s*\\d+(?:[.,]\\d+)?`, "i").test(source)) {
-    return { reason: "range dimension requires review" };
+
+  const markerRegex = new RegExp(`${MARKER_PREFIX_PATTERN}(${MARKER_PATTERN})\\s*[:=]?\\s*(${MEASUREMENT_PATTERN})`, "giu");
+  const markerMatches = [...source.matchAll(markerRegex)];
+  const consumedSpans: TextSpan[] = markerMatches.map((match) => ({ start: match.index!, end: match.index! + match[0].length }));
+  const sourceAxes = new Map<string, Measurement>();
+  const diameterMeasurements: Measurement[] = [];
+  for (const match of markerMatches) {
+    const kind = markerKind(match[1]!);
+    const measurement = parseMeasurement(match[2]!, unit);
+    if (!measurement) return { reason: "unsupported measurement" };
+    if (kind === "DIAMETER") {
+      diameterMeasurements.push(measurement);
+      continue;
+    }
+    const existing = sourceAxes.get(kind);
+    if (existing && !measurementsEqual(existing, measurement)) return { reason: `conflicting ${kind} values` };
+    sourceAxes.set(kind, measurement);
   }
-  if (new RegExp(`${axisToken}\\s*\\.\\s*\\d|${axisToken}\\s*[:=]?\\s*\\d+,\\s+\\d`, "i").test(source)) {
-    return { reason: "malformed decimal dimension requires review" };
-  }
-  const optionalInlineUnit = "(?:(?:mm|cm|m|inches|inch|in|\\\")\\s*)?";
-  if (new RegExp(`${axisToken}\\s*[:=]?\\s*\\d+(?:[.,]\\d+)?\\s*${optionalInlineUnit}(?:x|\\*)\\s*\\d`, "i").test(source)) {
-    return { reason: "unlabelled axis requires review" };
-  }
-  const axisMatches = [...source.matchAll(/(?:^|[\s,(]|[x*/]\s*)((?:SH|AH|DH|TH|CL|W|D|H|L|R|C))\s*[:=]?\s*(\d+(?:[.,]\d+)?)/gi)];
-  const sourceAxes = new Map<string, number>();
-  for (const match of axisMatches) {
-    const axis = match[1]!.toUpperCase();
-    const rawNumber = Number(match[2]!.replace(",", "."));
-    const millimetres = toMillimetres(rawNumber, unit);
-    if (!Number.isFinite(rawNumber) || millimetres === null) return { reason: "unsupported measurement" };
-    if (sourceAxes.has(axis) && sourceAxes.get(axis) !== millimetres) return { reason: `conflicting ${axis} values` };
-    sourceAxes.set(axis, millimetres);
-  }
-  const parsed = new Map<string, number>();
-  const setCanonical = (axis: string, value: number | undefined): string | null => {
-    if (value === undefined) return null;
-    if (parsed.has(axis) && parsed.get(axis) !== value) return `conflicting canonical ${axis} values`;
+
+  const parsed = new Map<string, Measurement>();
+  const setCanonical = (axis: string, value: Measurement | undefined): string | null => {
+    if (!value) return null;
+    const existing = parsed.get(axis);
+    if (existing && !measurementsEqual(existing, value)) return `conflicting canonical ${axis} values`;
     parsed.set(axis, value);
     return null;
   };
+
   let mappingError: string | null = null;
+  let standaloneR: Measurement | undefined;
   if (sourceAxes.has("L")) {
+    if (sourceAxes.has("R")) return { reason: "ambiguous L/R axis combination" };
     mappingError ??= setCanonical("W", sourceAxes.get("L"));
     mappingError ??= setCanonical("D", sourceAxes.get("W"));
     mappingError ??= setCanonical("D", sourceAxes.get("D"));
-  } else if (sourceAxes.has("R")) {
-    mappingError ??= setCanonical("W", sourceAxes.get("D") ?? sourceAxes.get("W"));
+  } else if (sourceAxes.has("D") && sourceAxes.has("R")) {
+    if (sourceAxes.has("W")) return { reason: "ambiguous W/D/R axis combination" };
+    mappingError ??= setCanonical("W", sourceAxes.get("D"));
     mappingError ??= setCanonical("D", sourceAxes.get("R"));
   } else {
     mappingError ??= setCanonical("W", sourceAxes.get("W"));
     mappingError ??= setCanonical("D", sourceAxes.get("D"));
+    if (sourceAxes.has("R")) {
+      if (sourceAxes.has("W") || sourceAxes.has("D")) return { reason: "ambiguous standalone R axis" };
+      standaloneR = sourceAxes.get("R");
+    }
   }
   mappingError ??= setCanonical("H", sourceAxes.get("H"));
   mappingError ??= setCanonical("H", sourceAxes.get("C"));
-  for (const axis of ["SH", "AH", "DH", "TH", "CL"]) {
-    mappingError ??= setCanonical(axis, sourceAxes.get(axis));
-  }
+  for (const axis of ["SH", "AH", "DH", "TH", "CL"]) mappingError ??= setCanonical(axis, sourceAxes.get(axis));
   if (mappingError) return { reason: mappingError };
-  const diameterMatches = [...source.matchAll(/(?:Ø|Φ|\b(?:DIA(?:METER)?\.?|DI|DK))\s*[:=]?\s*(\d+(?:[.,]\d+)?)/gi)];
-  if (diameterMatches.length > 0) {
-    const diameters = diameterMatches.map((match) => toMillimetres(Number(match[1]!.replace(",", ".")), unit));
-    if (diameters.some((value) => value === null)) return { reason: "unsupported diameter unit" };
-    const uniqueDiameters = [...new Set(diameters as number[])];
-    if (uniqueDiameters.length !== 1) return { reason: "conflicting diameter values" };
-    const diameter = uniqueDiameters[0]!;
-    const unlabelledHeight = /(?:Ø|Φ|\b(?:DIA(?:METER)?\.?|DI|DK))\s*[:=]?\s*\d+(?:[.,]\d+)?\s*(?:(?:mm|cm|m|inches|inch|in|")\s*)?(?:x|\*)\s*(?![a-z])(\d+(?:[.,]\d+)?)/i.exec(source);
-    if (unlabelledHeight && !parsed.has("H")) {
-      const height = toMillimetres(Number(unlabelledHeight[1]!.replace(",", ".")), unit);
-      if (height === null) return { reason: "unsupported diameter height unit" };
-      parsed.set("H", height);
-    }
 
-    if (!parsed.has("W") && !parsed.has("D")) {
+  let diameter: Measurement | undefined = standaloneR;
+  for (const candidate of diameterMeasurements) {
+    if (diameter && !measurementsEqual(diameter, candidate)) return { reason: "conflicting diameter values" };
+    diameter = candidate;
+  }
+
+  const inferredHeightRegex = new RegExp(
+    `${MARKER_PREFIX_PATTERN}(${DIAMETER_PATTERN})\\s*[:=]?\\s*${MEASUREMENT_PATTERN}\\s*${UNIT_PATTERN}?\\s*(?:x|\\*)\\s*(?!${MARKER_PATTERN}\\b)(${MEASUREMENT_PATTERN})\\s*${UNIT_PATTERN}?`,
+    "giu",
+  );
+  const inferredHeightMatches = [...source.matchAll(inferredHeightRegex)];
+  if (inferredHeightMatches.length > 1) return { reason: "multiple unlabelled diameter heights" };
+  if (inferredHeightMatches.length === 1) {
+    if (parsed.has("H")) return { reason: "unlabelled axis requires review" };
+    const inferredHeight = parseMeasurement(inferredHeightMatches[0]![2]!, unit);
+    if (!inferredHeight) return { reason: "unsupported diameter height" };
+    parsed.set("H", inferredHeight);
+    consumedSpans.push({
+      start: inferredHeightMatches[0]!.index!,
+      end: inferredHeightMatches[0]!.index! + inferredHeightMatches[0]![0].length,
+    });
+  }
+
+  if (diameter) {
+    const width = parsed.get("W");
+    const depth = parsed.get("D");
+    if (!width && !depth) {
       parsed.set("W", diameter);
       parsed.set("D", diameter);
-    } else if (!parsed.has("W")) {
+    } else if (!width) {
       parsed.set("W", diameter);
-    } else if (!parsed.has("D")) {
+    } else if (!depth) {
       parsed.set("D", diameter);
-    } else if (parsed.get("W") !== diameter && parsed.get("D") !== diameter) {
+    } else if (!measurementsEqual(width, diameter) || !measurementsEqual(depth, diameter)) {
       return { reason: "diameter conflicts with W and D" };
     }
   }
-  if (parsed.size === 0) {
-    const ordered = new RegExp("(\\d+(?:[.,]\\d+)?)\\s*(?:x|\\*)\\s*(\\d+(?:[.,]\\d+)?)(?:\\s*(?:x|\\*)\\s*(\\d+(?:[.,]\\d+)?))?\\s*" + unit.replace('"', '\\"'), "i").exec(source);
-    if (ordered) {
-      const values = ordered.slice(1).filter(Boolean).map((value) => toMillimetres(Number(value.replace(",", ".")), unit));
-      if (values.some((value) => value === null)) return { reason: "unsupported ordered measurement" };
-      const labels = values.length === 3 ? ["W", "D", "H"] : ["W", "D"];
-      return { value: labels.map((label, index) => `${label}${normalizeNumber(values[index]!)} mm`).map((part) => part.replace(/ mm$/, "")).join(" x ") + " mm" };
-    }
-    return { reason: "no labelled dimensions" };
+
+  if (markerMatches.length === 0) {
+    const factorPattern = `${NUMBER_PATTERN}\\s*${UNIT_PATTERN}?`;
+    const orderedRegex = new RegExp(
+      `(?<![\\d.,/\\-–—~x*])${factorPattern}(?:\\s*(?:x|\\*)\\s*${factorPattern})+(?!\\s*(?:x|\\*)|[\\/\\-–—~]\\s*\\d)`,
+      "giu",
+    );
+    const orderedMatches = [...source.matchAll(orderedRegex)];
+    if (orderedMatches.length !== 1) return { reason: orderedMatches.length === 0 ? "no labelled dimensions" : "multiple unlabelled dimension groups" };
+    const values = [...orderedMatches[0]![0].matchAll(new RegExp(NUMBER_PATTERN, "gu"))]
+      .map((match) => toMillimetres(Number(match[0].replace(",", ".")), unit));
+    if (values.length > 3) return { reason: "too many unlabelled dimensions" };
+    if (values.length < 2 || values.some((value) => value === null || !Number.isFinite(value))) return { reason: "unsupported ordered measurement" };
+    const labels = values.length === 3 ? ["W", "D", "H"] : ["W", "D"];
+    labels.forEach((label, index) => parsed.set(label, { values: [values[index]!] }));
+    consumedSpans.push({
+      start: orderedMatches[0]!.index!,
+      end: orderedMatches[0]!.index! + orderedMatches[0]![0].length,
+    });
   }
-  const primary = ["W", "D", "H"].flatMap((axis) => parsed.has(axis) ? `${axis}${normalizeNumber(parsed.get(axis)!)} mm` : []);
-  if (primary.length === 0) return { reason: "only auxiliary dimensions found" };
-  const auxiliary = ["SH", "AH", "DH", "TH", "CL"].flatMap((axis) => parsed.has(axis) ? `${axis}${normalizeNumber(parsed.get(axis)!)} mm` : []);
-  const primaryDisplay = primary.map((part) => part.replace(/ mm$/, "")).join(" x ") + " mm";
+
+  const unconsumed = numericOccurrences(source, consumedSpans).filter((numberSpan) => !consumedSpans.some((consumed) => spanContains(consumed, numberSpan)));
+  if (unconsumed.length > 0) return { reason: "unconsumed dimension token requires review" };
+
+  const primary = ["W", "D", "H"].flatMap((axis) => parsed.has(axis) ? `${axis}${formatMeasurement(parsed.get(axis)!)} mm` : []);
+  if (primary.length === 0) return { reason: parsed.size === 0 ? "no labelled dimensions" : "only auxiliary dimensions found" };
+  const auxiliary = ["SH", "AH", "DH", "TH", "CL"].flatMap((axis) => parsed.has(axis) ? `${axis}${formatMeasurement(parsed.get(axis)!)} mm` : []);
+  const primaryDisplay = primary.map((part) => part.replace(/ mm$/u, "")).join(" x ") + " mm";
   return { value: auxiliary.length === 0 ? primaryDisplay : `${primaryDisplay} (${auxiliary.join(", ")})` };
 }
 
 async function rest<T>(table: Table, query: URLSearchParams, init: RequestInit = {}): Promise<T> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error("Missing Supabase server environment");
   const url = new URL(`/rest/v1/${table}`, SUPABASE_URL);
   url.search = query.toString();
-  const response = await fetch(url, { ...init, headers: { apikey: SUPABASE_KEY!, Authorization: `Bearer ${SUPABASE_KEY!}`, "Content-Type": "application/json", ...(init.headers ?? {}) } });
+  const response = await fetch(url, { ...init, headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", ...(init.headers ?? {}) } });
   if (!response.ok) throw new Error(`${table} request failed: ${response.status}`);
   return response.json() as Promise<T>;
 }
@@ -148,6 +305,7 @@ async function readAll(table: Table): Promise<CatalogRow[]> {
 function unfence(value: string): string { return value.replace(/^```json\s*\n?|\n?```$/g, ""); }
 
 async function deepSeek(items: readonly CatalogRow[]): Promise<ModelItem[]> {
+  if (!DEEPSEEK_API_KEY) throw new Error("Missing DeepSeek server environment");
   const body = {
     model: "deepseek-v4-flash", thinking: { type: "disabled" }, response_format: { type: "json_object" },
     messages: [
@@ -189,7 +347,7 @@ async function processTable(table: Table, rows: CatalogRow[]): Promise<Outcome[]
     completed += 1; process.stderr.write(`${table}: ${completed}/${batches.length} batches\n`);
     return batch.map((row): Outcome => {
       const answer = byId.get(row.id)!;
-      if (answer.status !== "extracted" || !answer.evidence || !row.name.includes(answer.evidence)) return { ...row, table, status: answer.status === "extracted" ? "exception" : answer.status, proposed_size: null, evidence: answer.evidence, reason: answer.status === "extracted" ? "missing or non-exact evidence" : undefined };
+      if (answer.status !== "extracted" || !answer.evidence || !hasCompleteDimensionEvidence(row.name, answer.evidence)) return { ...row, table, status: answer.status === "extracted" ? "exception" : answer.status, proposed_size: null, evidence: answer.evidence, reason: answer.status === "extracted" ? "missing, non-exact, or incomplete evidence" : undefined };
       const normalized = proposedSize(answer.evidence);
       if (!normalized.value) return { ...row, table, status: "exception", proposed_size: null, evidence: answer.evidence, reason: normalized.reason };
       return { ...row, table, status: normalized.value === row.size ? "unchanged" : "ready", proposed_size: normalized.value, evidence: answer.evidence };
@@ -209,6 +367,7 @@ async function applyChanges(rows: Outcome[]): Promise<{ applied: string[]; stale
 }
 
 async function main(): Promise<void> {
+  if (!SUPABASE_URL || !SUPABASE_KEY || !DEEPSEEK_API_KEY) throw new Error("Missing Supabase or DeepSeek server environment");
   await mkdir(artifactDirectory, { recursive: true });
   const [products, variants] = await Promise.all([readAll("products"), readAll("variants")]);
   await writeFile(path.join(artifactDirectory, "catalog-snapshot.json"), JSON.stringify({ products, variants }, null, 2));
@@ -224,4 +383,7 @@ async function main(): Promise<void> {
   process.stdout.write(JSON.stringify({ artifactDirectory, scanned: outcomes.length, ready: counts.ready?.length ?? 0, unchanged: counts.unchanged?.length ?? 0, exceptions: exceptions.length, ...result }, null, 2) + "\n");
 }
 
-main().catch((error: unknown) => { process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : "unknown error"}\n`); process.exitCode = 1; });
+const isDirectExecution = process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isDirectExecution) {
+  main().catch((error: unknown) => { process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : "unknown error"}\n`); process.exitCode = 1; });
+}
