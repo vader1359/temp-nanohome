@@ -839,9 +839,11 @@ async function main(): Promise<void> {
   await Promise.all([
     writeFile(path.join(artifactDirectory, "reviewed-updates.json"), JSON.stringify(report, null, 2)),
     writeFile(path.join(artifactDirectory, "rollback.json"), JSON.stringify(
-      preflight
-        .filter((item) => applied.includes(item.id))
-        .map((item) => ({ id: item.id, sku: item.sku, size: item.currentSize })),
+      preflight.flatMap((item) =>
+        item.status === "ready" && applied.includes(item.id)
+          ? [{ id: item.id, sku: item.sku, size: item.currentSize }]
+          : []
+      ),
       null,
       2,
     )),
