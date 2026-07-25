@@ -130,18 +130,28 @@ describe("PublicChatWidget", () => {
     expect(document.querySelector("script")).toBeNull();
   });
 
-  it("renders the launcher only at desktop widths", async () => {
-    // Given: the global assistant launcher renders with the mobile footer.
+  it("keeps the launcher visible and clears a visible footer at every width on document scroll", async () => {
+    // Given: a visible semantic footer reaches into the viewport below the launcher.
     vi.stubGlobal("fetch", vi.fn(async () => customerContext()));
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+    let footerTop = 650;
+    const footer = document.createElement("footer");
+    footer.getBoundingClientRect = () => ({ top: footerTop, bottom: footerTop + 250, left: 0, right: 1024, width: 1024, height: 250, x: 0, y: footerTop, toJSON: () => ({}) });
+    document.body.append(footer);
     render(<PublicChatWidget locale="vi" />);
+
+    // When: the widget measures the footer and document scroll occurs.
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
-
-    // When: the launcher uses its responsive presentation rule.
     const launcher = screen.getByRole("button", { name: "Mở trợ lý nanoHome" });
+    expect(launcher.style.bottom).toBe("174px");
 
-    // Then: it is hidden below desktop widths so it cannot cover footer controls.
-    expect(launcher.className).toContain("hidden");
-    expect(launcher.className).toContain("xl:flex");
+    footerTop = 327;
+    fireEvent.scroll(document);
+
+    // Then: launcher recomputes bottom position on document scroll.
+    expect(launcher.className).toContain("flex");
+    expect(launcher.className).not.toContain("hidden");
+    expect(launcher.style.bottom).toBe("497px");
   });
 
   it("supports localized labels and restores launcher focus on Escape", async () => {
