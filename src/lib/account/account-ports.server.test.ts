@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   getAccountAuthPort,
   getAccountCartPort,
+  getAccountOffersPort,
   getAccountOrdersPort,
   getAccountProfilePort,
   getAccountWishlistPort,
@@ -73,6 +74,17 @@ describe("Account development ports", () => {
     const second = getAccountCartPort();
 
     // Then: mutations share the development fake repository.
+    expect(second).toBe(first);
+  });
+
+  it("returns the same account-scoped fake offers port", () => {
+    // Given: two Account-lane accessor calls.
+    const first = getAccountOffersPort();
+
+    // When: the accessor is invoked again.
+    const second = getAccountOffersPort();
+
+    // Then: reads share the development fake offer source.
     expect(second).toBe(first);
   });
 });
