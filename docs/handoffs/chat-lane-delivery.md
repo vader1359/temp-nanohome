@@ -29,10 +29,12 @@
 - `pnpm lint`: passed with no errors; pre-existing warnings remain outside this lane.
 - `git diff --check`: passed after each slice.
 - TypeScript LSP diagnostics are unavailable because the TypeScript server is not installed and installation was previously declined.
-- Browser QA could not render `/vi`: the local Next dev route repeatedly retried during middleware/page compilation and produced no response; no screenshots or browser PASS is claimed.
 - `pnpm build` completed its TypeScript phase but did not finish in the allotted command execution window. Treat the production build as pending environment investigation.
+- Live browser and HTTP QA remain blocked: the local Next server retries while compiling `/[locale]`, then exits before serving `/vi`. Component and route tests cover the corrected behavior, but no browser PASS is claimed.
 
 ## Foundation deltas and rollback
 
 - Activation ownership, required prerequisites, opaque payload examples, and blocked production work are in `docs/handoffs/chat-foundation-capabilities.md`.
+- Foundation must wire a server-owned client/IP rate limiter into `createLiveServerChatDependencies` before enabling `CHAT_ENABLED`. The current public route only applies a limiter when its dependency is supplied; do not enable the live provider without this control.
+- The v3 ordinary account-settings/personalization-policy migration remains Foundation-owned. This lane removed only the global banner and Chat prerequisite; it did not change consent data, tracking activation, retention, access control, or customer-data boundaries.
 - Every delivered commit is independently revertible. Keep all capability flags disabled until Foundation implements approved server-only adapters, migrations/RLS, retention/deletion, upload controls, secrets, and activation tests.
