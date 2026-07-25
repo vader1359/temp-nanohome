@@ -3,11 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const orchestration = vi.hoisted(() => ({
   orchestrate: vi.fn(),
 }));
-const consent = vi.hoisted(() => ({
-  authorize: vi.fn(async () => true),
-}));
-
-vi.mock("@/lib/chat/consent-adapter", () => ({ hasCurrentAiProcessingConsent: consent.authorize }));
 
 vi.mock("@/lib/chat/deepseek/orchestrator", () => ({
   orchestratePublicChat: orchestration.orchestrate,
@@ -40,7 +35,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
   vi.clearAllMocks();
-  consent.authorize.mockResolvedValue(true);
 });
 
 function readyDependencies(): { readonly restore: () => void; readonly sourceId: string } {
@@ -64,13 +58,28 @@ function readyDependencies(): { readonly restore: () => void; readonly sourceId:
       ...dependencies,
       grounding: { kind: "available" },
       registries: { ...dependencies.registries, sources: [{ sourceId: source.sourceId, label: "Catalog guide" }] },
-      authorizeAiProcessing: async () => true,
     })),
     sourceId: source.sourceId,
   };
 }
 
 describe("POST /api/chat", () => {
+  it("emits the normal safe fallback for a valid same-origin anonymous request", async () => {
+    // Given
+    vi.stubEnv("CHAT_ENABLED", "true");
+    vi.stubEnv("DEEPSEEK_API_KEY", "test-key");
+    const restore = setServerChatDependenciesProvider(() => createServerChatDependencies());
+
+    // When
+    const response = await POST(request({ question: "Help me choose a chair", locale: "en", messageRef: "anonymous-fallback" }));
+    restore();
+
+    // Then
+    expect(response.status).toBe(200);
+    expect((await events(response)).map((event) => event.type)).toEqual(["message_started", "text_delta", "message_completed"]);
+    expect(orchestration.orchestrate).not.toHaveBeenCalled();
+  });
+
   it("emits validated public success events in order when orchestration returns a safe answer", async () => {
     // Given
     vi.stubEnv("CHAT_ENABLED", "true");
@@ -225,7 +234,6 @@ describe("POST /api/chat", () => {
     vi.stubEnv("DEEPSEEK_API_KEY", "test-key");
     const restore = setServerChatDependenciesProvider(() => ({
       ...createServerChatDependencies(),
-      authorizeAiProcessing: async () => true,
     }));
 
     // When
@@ -367,7 +375,6 @@ describe("POST /api/chat", () => {
     ready.restore();
     const restoreUnavailable = setServerChatDependenciesProvider(() => ({
       ...createServerChatDependencies(),
-      authorizeAiProcessing: async () => true,
     }));
 
     const secondResponse = await POST(request(body));

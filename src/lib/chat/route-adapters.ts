@@ -1,6 +1,5 @@
 import "server-only";
 
-import { hasCurrentAiProcessingConsent } from "./consent-adapter";
 import { createPublicCatalogAdapters } from "./catalog-adapter";
 import type { PublicChatLocale } from "./contracts";
 import { ApprovedSourceStore, type RetrievalLocale } from "./retrieval";
@@ -13,7 +12,6 @@ export type ServerChatDependencies = Readonly<{
   readonly grounding: { readonly kind: "unavailable"; readonly reason: "catalog_adapter_not_configured" } | { readonly kind: "available" };
   readonly registries: PublicChatServerRegistries;
   readonly retrieval: ApprovedSourceStore;
-  readonly authorizeAiProcessing: (request: Request) => Promise<boolean>;
   readonly rateLimit?: (request: Request) => Promise<boolean>;
   readonly tools: PublicChatToolAdapters;
 }>;
@@ -35,7 +33,6 @@ export function createServerChatDependencies(): ServerChatDependencies {
     grounding: { kind: "unavailable", reason: "catalog_adapter_not_configured" },
     registries: { products: [], sources: [], images: [] },
     retrieval: new ApprovedSourceStore(),
-    authorizeAiProcessing: async () => false,
     tools: unavailableTools,
   };
 }
@@ -45,7 +42,6 @@ export function createLiveServerChatDependencies(locale: PublicChatLocale): Serv
     grounding: { kind: "available" },
     registries: { products: [], sources: [], images: [] },
     retrieval: createApprovedPublicKnowledgeStore(),
-    authorizeAiProcessing: hasCurrentAiProcessingConsent,
     tools: {
       catalog: createPublicCatalogAdapters(locale),
       site: { page: async (sectionKey, requestedLocale) => getApprovedPublicSitePage(sectionKey, requestedLocale) },
