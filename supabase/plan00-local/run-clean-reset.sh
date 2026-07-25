@@ -18,6 +18,8 @@ cp "$repo_root/supabase/tests/catalog_eligibility_test.sql" \
   "$harness_dir/tests/catalog_eligibility_test.sql"
 cp "$repo_root/supabase/tests/customer_data_foundation_test.sql" \
   "$harness_dir/tests/customer_data_foundation_test.sql"
+cp "$repo_root/supabase/tests/foundation_identity_accounts_test.sql" \
+  "$harness_dir/tests/foundation_identity_accounts_test.sql"
 cp "$repo_root/supabase/tests/commerce/checkout_ledger_test.sql" \
   "$harness_dir/tests/commerce/checkout_ledger_test.sql"
 cp "$repo_root/supabase/tests/amis_customer_memory_test.sql" \
@@ -41,6 +43,7 @@ fi
 "$supabase_bin" test db --local --workdir "$harness_dir" \
   "$harness_dir/tests/catalog_eligibility_test.sql" \
   "$harness_dir/tests/customer_data_foundation_test.sql" \
+  "$harness_dir/tests/foundation_identity_accounts_test.sql" \
   "$harness_dir/tests/commerce/checkout_ledger_test.sql" \
   "$harness_dir/tests/amis_customer_memory_test.sql" \
   "$harness_dir/tests/plan04_grounded_chat_test.sql" \
