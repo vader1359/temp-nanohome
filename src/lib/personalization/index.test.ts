@@ -36,6 +36,13 @@ const enabledFlags = {
   customerMemoryEnabled: true,
 };
 
+const enabledSettings = {
+  enabled: true,
+  useAmisHistory: true,
+  useBehaviorHistory: true,
+  policyVersion: "plan03-test-v1",
+};
+
 describe("local personalization domain", () => {
   it("Given default-off flags, When context resolves, Then it returns the curated default without loading memory", async () => {
     const memoryPort = { getForAuthenticatedCustomer: vi.fn() };
@@ -49,10 +56,11 @@ describe("local personalization domain", () => {
     expect(memoryPort.getForAuthenticatedCustomer).not.toHaveBeenCalled();
   });
 
-  it("Given enabled recent utility without personalization consent, When context resolves, Then session utility is retained without durable memory", async () => {
+  it("Given enabled settings without personalization consent, When context resolves, Then it returns the curated default", async () => {
     const resolver = createPersonalizationResolver({
       memoryPort: { getForAuthenticatedCustomer: vi.fn() },
       flags: enabledFlags,
+      settings: enabledSettings,
     });
 
     const result = await resolver.resolve({
@@ -60,15 +68,37 @@ describe("local personalization domain", () => {
       recent: [{ entityType: "variant", entityId: "variant-recent" }],
     });
 
-    expect(result.mode).toBe("session");
-    expect(result.recent).toEqual([{ entityType: "variant", entityId: "variant-recent" }]);
-    expect(result.explanationKeys).toEqual(["recently_viewed"]);
+    expect(result.mode).toBe("default");
+    expect(result.recent).toEqual([]);
+    expect(result.explanationKeys).toEqual(["curated_default"]);
+  });
+
+  it("Given enabled flags but no settings, When context resolves, Then it returns the curated default", async () => {
+    const resolver = createPersonalizationResolver({
+      memoryPort: { getForAuthenticatedCustomer: vi.fn() },
+      flags: enabledFlags,
+    });
+
+    const result = await resolver.resolve({
+      ...baseInput,
+      consent: { personalization: true },
+      recent: [{ entityType: "variant", entityId: "variant-recent" }],
+      explicit: [{ key: "room", value: "living-room", labelKey: "selected_room" }],
+    });
+
+    expect(result).toMatchObject({
+      mode: "default",
+      explicit: [],
+      recent: [],
+      explanationKeys: ["curated_default"],
+    });
   });
 
   it("Given consented enabled explicit preferences, When context resolves, Then explicit features and truthful labels are returned", async () => {
     const resolver = createPersonalizationResolver({
       memoryPort: { getForAuthenticatedCustomer: vi.fn() },
       flags: enabledFlags,
+      settings: enabledSettings,
     });
 
     const result = await resolver.resolve({
@@ -84,7 +114,7 @@ describe("local personalization domain", () => {
 
   it("Given an authenticated consented customer and enabled memory, When context resolves, Then it uses the Plan 03 authenticated contract", async () => {
     const memoryPort = { getForAuthenticatedCustomer: vi.fn().mockResolvedValue(memory) };
-    const resolver = createPersonalizationResolver({ memoryPort, flags: enabledFlags });
+    const resolver = createPersonalizationResolver({ memoryPort, flags: enabledFlags, settings: enabledSettings });
 
     const result = await resolver.resolve({
       ...baseInput,
@@ -102,6 +132,7 @@ describe("local personalization domain", () => {
     const resolver = createPersonalizationResolver({
       memoryPort: { getForAuthenticatedCustomer: vi.fn().mockResolvedValue(memory) },
       flags: enabledFlags,
+      settings: enabledSettings,
     });
 
     const result = await resolver.resolve({
@@ -121,15 +152,18 @@ describe("local personalization domain", () => {
     const unavailable = createPersonalizationResolver({
       memoryPort: { getForAuthenticatedCustomer: vi.fn().mockRejectedValue(new Error("outage")) },
       flags: enabledFlags,
+      settings: enabledSettings,
     });
     const missing = createPersonalizationResolver({
       memoryPort: { getForAuthenticatedCustomer: vi.fn().mockResolvedValue(null) },
       flags: enabledFlags,
+      settings: enabledSettings,
     });
     const stale = createPersonalizationResolver({
       memoryPort: { getForAuthenticatedCustomer: vi.fn().mockResolvedValue(memory) },
       maxMemoryAgeMs: 1,
       flags: enabledFlags,
+      settings: enabledSettings,
     });
     const input = { ...baseInput, userId: "user-1", consent: { personalization: true } };
 
