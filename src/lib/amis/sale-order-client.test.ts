@@ -23,7 +23,7 @@ describe("fetchAmisSaleOrders", () => {
       requestedPages.push(url.searchParams.get("page") ?? "");
       expect(url.searchParams.get("orderBy")).toBe("modified_date");
       expect(url.searchParams.get("isDescending")).toBe("true");
-      if (url.searchParams.get("page") === "1") {
+      if (url.searchParams.get("page") === "0") {
         return Response.json({ success: true, code: 200, data: [
           ...Array.from({ length: 99 }, (_, index) => saleOrder(index + 2, "2026-07-10T03:00:00.000Z")),
           saleOrder(1, "2026-07-10T02:00:00.000Z"),
@@ -40,7 +40,7 @@ describe("fetchAmisSaleOrders", () => {
       expect.objectContaining({ id: 2 }),
       expect.objectContaining({ id: 1 }),
     ]) });
-    expect(requestedPages).toEqual(["1", "2"]);
+    expect(requestedPages).toEqual(["0", "1"]);
   });
 
   it("collects every current record from a full page that also contains older records", async () => {
@@ -62,7 +62,7 @@ describe("fetchAmisSaleOrders", () => {
     // Then: all newer records from that page are retained and no further page is requested.
     expect(result).toEqual({ kind: "success", records: expect.arrayContaining([expect.objectContaining({ id: 2 })]) });
     expect(result.kind === "success" ? result.records : []).toHaveLength(99);
-    expect(requestedPages).toEqual(["1"]);
+    expect(requestedPages).toEqual(["0"]);
   });
 
   it("fails the complete fetch when a Sale Order mapping is malformed", async () => {

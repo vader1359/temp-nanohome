@@ -39,7 +39,7 @@ export async function fetchAmisSaleOrders(
   if (token.kind !== "success") return token;
 
   const records: AmisSaleOrder[] = [];
-  for (let page = 1; ; page += 1) {
+  for (let page = 0; ; page += 1) {
     const result = await fetchSaleOrderPage(config, token.token, page);
     if (result.kind !== "success") return result;
     records.push(...result.records.filter((record) => isAtOrAfterWatermark(record.modifiedDate, watermark)));
