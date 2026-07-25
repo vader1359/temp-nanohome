@@ -31,14 +31,6 @@ function event(value: object): string {
   return JSON.stringify({ responseId, ...value });
 }
 
-function customerContext(aiProcessing = true): Response {
-  return Response.json({
-    locale: "vi",
-    consent: { analytics: false, personalization: false, aiProcessing, aiConversationStorage: false, roomImageProcessing: false, roomImageStorage: false, version: "test" },
-    capabilities: { analyticsTracking: false, marketingTracking: false },
-  });
-}
-
 afterEach(() => vi.unstubAllGlobals());
 
 describe("public chat NDJSON reader", () => {
@@ -61,8 +53,24 @@ describe("public chat NDJSON reader", () => {
 });
 
 describe("PublicChatWidget", () => {
+  it("opens immediately without customer context or consent settings", () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) !== "/api/chat") throw new Error("unexpected request");
+      return ndjsonResponse([]);
+    });
+    const dispatchSpy = vi.spyOn(window, "dispatchEvent");
+    vi.stubGlobal("fetch", fetcher);
+    render(<PublicChatWidget locale="en" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open nanoHome assistant" }));
+
+    expect(screen.getByTestId("public-chat-panel")).toBeInTheDocument();
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(dispatchSpy).not.toHaveBeenCalledWith(expect.objectContaining({ type: "nanohome:open-consent-settings" }));
+  });
+
   it("renders a global mobile sheet and canonical visual product cards from structured events", async () => {
-    const fetcher = vi.fn(async (input: RequestInfo | URL) => String(input) === "/api/customer/context" ? customerContext() : ndjsonResponse([
+    const fetcher = vi.fn(async (_input: RequestInfo | URL) => ndjsonResponse([
       event({ type: "message_started" }),
       event({ type: "tool_started", tool: "search_catalog" }),
       event({ type: "text_delta", text: "Đây là lựa chọn đã được xác thực." }),
@@ -121,7 +129,6 @@ describe("PublicChatWidget", () => {
     render(<PublicChatWidget locale="vi" />);
 
     const launcher = screen.getByRole("button", { name: "Mở trợ lý nanoHome" });
-    await waitFor(() => expect(fetcher).toHaveBeenCalledWith("/api/customer/context", expect.anything()));
     fireEvent.click(launcher);
     const panel = screen.getByTestId("public-chat-panel");
     expect(panel.className).toContain("inset-x-0");
@@ -154,10 +161,9 @@ describe("PublicChatWidget", () => {
   });
 
   it("supports localized labels and restores launcher focus on Escape", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => customerContext()));
+    vi.stubGlobal("fetch", vi.fn(async () => ndjsonResponse([])));
     render(<PublicChatWidget locale="ko" />);
     const launcher = screen.getByRole("button", { name: "nanoHome 도우미 열기" });
-    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
     fireEvent.click(launcher);
     expect(screen.getByRole("region", { name: "nanoHome 도우미" })).toBeInTheDocument();
     fireEvent.keyDown(document, { key: "Escape" });
@@ -166,12 +172,11 @@ describe("PublicChatWidget", () => {
   });
 
   it("fails closed on an unsafe event and offers a localized retry", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => String(input) === "/api/customer/context" ? customerContext() : ndjsonResponse([
+    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo | URL) => ndjsonResponse([
       event({ type: "message_started" }),
       event({ type: "text_delta", text: "<img src=x>" }),
     ])));
     render(<PublicChatWidget locale="en" />);
-    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: "Open nanoHome assistant" }));
     fireEvent.change(screen.getByLabelText("Your question"), { target: { value: "Find a table" } });
     fireEvent.click(screen.getByRole("button", { name: "Send question" }));

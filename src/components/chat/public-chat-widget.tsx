@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
 import type { PublicChatLocale } from "@/lib/chat/contracts";
-import { clientCustomerContextSchema } from "@/lib/contracts/schemas";
 import {
   publicChatEventSchema,
   type PublicChatEvent,
@@ -386,37 +385,12 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
   const [status, setStatus] = useState("");
   const [entries, setEntries] = useState<readonly TranscriptEntry[]>([]);
   const [lastQuestion, setLastQuestion] = useState("");
-  const [aiProcessingAllowed, setAiProcessingAllowed] = useState(false);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => () => activeControllerRef.current?.abort(), []);
-  useEffect(() => {
-    const controller = new AbortController();
-    const refreshConsent = async () => {
-      try {
-        const response = await fetch("/api/customer/context", {
-          cache: "no-store",
-          credentials: "same-origin",
-          signal: controller.signal,
-        });
-        if (!response.ok) return;
-        const parsed = clientCustomerContextSchema.safeParse(await response.json());
-        if (parsed.success) setAiProcessingAllowed(parsed.data.consent.aiProcessing === true);
-      } catch (error: unknown) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) setAiProcessingAllowed(false);
-      }
-    };
-    const onCustomerContextChanged = () => { void refreshConsent(); };
-    void refreshConsent();
-    window.addEventListener("nanohome:customer-context-changed", onCustomerContextChanged);
-    return () => {
-      controller.abort();
-      window.removeEventListener("nanohome:customer-context-changed", onCustomerContextChanged);
-    };
-  }, []);
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -441,10 +415,6 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
   };
 
   const openAssistant = () => {
-    if (!aiProcessingAllowed) {
-      window.dispatchEvent(new Event("nanohome:open-consent-settings"));
-      return;
-    }
     setOpen(true);
   };
 
