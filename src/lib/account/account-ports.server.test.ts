@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getAccountAuthPort, getAccountOrdersPort, getAccountProfilePort } from "./account-ports.server";
+import { getAccountAuthPort, getAccountOrdersPort, getAccountProfilePort, getAccountWishlistPort } from "./account-ports.server";
 
 describe("Account development ports", () => {
   it("keeps the default auth fixture anonymous", async () => {
@@ -40,5 +40,22 @@ describe("Account development ports", () => {
 
     // Then: the default fake does not invent an order history.
     expect(page).toEqual({ orders: [], nextCursor: null });
+  });
+
+  it("exposes an empty durable wishlist port", async () => {
+    // Given: Account-lane development port accessors.
+    const wishlistPort = getAccountWishlistPort();
+    const account = {
+      accountId: "account_01",
+      firebaseUid: "firebase_01",
+      locale: "vi",
+      identities: [],
+    } as const;
+
+    // When: the account reads its initial wishlist.
+    const items = await wishlistPort.getItems(account);
+
+    // Then: the default fake does not invent saved items.
+    expect(items).toEqual([]);
   });
 });
