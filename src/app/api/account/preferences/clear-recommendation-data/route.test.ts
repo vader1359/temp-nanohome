@@ -20,7 +20,7 @@ describe("/api/account/preferences/clear-recommendation-data", () => {
     ports.clearRecommendationData.mockResolvedValue(preferences);
 
     // When: recommendation data is cleared.
-    const response = await POST();
+    const response = await POST(new Request("https://app.test/api/account/preferences/clear-recommendation-data", { method: "POST" }));
 
     // Then: the account-scoped port result is private and canonical.
     expect(response.status).toBe(200);
