@@ -462,7 +462,7 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
         aria-controls="public-chat-panel"
         aria-expanded={open}
         aria-label={text.launcher}
-        className="fixed bottom-24 right-4 z-[70] flex h-12 items-center gap-2 rounded-full bg-nh-footer px-4 text-sm font-semibold text-white shadow-xl transition-transform hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent motion-reduce:transition-none"
+        className="fixed bottom-24 right-4 z-[70] hidden h-12 items-center gap-2 rounded-full bg-nh-footer px-4 text-sm font-semibold text-white shadow-xl transition-transform hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent xl:flex motion-reduce:transition-none"
         onClick={openAssistant}
         ref={launcherRef}
         type="button"

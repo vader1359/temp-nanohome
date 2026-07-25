@@ -130,6 +130,20 @@ describe("PublicChatWidget", () => {
     expect(document.querySelector("script")).toBeNull();
   });
 
+  it("renders the launcher only at desktop widths", async () => {
+    // Given: the global assistant launcher renders with the mobile footer.
+    vi.stubGlobal("fetch", vi.fn(async () => customerContext()));
+    render(<PublicChatWidget locale="vi" />);
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+
+    // When: the launcher uses its responsive presentation rule.
+    const launcher = screen.getByRole("button", { name: "Mở trợ lý nanoHome" });
+
+    // Then: it is hidden below desktop widths so it cannot cover footer controls.
+    expect(launcher.className).toContain("hidden");
+    expect(launcher.className).toContain("xl:flex");
+  });
+
   it("supports localized labels and restores launcher focus on Escape", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => customerContext()));
     render(<PublicChatWidget locale="ko" />);
