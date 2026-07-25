@@ -5,7 +5,20 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 supabase_bin=${SUPABASE_BIN:-"$HOME/.supabase/bin/supabase"}
 harness_parent=$(mktemp -d "${TMPDIR:-/tmp}/nanohome-plan00.XXXXXX")
 harness_dir="$harness_parent/nanohome-ecommerce"
-trap 'rm -rf "$harness_parent"' EXIT INT TERM
+stack_started=0
+
+cleanup() {
+  status=$?
+
+  if [ "$stack_started" -eq 1 ]; then
+    "$supabase_bin" stop --no-backup --workdir "$harness_dir" >/dev/null 2>&1 || :
+  fi
+
+  rm -rf "$harness_parent"
+  exit "$status"
+}
+
+trap cleanup EXIT INT TERM
 
 mkdir -p "$harness_dir/migrations" "$harness_dir/tests/commerce"
 cp "$repo_root/supabase/config.toml" "$harness_dir/config.toml"
@@ -38,6 +51,8 @@ if [ "$#" -ne 0 ]; then
   exit 2
 fi
 
+"$supabase_bin" start --workdir "$harness_dir"
+stack_started=1
 "$supabase_bin" db reset --local --no-seed --yes --workdir "$harness_dir"
 "$supabase_bin" db lint --local --workdir "$harness_dir"
 "$supabase_bin" test db --local --workdir "$harness_dir" \
