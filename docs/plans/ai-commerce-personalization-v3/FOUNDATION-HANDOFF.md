@@ -44,20 +44,24 @@
 
 ### Local pgTAP blocker
 
-The local-only harness was not run to SQL completion. Observed runtime evidence:
+The local-only harness did not reach SQL or pgTAP execution. Exact command attempted on 2026-07-25:
 
-```text
-supabase start --debug
-failed to inspect service: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
+```sh
+docker info --format '{{.ServerVersion}} {{.OperatingSystem}}' && supabase/plan00-local/run-clean-reset.sh
 ```
 
+Exact terminal result:
+
 ```text
-/var/run/docker.sock: No such file or directory
 The command 'docker' could not be found in this WSL 2 distro.
 We recommend to activate the WSL integration in Docker Desktop settings.
+
+For details about using Docker Desktop with WSL 2, visit:
+
+https://docs.docker.com/go/wsl2/
 ```
 
-Docker Desktop reports a server from the Windows shim, but this WSL distro lacks Docker Desktop WSL integration. Enable the distro in Docker Desktop, then run exactly:
+The WSL shell currently cannot access Docker, so `supabase/plan00-local/run-clean-reset.sh` was not invoked and no local migration, lint, or pgTAP test ran. Enable the active WSL distro in Docker Desktop, then run exactly:
 
 ```sh
 supabase/plan00-local/run-clean-reset.sh
