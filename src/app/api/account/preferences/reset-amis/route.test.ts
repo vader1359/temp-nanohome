@@ -19,7 +19,7 @@ describe("/api/account/preferences/reset-amis", () => {
     ports.resetAmisHistory.mockResolvedValue({ kind: "recent_authentication_required" });
 
     // When: AMIS history is reset.
-    const response = await POST();
+    const response = await POST(new Request("https://app.test/api/account/preferences/reset-amis", { method: "POST" }));
 
     // Then: the response is private and asks for recent authentication.
     expect(response.status).toBe(409);
