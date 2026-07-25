@@ -20,7 +20,7 @@ describe("/api/account/security/logout-current", () => {
     ports.logoutCurrentSession.mockResolvedValue(result);
 
     // When: the bodyless logout action is requested.
-    const response = await POST();
+    const response = await POST(new Request("https://app.test/api/account/security/logout-current", { method: "POST" }));
 
     // Then: the account-scoped port result is private and canonical.
     expect(response.status).toBe(200);
