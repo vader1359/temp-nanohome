@@ -1,9 +1,11 @@
 import "server-only";
 
 import { createFakeAccountAuthPort } from "./auth-port";
+import { createFakeAccountOrdersPort } from "./orders-port";
 import { createFakeAccountProfilePort } from "./profile-port";
 
 const anonymousAuthPort = createFakeAccountAuthPort(null);
+const fakeOrdersPort = createFakeAccountOrdersPort();
 const fakeProfilePort = createFakeAccountProfilePort();
 
 /**
@@ -12,6 +14,10 @@ const fakeProfilePort = createFakeAccountProfilePort();
  */
 export function getAccountAuthPort() {
   return anonymousAuthPort;
+}
+
+export function getAccountOrdersPort() {
+  return fakeOrdersPort;
 }
 
 export function getAccountProfilePort() {
