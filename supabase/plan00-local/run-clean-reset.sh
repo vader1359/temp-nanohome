@@ -40,6 +40,8 @@ cp "$repo_root/supabase/tests/customer_data_foundation_test.sql" \
   "$harness_dir/supabase/tests/customer_data_foundation_test.sql"
 cp "$repo_root/supabase/tests/foundation_identity_accounts_test.sql" \
   "$harness_dir/supabase/tests/foundation_identity_accounts_test.sql"
+cp "$repo_root/supabase/tests/foundation_legacy_account_ownership_test.sql" \
+  "$harness_dir/supabase/tests/foundation_legacy_account_ownership_test.sql"
 cp "$repo_root/supabase/tests/commerce/checkout_ledger_test.sql" \
   "$harness_dir/supabase/tests/commerce/checkout_ledger_test.sql"
 cp "$repo_root/supabase/tests/amis_customer_memory_test.sql" \
@@ -66,6 +68,7 @@ stack_started=1
   "$harness_dir/supabase/tests/catalog_eligibility_test.sql" \
   "$harness_dir/supabase/tests/customer_data_foundation_test.sql" \
   "$harness_dir/supabase/tests/foundation_identity_accounts_test.sql" \
+  "$harness_dir/supabase/tests/foundation_legacy_account_ownership_test.sql" \
   "$harness_dir/supabase/tests/commerce/checkout_ledger_test.sql" \
   "$harness_dir/supabase/tests/amis_customer_memory_test.sql" \
   "$harness_dir/supabase/tests/plan04_grounded_chat_test.sql" \
