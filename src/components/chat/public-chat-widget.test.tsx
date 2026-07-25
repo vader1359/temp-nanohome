@@ -70,7 +70,7 @@ describe("PublicChatWidget", () => {
   });
 
   it("renders a global mobile sheet and canonical visual product cards from structured events", async () => {
-    const fetcher = vi.fn(async (_input: RequestInfo | URL) => ndjsonResponse([
+    const fetcher = vi.fn(async () => ndjsonResponse([
       event({ type: "message_started" }),
       event({ type: "tool_started", tool: "search_catalog" }),
       event({ type: "text_delta", text: "Đây là lựa chọn đã được xác thực." }),
@@ -172,7 +172,7 @@ describe("PublicChatWidget", () => {
   });
 
   it("fails closed on an unsafe event and offers a localized retry", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo | URL) => ndjsonResponse([
+    vi.stubGlobal("fetch", vi.fn(async () => ndjsonResponse([
       event({ type: "message_started" }),
       event({ type: "text_delta", text: "<img src=x>" }),
     ])));
