@@ -42,30 +42,23 @@
 - `git diff --check`: passed.
 - Shell syntax: `sh -n supabase/plan00-local/run-clean-reset.sh` passed.
 
-### Local pgTAP blocker
+### Local pgTAP evidence
 
-The local-only harness did not reach SQL or pgTAP execution. Exact command attempted on 2026-07-25:
+On 2026-07-25, Docker-backed local execution became available and the harness was repaired to mirror the temporary project under `supabase/`, including its migrations, seed, and pgTAP fixtures. It now renames duplicate historical migration versions only in the disposable copy, retaining source migration filenames unchanged.
 
-```sh
-docker info --format '{{.ServerVersion}} {{.OperatingSystem}}' && supabase/plan00-local/run-clean-reset.sh
-```
-
-Exact terminal result:
-
-```text
-The command 'docker' could not be found in this WSL 2 distro.
-We recommend to activate the WSL integration in Docker Desktop settings.
-
-For details about using Docker Desktop with WSL 2, visit:
-
-https://docs.docker.com/go/wsl2/
-```
-
-The WSL shell currently cannot access Docker, so `supabase/plan00-local/run-clean-reset.sh` was not invoked and no local migration, lint, or pgTAP test ran. Enable the active WSL distro in Docker Desktop, then run exactly:
+Exact command:
 
 ```sh
-supabase/plan00-local/run-clean-reset.sh
+sh -n supabase/plan00-local/run-clean-reset.sh && supabase/plan00-local/run-clean-reset.sh
 ```
+
+Observed result:
+
+- Local `supabase start`, `supabase db reset --local`, and `supabase db lint --local` completed.
+- All migrations applied through `20260724000000_foundation_customer_identity_accounts.sql`.
+- `foundation_identity_accounts_test.sql`: **passed**.
+- The wider nine-file pgTAP command remains non-zero due to existing non-Foundation test/runtime defects in customer data, commerce ledger, AMIS memory, grounded chat, vision, and personalization suites. The harness reported `Files=9, Tests=189, Result: FAIL`.
+- A subsequent reset intermittently exited without SQL detail after local bootstrap; its Supabase debug trace still showed the complete Foundation migration application. This does not open the full-suite gate.
 
 The harness creates a temporary workdir, starts a local stack there, resets/lints/tests only that stack, stops it with `--no-backup`, and removes the temporary workdir. It never links to or targets a live project.
 
