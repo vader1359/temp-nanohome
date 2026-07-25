@@ -47,7 +47,7 @@ export type AmisExportState =
 export type PaymentState =
   | "not_required"
   | "requires_method"
-  | "creating_zalopay_order"
+  | "creating_payment_request"
   | "awaiting_customer"
   | "create_failed"
   | "ambiguous"
