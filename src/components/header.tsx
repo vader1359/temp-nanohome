@@ -87,6 +87,7 @@ export function Header() {
   ] as const;
   const productsPath = `/${locale}/products`;
   const searchPath = `/${locale}/search`;
+  const accountSignInPath = `/${locale}/account/sign-in?returnTo=${encodeURIComponent(`${pathname}${currentQuery}`)}`;
   const localeOptions = [
     { code: "vi", label: "VN" },
     { code: "en", label: "EN" },
@@ -412,6 +413,15 @@ export function Header() {
             </nav>
             {/* Top links */}
             <div className="flex flex-col gap-3 pt-4">
+              {!isAuthenticated ? (
+                <Link
+                  href={accountSignInPath}
+                  onClick={() => setDrawerOpen(false)}
+                  className="text-sm leading-[18px] text-[#666]"
+                >
+                  {t("account")}
+                </Link>
+              ) : null}
               {topLeft.map((key) => (
                 <Link
                   key={key}
