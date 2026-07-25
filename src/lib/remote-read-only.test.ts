@@ -198,10 +198,14 @@ describe("remote read-only safeguard", () => {
       .toThrow(RemoteWriteBlockedError);
   });
 
+  it.each(["/api/v2/Customers", "/api/v2/Contacts"])("allows AMIS safe read on %s", (pathname) => {
+    expect(() => assertAmisRequestAllowed(new URL(`https://crmconnect.misa.vn${pathname}?page=0`), "GET"))
+      .not.toThrow();
+  });
+
   it.each([
     "/api/v2/Products/123",
     "/api/v2/Orders",
-    "/api/v2/Customers",
     "/api/v1/Products",
   ])("blocks AMIS GET on non-allowlisted path %s", (pathname) => {
     expect(() => assertAmisRequestAllowed(new URL(`https://crmconnect.misa.vn${pathname}`), "GET"))
