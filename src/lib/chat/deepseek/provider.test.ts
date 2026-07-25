@@ -126,6 +126,11 @@ describe("DeepSeek provider boundary", () => {
     );
     expect(systemPrompt).toContain('"kind":"answer"');
     expect(systemPrompt).toContain('"type":"link_list"');
+    expect(systemPrompt).toContain("Prompt version: public-advisor-v3");
+    expect(systemPrompt).toContain("Tone: polite, warm, and concise before detail.");
+    expect(systemPrompt).toContain("When English, use a respectful neutral form of address and never guess age, title, or gender.");
+    expect(systemPrompt).toContain("Use at most one light humorous line only when the topic is relaxed and it does not introduce a fact.");
+    expect(systemPrompt).toContain("Never use humor for payment, refund, delivery damage, complaints, privacy, account, accessibility, safety, price or stock disappointment, or staff escalation.");
   });
 
   it("joins multiple data lines in one SSE event before parsing JSON", () => {
