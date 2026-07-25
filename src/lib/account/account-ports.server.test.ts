@@ -7,6 +7,7 @@ import {
   getAccountOrdersPort,
   getAccountPreferencesPort,
   getAccountProfilePort,
+  getAccountSecurityPort,
   getAccountWishlistPort,
 } from "./account-ports.server";
 
@@ -97,6 +98,17 @@ describe("Account development ports", () => {
     const second = getAccountPreferencesPort();
 
     // Then: preference mutations share the development fake repository.
+    expect(second).toBe(first);
+  });
+
+  it("returns the same account-scoped fake security port", () => {
+    // Given: two Account-lane accessor calls.
+    const first = getAccountSecurityPort();
+
+    // When: the accessor is invoked again.
+    const second = getAccountSecurityPort();
+
+    // Then: session and deletion state remain account-local.
     expect(second).toBe(first);
   });
 });
