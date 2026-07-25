@@ -8,7 +8,6 @@ export const customerAdvisorContextSchema = customerMemorySchema.pick({
   discussedVariantIds: true,
   purchasedVariantIds: true,
   projectStage: true,
-  customerVisibleSummary: true,
   sourceUpdatedAt: true,
 }).strict();
 
@@ -24,7 +23,6 @@ export function createCustomerAdvisorContext(input: unknown): CustomerAdvisorCon
     discussedVariantIds,
     purchasedVariantIds,
     projectStage,
-    customerVisibleSummary,
     sourceUpdatedAt,
   } = memory.data;
   return customerAdvisorContextSchema.parse({
@@ -33,7 +31,6 @@ export function createCustomerAdvisorContext(input: unknown): CustomerAdvisorCon
     discussedVariantIds,
     purchasedVariantIds,
     ...(projectStage === undefined ? {} : { projectStage }),
-    ...(customerVisibleSummary === undefined ? {} : { customerVisibleSummary }),
     sourceUpdatedAt,
   });
 }

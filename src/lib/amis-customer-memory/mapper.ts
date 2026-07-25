@@ -10,7 +10,6 @@ const amisCustomerSchema = z.object({
   roomIds: z.array(z.string().min(1)).optional(),
   brandIds: z.array(z.string().min(1)).optional(),
   projectStage: z.string().min(1).optional(),
-  customerVisibleSummary: z.string().min(1).optional(),
 }).strip();
 
 const amisOrderLineSchema = z.object({
@@ -33,10 +32,11 @@ const amisMemoryInputSchema = z.object({
   orders: z.array(amisOrderSchema),
 }).strict();
 
-const latestTimestamp = (timestamps: readonly string[]): string => {
-  const latest = timestamps.reduce((current, candidate) => candidate > current ? candidate : current);
-  return latest;
-};
+const latestTimestamp = (timestamps: readonly string[]): string => timestamps.reduce((latest, candidate) => (
+  Date.parse(candidate) > Date.parse(latest) ? candidate : latest
+));
+
+const canonicalIds = (values: readonly string[]): readonly string[] => [...new Set(values)].sort();
 
 export const mapAmisCustomerMemory = (input: unknown): CustomerMemory => {
   const parsed = amisMemoryInputSchema.parse(input);
@@ -55,12 +55,11 @@ export const mapAmisCustomerMemory = (input: unknown): CustomerMemory => {
     linkId: parsed.linkId,
     ...(parsed.customer.type === undefined ? {} : { customerType: parsed.customer.type }),
     ...(parsed.customer.createdAt === undefined ? {} : { customerSinceBucket: parsed.customer.createdAt.slice(0, 4) }),
-    preferredRoomIds: parsed.customer.roomIds ?? [],
-    preferredBrandIds: parsed.customer.brandIds ?? [],
-    discussedVariantIds,
-    purchasedVariantIds,
+    preferredRoomIds: canonicalIds(parsed.customer.roomIds ?? []),
+    preferredBrandIds: canonicalIds(parsed.customer.brandIds ?? []),
+    discussedVariantIds: canonicalIds(discussedVariantIds),
+    purchasedVariantIds: canonicalIds(purchasedVariantIds),
     ...(parsed.customer.projectStage === undefined ? {} : { projectStage: parsed.customer.projectStage }),
-    ...(parsed.customer.customerVisibleSummary === undefined ? {} : { customerVisibleSummary: parsed.customer.customerVisibleSummary }),
     sourceUpdatedAt,
   });
 };

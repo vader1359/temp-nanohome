@@ -13,7 +13,7 @@ describe("AMIS customer memory mapper", () => {
         roomIds: ["room-1"],
         brandIds: ["brand-1"],
         projectStage: "planning",
-        customerVisibleSummary: "Prefers warm modern living rooms.",
+        customerVisibleSummary: "Customer private@example.test prefers warm modern living rooms.",
         email: "private@example.test",
         internalScore: 99,
       },
@@ -37,7 +37,6 @@ describe("AMIS customer memory mapper", () => {
       discussedVariantIds: [],
       purchasedVariantIds: ["variant-1"],
       projectStage: "planning",
-      customerVisibleSummary: "Prefers warm modern living rooms.",
       sourceUpdatedAt: "2026-01-03T00:00:00.000Z",
     });
     expect(result).not.toHaveProperty("email");
@@ -62,6 +61,35 @@ describe("AMIS customer memory mapper", () => {
     // When: the safe projection is derived.
     // Then: no unmapped line is exposed as purchase history.
     expect(result.purchasedVariantIds).toEqual([]);
+  });
+
+  it("Given duplicate and unordered AMIS values, When mapped, Then it produces canonical safe memory", () => {
+    const result = mapAmisCustomerMemory({
+      linkId: "link-1",
+      customer: {
+        id: "customer-1",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        roomIds: ["room-b", "room-a", "room-b"],
+        brandIds: ["brand-b", "brand-a", "brand-b"],
+      },
+      orders: [{
+        id: "approved-order",
+        updatedAt: "2026-01-01T23:00:00.000-02:00",
+        approvedStatus: "Đã duyệt",
+        status: "approved",
+        isDeleted: false,
+        lines: [
+          { sku: "sku-b", canonicalVariantId: "variant-b" },
+          { sku: "sku-a", canonicalVariantId: "variant-a" },
+          { sku: "sku-b-duplicate", canonicalVariantId: "variant-b" },
+        ],
+      }],
+    });
+
+    expect(result.preferredRoomIds).toEqual(["room-a", "room-b"]);
+    expect(result.preferredBrandIds).toEqual(["brand-a", "brand-b"]);
+    expect(result.purchasedVariantIds).toEqual(["variant-a", "variant-b"]);
+    expect(result.sourceUpdatedAt).toBe("2026-01-01T23:00:00.000-02:00");
   });
 
   it("Given active approved and interested orders, When mapped, Then it separates purchased and discussed variants", () => {

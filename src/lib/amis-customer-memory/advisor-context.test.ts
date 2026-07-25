@@ -11,7 +11,6 @@ describe("Customer Advisor context", () => {
       discussedVariantIds: ["variant-interested"],
       purchasedVariantIds: ["variant-purchased"],
       projectStage: "planning",
-      customerVisibleSummary: "Prefers warm lighting.",
       sourceUpdatedAt: "2026-07-25T00:00:00.000Z",
     });
 
@@ -21,7 +20,6 @@ describe("Customer Advisor context", () => {
       discussedVariantIds: ["variant-interested"],
       purchasedVariantIds: ["variant-purchased"],
       projectStage: "planning",
-      customerVisibleSummary: "Prefers warm lighting.",
       sourceUpdatedAt: "2026-07-25T00:00:00.000Z",
     });
   });
