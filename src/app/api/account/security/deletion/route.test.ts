@@ -37,4 +37,17 @@ describe("/api/account/security/deletion", () => {
     expect(response.status).toBe(422);
     expect(ports.confirmDeletion).not.toHaveBeenCalled();
   });
+
+  it("hides a rejected deletion port behind a generic private failure", async () => {
+    // Given: an authenticated account whose deletion port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account);
+    ports.beginDeletion.mockRejectedValue(new Error("deletion workflow failure"));
+
+    // When: deletion begins.
+    const response = await POST(new Request("https://app.test/api/account/security/deletion", { body: JSON.stringify({ action: "begin" }), headers: { "content-type": "application/json" }, method: "POST" }));
+
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
 });

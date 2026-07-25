@@ -1,39 +1,29 @@
-import { NextResponse } from "next/server";
-
 import { getAccountAuthPort, getAccountProfilePort } from "@/lib/account/account-ports.server";
 import { parseProfilePatch } from "@/lib/account/profile-schema";
-
-const privateHeaders = {
-  "Cache-Control": "private, no-store, max-age=0",
-  Vary: "Cookie",
-} as const;
-
-function privateJson(body: unknown, init: Readonly<{ readonly status: number }>): NextResponse {
-  return NextResponse.json(body, { ...init, headers: privateHeaders });
-}
+import { privateJson, withPrivateErrorBoundary } from "../private-response";
 
 async function getAuthenticatedAccount() {
   return getAccountAuthPort().getAuthenticatedAccount();
 }
 
-export async function GET(): Promise<NextResponse> {
+export const GET = withPrivateErrorBoundary(async (): Promise<Response> => {
   const account = await getAuthenticatedAccount();
   if (account === null) {
-    return privateJson({ error: "Authentication required" }, { status: 401 });
+    return privateJson({ error: "Authentication required" }, 401);
   }
 
   const profile = await getAccountProfilePort().getProfile(account);
-  return privateJson(profile, { status: 200 });
-}
+  return privateJson(profile);
+});
 
-export async function PATCH(request: Request): Promise<NextResponse> {
+export const PATCH = withPrivateErrorBoundary(async (request: Request): Promise<Response> => {
   const account = await getAuthenticatedAccount();
   if (account === null) {
-    return privateJson({ error: "Authentication required" }, { status: 401 });
+    return privateJson({ error: "Authentication required" }, 401);
   }
 
   if (!request.headers.get("content-type")?.includes("application/json")) {
-    return privateJson({ error: "Content-Type must be application/json" }, { status: 415 });
+    return privateJson({ error: "Content-Type must be application/json" }, 415);
   }
 
   let body: unknown;
@@ -41,7 +31,7 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     body = await request.json();
   } catch (error: unknown) {
     if (error instanceof SyntaxError) {
-      return privateJson({ error: "Malformed JSON" }, { status: 400 });
+      return privateJson({ error: "Malformed JSON" }, 400);
     }
     throw error;
   }
@@ -50,10 +40,10 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   if (!parsed.ok) {
     return privateJson(
       { fieldErrors: parsed.fieldErrors, submitted: parsed.submitted },
-      { status: 422 },
+      422,
     );
   }
 
   const profile = await getAccountProfilePort().patchProfile(account, parsed.value);
-  return privateJson(profile, { status: 200 });
-}
+  return privateJson(profile);
+});

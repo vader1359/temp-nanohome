@@ -44,6 +44,20 @@ describe("/api/account/preferences", () => {
     expect(response.headers.get("vary")).toBe("Cookie");
   });
 
+  it("hides a rejected preferences port behind a generic private failure", async () => {
+    // Given: an authenticated account whose preferences port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account);
+    ports.getPreferences.mockRejectedValue(new Error("preferences storage failure"));
+
+    // When: preferences are requested.
+    const response = await GET();
+
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500);
+    expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
+
   it("updates only a safe preference toggle", async () => {
     // Given: an authenticated account and canonical fake preferences.
     ports.getAuthenticatedAccount.mockResolvedValue(account);

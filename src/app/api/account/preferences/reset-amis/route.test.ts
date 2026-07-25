@@ -42,4 +42,18 @@ describe("/api/account/preferences/reset-amis", () => {
     expect(response.status).toBe(415);
     expect(ports.resetAmisHistory).not.toHaveBeenCalled();
   });
+
+  it("hides a rejected preferences action port behind a generic private failure", async () => {
+    // Given: an authenticated account whose AMIS action port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account);
+    ports.resetAmisHistory.mockRejectedValue(new Error("AMIS token failure"));
+
+    // When: AMIS history is reset.
+    const response = await POST(new Request("https://app.test/api/account/preferences/reset-amis", { method: "POST" }));
+
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500);
+    expect(response.headers.get("vary")).toBe("Cookie");
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
 });

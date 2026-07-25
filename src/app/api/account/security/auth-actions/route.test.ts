@@ -38,4 +38,17 @@ describe("/api/account/security/auth-actions", () => {
     expect(response.status).toBe(422);
     expect(ports.requestAuthAction).not.toHaveBeenCalled();
   });
+
+  it("hides a rejected security action port behind a generic private failure", async () => {
+    // Given: an authenticated account whose security action port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account);
+    ports.requestAuthAction.mockRejectedValue(new Error("identity action failure"));
+
+    // When: a declared auth action is requested.
+    const response = await POST(new Request("https://app.test/api/account/security/auth-actions", { body: JSON.stringify({ action: "unlink_email" }), headers: { "content-type": "application/json" }, method: "POST" }));
+
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
 });

@@ -1,18 +1,17 @@
 import { getAccountAuthPort, getAccountSecurityPort } from "@/lib/account/account-ports.server";
 import { parseSecurityAuthAction } from "@/lib/account/security-schema";
-
-const privateHeaders = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie" };
+import { privateJson, withPrivateErrorBoundary } from "../../private-response";
 
 async function parseJson(request: Request): Promise<unknown | null> {
   if (!request.headers.get("content-type")?.includes("application/json")) return null;
   try { return await request.json(); } catch { return null; }
 }
 
-export async function POST(request: Request) {
+export const POST = withPrivateErrorBoundary(async (request: Request): Promise<Response> => {
   const account = await getAccountAuthPort().getAuthenticatedAccount();
-  if (account === null) return Response.json({ error: "Authentication required" }, { headers: privateHeaders, status: 401 });
+  if (account === null) return privateJson({ error: "Authentication required" }, 401);
   const input = parseSecurityAuthAction(await parseJson(request));
-  if (input === null) return Response.json({ error: "Invalid auth action" }, { headers: privateHeaders, status: 422 });
+  if (input === null) return privateJson({ error: "Invalid auth action" }, 422);
   const result = await getAccountSecurityPort().requestAuthAction(account, input.action);
-  return Response.json(result, { headers: privateHeaders, status: result.kind === "recent_authentication_required" ? 409 : 200 });
-}
+  return privateJson(result, result.kind === "recent_authentication_required" ? 409 : 200);
+});

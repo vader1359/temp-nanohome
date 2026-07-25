@@ -2,14 +2,9 @@ import { ZodError } from "zod";
 
 import { parseAccountAuthFlowRequest } from "@/lib/account/auth-flow";
 import { getAccountAuthFlowPort } from "@/lib/account/auth-flow-ports.server";
+import { privateJson, withPrivateErrorBoundary } from "../private-response";
 
-const privateHeaders = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie" } as const;
-
-function privateJson(body: unknown, status: number): Response {
-  return Response.json(body, { headers: privateHeaders, status });
-}
-
-export async function POST(request: Request): Promise<Response> {
+export const POST = withPrivateErrorBoundary(async (request: Request): Promise<Response> => {
   if (!request.headers.get("content-type")?.includes("application/json")) {
     return privateJson({ error: "Invalid request" }, 415);
   }
@@ -27,4 +22,4 @@ export async function POST(request: Request): Promise<Response> {
     if (error instanceof ZodError) return privateJson({ error: "Invalid request" }, 422);
     throw error;
   }
-}
+});

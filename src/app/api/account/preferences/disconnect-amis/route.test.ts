@@ -41,4 +41,18 @@ describe("/api/account/preferences/disconnect-amis", () => {
     expect(response.status).toBe(422);
     expect(ports.disconnectAmis).not.toHaveBeenCalled();
   });
+
+  it("hides a rejected disconnect port behind a generic private failure", async () => {
+    // Given: an authenticated account whose AMIS disconnect port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account);
+    ports.disconnectAmis.mockRejectedValue(new Error("AMIS credential failure"));
+
+    // When: AMIS is disconnected.
+    const response = await POST(new Request("https://app.test/api/account/preferences/disconnect-amis", { method: "POST" }));
+
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500);
+    expect(response.headers.get("vary")).toBe("Cookie");
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
 });

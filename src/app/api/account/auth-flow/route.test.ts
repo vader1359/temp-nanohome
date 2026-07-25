@@ -46,4 +46,21 @@ describe("/api/account/auth-flow", () => {
     expect(response.status).toBe(400);
     expect(ports.submit).not.toHaveBeenCalled();
   });
+
+  it("hides a rejected auth-flow port behind a generic private failure", async () => {
+    // Given: an auth-flow port that rejects with sensitive details.
+    ports.submit.mockRejectedValue(new Error("identity provider credential failure"));
+
+    // When: a valid sign-in flow is submitted.
+    const response = await POST(new Request("https://app.test/api/account/auth-flow", {
+      body: JSON.stringify({ action: "start", locale: "vi", method: "password", password: "secret", returnTo: "/vi/products" }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }));
+
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500);
+    expect(response.headers.get("vary")).toBe("Cookie");
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
 });

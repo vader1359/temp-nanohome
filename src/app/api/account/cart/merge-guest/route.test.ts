@@ -24,6 +24,14 @@ describe("/api/account/cart/merge-guest", () => {
     // Then: strict parsing prevents the merge.
     expect(response.status).toBe(422); expect(ports.mergeGuestCart).not.toHaveBeenCalled();
   });
+  it("hides a rejected guest-cart merge port behind a generic private failure", async () => {
+    // Given: an authenticated account whose merge port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account); ports.mergeGuestCart.mockRejectedValue(new Error("merge storage failure"));
+    // When: a valid guest cart is merged.
+    const response = await POST(new Request("https://app.test/api/account/cart/merge-guest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ idempotencyKey: "merge-01", items: [{ quantity: 1, variantId: "chair-oak" }] }) }));
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500); await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
   it("delegates an idempotency key and selection-only guest entries", async () => {
     // Given: a valid authenticated guest selection.
     ports.getAuthenticatedAccount.mockResolvedValue(account); ports.mergeGuestCart.mockResolvedValue(cart);

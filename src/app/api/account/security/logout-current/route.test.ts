@@ -28,4 +28,18 @@ describe("/api/account/security/logout-current", () => {
     expect(ports.logoutCurrentSession).toHaveBeenCalledWith(account);
     await expect(response.json()).resolves.toEqual(result);
   });
+
+  it("hides a rejected current-session port behind a generic private failure", async () => {
+    // Given: an authenticated account whose logout port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account);
+    ports.logoutCurrentSession.mockRejectedValue(new Error("session revocation failure"));
+
+    // When: the bodyless logout action is requested.
+    const response = await POST(new Request("https://app.test/api/account/security/logout-current", { method: "POST" }));
+
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500);
+    expect(response.headers.get("vary")).toBe("Cookie");
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
 });

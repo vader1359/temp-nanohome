@@ -1,20 +1,15 @@
 import { getAccountAuthPort, getAccountPreferencesPort } from "@/lib/account/account-ports.server";
 import { parseAccountPreferencesPatch } from "@/lib/account/preferences-schema";
+import { privateJson, withPrivateErrorBoundary } from "../private-response";
 
-const privateHeaders = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie" };
-
-function privateJson(body: unknown, status: number) {
-  return Response.json(body, { headers: privateHeaders, status });
-}
-
-export async function GET() {
+export const GET = withPrivateErrorBoundary(async (): Promise<Response> => {
   const account = await getAccountAuthPort().getAuthenticatedAccount();
   if (account === null) return privateJson({ error: "Authentication required" }, 401);
 
   return privateJson(await getAccountPreferencesPort().getPreferences(account), 200);
-}
+});
 
-export async function PATCH(request: Request) {
+export const PATCH = withPrivateErrorBoundary(async (request: Request): Promise<Response> => {
   const account = await getAccountAuthPort().getAuthenticatedAccount();
   if (account === null) return privateJson({ error: "Authentication required" }, 401);
   if (!request.headers.get("content-type")?.includes("application/json")) {
@@ -32,4 +27,4 @@ export async function PATCH(request: Request) {
   if (patch === null) return privateJson({ error: "Invalid preferences patch" }, 422);
 
   return privateJson(await getAccountPreferencesPort().updatePreferences(account, patch), 200);
-}
+});

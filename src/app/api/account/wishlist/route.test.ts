@@ -49,6 +49,20 @@ describe("/api/account/wishlist", () => {
     expect(ports.getItems).not.toHaveBeenCalled();
   });
 
+  it("hides a rejected wishlist port behind a generic private failure", async () => {
+    // Given: an authenticated account whose wishlist port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account);
+    ports.getItems.mockRejectedValue(new Error("wishlist storage failure"));
+
+    // When: the wishlist is requested.
+    const response = await GET();
+
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500);
+    expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
+
   it("passes only a validated canonical variant id to the authenticated account port", async () => {
     // Given: an authenticated account and a current server presentation.
     ports.getAuthenticatedAccount.mockResolvedValue(account);

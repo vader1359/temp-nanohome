@@ -27,6 +27,20 @@ describe("/api/account/security", () => {
     expect(ports.getSecurity).not.toHaveBeenCalled();
   });
 
+  it("hides a rejected security port behind a generic private failure", async () => {
+    // Given: an authenticated account whose security port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account);
+    ports.getSecurity.mockRejectedValue(new Error("session store failure"));
+
+    // When: security data is requested.
+    const response = await GET();
+
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500);
+    expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
+
   it("derives the account only from the auth port", async () => {
     // Given: an authenticated account and a masked security presentation.
     ports.getAuthenticatedAccount.mockResolvedValue(account);

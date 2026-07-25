@@ -26,4 +26,18 @@ describe("/api/account/security/revoke-all", () => {
     expect(response.headers.get("vary")).toBe("Cookie");
     await expect(response.json()).resolves.toEqual({ kind: "recent_authentication_required" });
   });
+
+  it("hides a rejected revoke-all port behind a generic private failure", async () => {
+    // Given: an authenticated account whose session port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account);
+    ports.revokeAllSessions.mockRejectedValue(new Error("session revocation failure"));
+
+    // When: all sessions are revoked.
+    const response = await POST(new Request("https://app.test/api/account/security/revoke-all", { method: "POST" }));
+
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500);
+    expect(response.headers.get("vary")).toBe("Cookie");
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
 });

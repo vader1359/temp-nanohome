@@ -1,16 +1,6 @@
-import { NextResponse } from "next/server";
-
 import { getAccountAuthPort, getAccountWishlistPort } from "@/lib/account/account-ports.server";
 import { parseWishlistItem } from "@/lib/account/wishlist-schema";
-
-const privateHeaders = {
-  "Cache-Control": "private, no-store, max-age=0",
-  Vary: "Cookie",
-} as const;
-
-function privateJson(body: unknown, status: number): NextResponse {
-  return NextResponse.json(body, { headers: privateHeaders, status });
-}
+import { privateJson, withPrivateErrorBoundary } from "../private-response";
 
 async function parseRequest(request: Request): Promise<unknown | null> {
   if (!request.headers.get("content-type")?.includes("application/json")) return null;
@@ -22,14 +12,14 @@ async function parseRequest(request: Request): Promise<unknown | null> {
   }
 }
 
-export async function GET() {
+export const GET = withPrivateErrorBoundary(async (): Promise<Response> => {
   const account = await getAccountAuthPort().getAuthenticatedAccount();
   if (account === null) return privateJson({ error: "Authentication required" }, 401);
   const items = await getAccountWishlistPort().getItems(account);
   return privateJson({ items }, 200);
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withPrivateErrorBoundary(async (request: Request): Promise<Response> => {
   const account = await getAccountAuthPort().getAuthenticatedAccount();
   if (account === null) return privateJson({ error: "Authentication required" }, 401);
   const body = await parseRequest(request);
@@ -38,9 +28,9 @@ export async function POST(request: Request) {
   if (input === null) return privateJson({ error: "A canonical variant id is required" }, 422);
   const items = await getAccountWishlistPort().addItem(account, input.variantId);
   return privateJson({ items }, 200);
-}
+});
 
-export async function DELETE(request: Request) {
+export const DELETE = withPrivateErrorBoundary(async (request: Request): Promise<Response> => {
   const account = await getAccountAuthPort().getAuthenticatedAccount();
   if (account === null) return privateJson({ error: "Authentication required" }, 401);
   const body = await parseRequest(request);
@@ -49,4 +39,4 @@ export async function DELETE(request: Request) {
   if (input === null) return privateJson({ error: "A canonical variant id is required" }, 422);
   const items = await getAccountWishlistPort().removeItem(account, input.variantId);
   return privateJson({ items }, 200);
-}
+});

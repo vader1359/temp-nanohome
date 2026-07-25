@@ -45,4 +45,18 @@ describe("/api/account/preferences/clear-recommendation-data", () => {
     expect(response.status).toBe(400);
     expect(ports.clearRecommendationData).not.toHaveBeenCalled();
   });
+
+  it("hides a rejected clear-data port behind a generic private failure", async () => {
+    // Given: an authenticated account whose recommendation-data port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account);
+    ports.clearRecommendationData.mockRejectedValue(new Error("recommendation data failure"));
+
+    // When: recommendation data is cleared.
+    const response = await POST(new Request("https://app.test/api/account/preferences/clear-recommendation-data", { method: "POST" }));
+
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500);
+    expect(response.headers.get("vary")).toBe("Cookie");
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
 });

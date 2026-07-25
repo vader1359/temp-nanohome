@@ -54,6 +54,21 @@ describe("/api/account/profile", () => {
     expect(response.headers.get("vary")).toBe("Cookie");
   });
 
+  it("hides a rejected profile port behind a generic private failure", async () => {
+    // Given: an authenticated account whose profile port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account);
+    ports.getProfile.mockRejectedValue(new Error("profile database credential failure"));
+
+    // When: the profile is requested.
+    const response = await GET();
+
+    // Then: the rejection does not expose port details.
+    expect(response.status).toBe(500);
+    expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+    expect(response.headers.get("vary")).toBe("Cookie");
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
+
   it("normalizes a changed patch without accepting an account id", async () => {
     // Given: an authenticated account and its fake profile.
     ports.getAuthenticatedAccount.mockResolvedValue(account);

@@ -77,6 +77,23 @@ describe("/api/account/merge-guest-state", () => {
     expect(ports.mergeGuestItems).not.toHaveBeenCalled();
   });
 
+  it("hides a rejected guest-state merge port behind a generic private failure", async () => {
+    // Given: an authenticated account whose guest-state port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account);
+    ports.mergeGuestItems.mockRejectedValue(new Error("guest state storage failure"));
+
+    // When: valid guest variant ids are submitted.
+    const response = await POST(new Request("https://app.test/api/account/merge-guest-state", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ idempotencyKey: "merge-01", variantIds: ["variant-01"] }),
+    }));
+
+    // Then: the rejection remains private and generic.
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
+
   it("returns the port's canonical merged set", async () => {
     // Given: a valid authenticated merge and a canonical server response.
     ports.getAuthenticatedAccount.mockResolvedValue(account);

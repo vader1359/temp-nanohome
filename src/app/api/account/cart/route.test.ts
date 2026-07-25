@@ -20,6 +20,14 @@ describe("/api/account/cart", () => {
     // Then: no cart port is reached.
     expect(response.status).toBe(401); expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0"); expect(response.headers.get("vary")).toBe("Cookie"); expect(ports.getCart).not.toHaveBeenCalled();
   });
+  it("hides a rejected cart port behind a generic private failure", async () => {
+    // Given: an authenticated account whose cart port rejects with sensitive details.
+    ports.getAuthenticatedAccount.mockResolvedValue(account); ports.getCart.mockRejectedValue(new Error("cart connection failure"));
+    // When: the cart is read.
+    const response = await GET();
+    // Then: the rejection does not expose port details.
+    expect(response.status).toBe(500); expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0"); expect(response.headers.get("vary")).toBe("Cookie"); await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+  });
   it("passes only strict cart additions to the account port", async () => {
     // Given: an authenticated account.
     ports.getAuthenticatedAccount.mockResolvedValue(account); ports.addItem.mockResolvedValue({ cart, status: "updated" });
