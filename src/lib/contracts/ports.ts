@@ -25,6 +25,47 @@ export type PaymentResponse = {
   readonly checkoutUrl: string;
 };
 
+export type PaymentNotification = {
+  readonly provider: string;
+  readonly payload: unknown;
+};
+
+export type VerifiedPaymentEvidence = {
+  readonly provider: string;
+  readonly paymentId: string;
+  readonly orderId: string;
+  readonly providerTransactionId: string;
+  readonly amount: number;
+  readonly currency: string;
+};
+
+export type PaymentRetrieval = {
+  readonly paymentId: string;
+};
+
+export type PaymentRetrievalResult =
+  | { readonly kind: "paid"; readonly evidence: VerifiedPaymentEvidence }
+  | { readonly kind: "unpaid" }
+  | { readonly kind: "processing" }
+  | { readonly kind: "failed" }
+  | { readonly kind: "ambiguous" };
+
+export type PaymentCancellationResult =
+  | { readonly kind: "cancelled" }
+  | { readonly kind: "already_paid"; readonly evidence: VerifiedPaymentEvidence }
+  | { readonly kind: "ambiguous" };
+
+export type PaymentNotificationVerificationResult =
+  | { readonly kind: "verified"; readonly evidence: VerifiedPaymentEvidence }
+  | { readonly kind: "rejected" };
+
+export type PaymentRefundIntent = {
+  readonly evidence: VerifiedPaymentEvidence;
+  readonly refundId: string;
+  readonly amount: number;
+  readonly reason: string;
+};
+
 export interface InventoryProvider {
   getAvailability(skus: readonly string[]): Promise<readonly InventoryAvailability[]>;
 }
@@ -35,6 +76,13 @@ export interface OperationalOrderProvider {
 
 export interface ZaloPayGateway {
   createPayment(input: PaymentRequest): Promise<PaymentResponse>;
+}
+
+export interface PaymentGateway {
+  createPayment(input: PaymentRequest): Promise<PaymentResponse>;
+  retrievePayment(input: PaymentRetrieval): Promise<PaymentRetrievalResult>;
+  cancelUnpaid(input: PaymentRetrieval): Promise<PaymentCancellationResult>;
+  verifyNotification(input: PaymentNotification): Promise<PaymentNotificationVerificationResult>;
 }
 
 export interface CustomerMemoryPort {
