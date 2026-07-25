@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { LoaderCircle, MessageCircle, Send, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, LoaderCircle, MessageCircle, Send, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 
 import type { PublicChatLocale } from "@/lib/chat/contracts";
 import { clientCustomerContextSchema } from "@/lib/contracts/schemas";
@@ -68,6 +68,11 @@ const labels = {
     unknownStock: "Cần xác nhận tồn kho",
     view: "Xem sản phẩm",
     handoff: "Cần nhân viên nanoHome xác nhận thêm.",
+    productRegion: "Sản phẩm đã xác thực",
+    imageRegion: "Hình ảnh đã xác thực",
+    previous: "Cuộn về trước",
+    next: "Cuộn tiếp",
+    itemCount: (count: number) => `${count} mục`,
   },
   en: {
     launcher: "Open nanoHome assistant",
@@ -89,6 +94,11 @@ const labels = {
     unknownStock: "Availability needs confirmation",
     view: "View product",
     handoff: "A nanoHome team member needs to confirm this.",
+    productRegion: "Verified products",
+    imageRegion: "Verified images",
+    previous: "Scroll back",
+    next: "Scroll forward",
+    itemCount: (count: number) => `${count} items`,
   },
   ko: {
     launcher: "nanoHome 도우미 열기",
@@ -110,6 +120,11 @@ const labels = {
     unknownStock: "재고 확인 필요",
     view: "제품 보기",
     handoff: "nanoHome 담당자의 추가 확인이 필요합니다.",
+    productRegion: "검증된 제품",
+    imageRegion: "검증된 이미지",
+    previous: "이전으로 스크롤",
+    next: "다음으로 스크롤",
+    itemCount: (count: number) => `${count}개 항목`,
   },
 } as const;
 
@@ -249,13 +264,71 @@ function ProductCard({ product, locale }: Readonly<{ product: ChatProduct; local
     </>
   );
 
-  const className = "flex min-w-0 flex-col rounded-lg border border-nh-border bg-white p-2 text-left transition-colors hover:border-nh-accent";
+  const className = "flex w-[78vw] max-w-[17rem] shrink-0 snap-start flex-col rounded-lg border border-nh-border bg-white p-2 text-left transition-colors hover:border-nh-accent sm:w-48 sm:max-w-none";
   return product.canonicalLink ? (
     <a aria-label={`${text.view}: ${product.title}`} className={className} href={product.canonicalLink}>
       {content}
     </a>
   ) : (
     <article className={className}>{content}</article>
+  );
+}
+
+function ChatCarousel({
+  label,
+  count,
+  previous,
+  next,
+  countLabel,
+  children,
+}: Readonly<{ label: string; count: number; previous: string; next: string; countLabel: string; children: ReactNode }>) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [canScroll, setCanScroll] = useState(false);
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(false);
+
+  const update = () => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    setCanScroll(scroller.scrollWidth > scroller.clientWidth + 1);
+    setAtStart(scroller.scrollLeft <= 1);
+    setAtEnd(scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 1);
+  };
+  useEffect(() => {
+    update();
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    scroller.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    const observer = new ResizeObserver(update);
+    observer.observe(scroller);
+    return () => {
+      scroller.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      observer.disconnect();
+    };
+  }, [count]);
+
+  const move = (direction: -1 | 1) => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const card = scroller.firstElementChild;
+    const cardWidth = card?.getBoundingClientRect().width ?? 0;
+    const gap = Number.parseFloat(window.getComputedStyle(scroller).columnGap) || 12;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    scroller.scrollBy({ left: direction * (cardWidth + gap), behavior: reducedMotion ? "auto" : "smooth" });
+  };
+  return (
+    <section aria-label={label} className="relative" data-testid="chat-carousel" role="region">
+      <p className="sr-only">{countLabel}</p>
+      <div className="flex items-center gap-3">
+        {canScroll ? <button aria-label={previous} className="flex size-8 shrink-0 items-center justify-center rounded-full border border-nh-border text-nh-ink disabled:opacity-40" disabled={atStart} onClick={() => move(-1)} type="button"><ChevronLeft aria-hidden="true" className="size-4" /></button> : null}
+        <div aria-label={`${label}: ${count}`} className="flex min-w-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-1" ref={scrollerRef}>
+          {children}
+        </div>
+        {canScroll ? <button aria-label={next} className="flex size-8 shrink-0 items-center justify-center rounded-full border border-nh-border text-nh-ink disabled:opacity-40" disabled={atEnd} onClick={() => move(1)} type="button"><ChevronRight aria-hidden="true" className="size-4" /></button> : null}
+      </div>
+    </section>
   );
 }
 
@@ -266,6 +339,7 @@ function TranscriptMessage({ entry, locale, onRetry }: Readonly<{
 }>) {
   const text = labels[locale];
   const assistant = entry.role === "assistant";
+  const renderableImages = entry.images.filter((image): image is ChatImage & { readonly src: string } => Boolean(image.src)).slice(0, 8);
   return (
     <article className={assistant ? "mr-7" : "ml-7"} data-chat-role={entry.role}>
       <div className={assistant ? "rounded-2xl rounded-tl-sm bg-nh-surface-warm px-3 py-2.5 text-sm leading-5 text-nh-ink" : "rounded-2xl rounded-tr-sm bg-nh-footer px-3 py-2.5 text-sm leading-5 text-white"}>
@@ -278,17 +352,21 @@ function TranscriptMessage({ entry, locale, onRetry }: Readonly<{
         ) : null}
       </div>
       {entry.products.length > 0 ? (
-        <div className="mt-2 grid grid-cols-2 gap-2" data-testid="chat-product-grid">
-          {entry.products.map((product) => <ProductCard key={product.variantId} locale={locale} product={product} />)}
+        <div className="mt-2" data-testid="chat-product-carousel">
+          <ChatCarousel count={Math.min(entry.products.length, 8)} countLabel={text.itemCount(Math.min(entry.products.length, 8))} label={text.productRegion} next={text.next} previous={text.previous}>
+            {entry.products.slice(0, 8).map((product) => <ProductCard key={product.variantId} locale={locale} product={product} />)}
+          </ChatCarousel>
         </div>
       ) : null}
-      {entry.images.length > 0 ? (
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {entry.images.flatMap((image) => image.src ? [(
-            <div className="relative aspect-square overflow-hidden rounded-lg bg-nh-surface-warm" key={image.canonicalImageId}>
-              <Image alt={image.alt} className="object-contain" fill sizes="170px" src={image.src} />
-            </div>
-          )] : [])}
+      {renderableImages.length > 0 ? (
+        <div className="mt-2" data-testid="chat-image-carousel">
+          <ChatCarousel count={renderableImages.length} countLabel={text.itemCount(renderableImages.length)} label={text.imageRegion} next={text.next} previous={text.previous}>
+            {renderableImages.map((image) => (
+              <div className="relative aspect-square w-[78vw] max-w-[17rem] shrink-0 snap-start overflow-hidden rounded-lg bg-nh-surface-warm sm:w-48 sm:max-w-none" key={image.canonicalImageId}>
+                <Image alt={image.alt} className="object-contain" fill sizes="(max-width: 640px) 78vw, 192px" src={image.src} />
+              </div>
+            ))}
+          </ChatCarousel>
         </div>
       ) : null}
       {entry.sources.length > 0 ? (

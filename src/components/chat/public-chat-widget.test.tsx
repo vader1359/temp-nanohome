@@ -103,6 +103,21 @@ describe("PublicChatWidget", () => {
       event({ type: "message_completed" }),
     ], true));
     vi.stubGlobal("fetch", fetcher);
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+      observe() { this.callback([], this as unknown as ResizeObserver); }
+      disconnect() {}
+    });
+    Object.defineProperties(HTMLElement.prototype, {
+      clientWidth: { configurable: true, value: 200 },
+      scrollWidth: { configurable: true, value: 400 },
+    });
+    const scrollBy = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollBy", { configurable: true, value: scrollBy });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { width: this.classList.contains("snap-start") ? 100 : 200 } as DOMRect;
+    });
+    vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
     render(<PublicChatWidget locale="vi" />);
 
     const launcher = screen.getByRole("button", { name: "Mở trợ lý nanoHome" });
@@ -116,7 +131,15 @@ describe("PublicChatWidget", () => {
 
     await waitFor(() => expect(screen.getByText("Đây là lựa chọn đã được xác thực.")).toBeInTheDocument());
     expect(fetcher).toHaveBeenCalledWith("/api/chat", expect.objectContaining({ method: "POST", cache: "no-store" }));
-    expect(screen.getByTestId("chat-product-grid")).toBeInTheDocument();
+    expect(screen.getByTestId("chat-product-carousel")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cuộn về trước" })).toBeDisabled());
+    const nextButton = screen.getByRole("button", { name: "Cuộn tiếp" });
+    expect(nextButton).toBeEnabled();
+    fireEvent.click(nextButton);
+    expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ left: 112 }));
+    const productScroller = screen.getByTestId("chat-product-carousel").querySelector(".snap-x");
+    expect(productScroller).toHaveClass("snap-mandatory", "overflow-x-auto");
+    expect(screen.queryByTestId("chat-product-grid")).not.toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Ghế Việt" })).toHaveAttribute(
       "data-image-src",
       "https://res.cloudinary.com/nanohome-web/image/upload/products/chair",
