@@ -19,7 +19,7 @@ describe("/api/account/security/revoke-all", () => {
     ports.revokeAllSessions.mockResolvedValue({ kind: "recent_authentication_required" });
 
     // When: all sessions are revoked.
-    const response = await POST();
+    const response = await POST(new Request("https://app.test/api/account/security/revoke-all", { method: "POST" }));
 
     // Then: the API preserves the protected action result and private headers.
     expect(response.status).toBe(409);
