@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { getAccountAuthPort, getAccountOrdersPort, getAccountProfilePort, getAccountWishlistPort } from "./account-ports.server";
+import {
+  getAccountAuthPort,
+  getAccountCartPort,
+  getAccountOrdersPort,
+  getAccountProfilePort,
+  getAccountWishlistPort,
+} from "./account-ports.server";
 
 describe("Account development ports", () => {
   it("keeps the default auth fixture anonymous", async () => {
@@ -57,5 +63,16 @@ describe("Account development ports", () => {
 
     // Then: the default fake does not invent saved items.
     expect(items).toEqual([]);
+  });
+
+  it("returns the same account-scoped fake cart port", () => {
+    // Given: two Account-lane accessor calls.
+    const first = getAccountCartPort();
+
+    // When: the accessor is invoked again.
+    const second = getAccountCartPort();
+
+    // Then: mutations share the development fake repository.
+    expect(second).toBe(first);
   });
 });
