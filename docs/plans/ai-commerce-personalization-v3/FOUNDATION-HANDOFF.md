@@ -8,7 +8,10 @@
   - `44b5379` `feat(contracts): add provider-neutral payment port`
   - `8127826` `feat(env): validate provider modes conditionally`
   - `6ea4fd7` `docs(env): document safe provider defaults`
-- This handoff records the two pending bounded commits: server-only account-session contract and local-only harness lifecycle.
+- Additional bounded Foundation commits:
+  - `f4b7070` `fix(test): make local Supabase harness self-contained`
+  - `4a24778` `feat(auth): add server account session contract`
+- Handoff commit: this document is committed as `c28d8ea`.
 
 ## Delivered Foundation contracts
 
