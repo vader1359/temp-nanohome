@@ -338,6 +338,33 @@
       "callbackError": "We could not complete authentication. Please try again."
     }
   },
+  "Account": {
+    "common": {
+      "continue": "Continue",
+      "backToStore": "Back to store",
+      "loading": "Loading account…",
+      "retry": "Try again",
+      "empty": "Nothing to show yet"
+    },
+    "navigation": {
+      "profile": "Personal information",
+      "orders": "Orders",
+      "wishlist": "Wishlist",
+      "cart": "Cart",
+      "offers": "Your offers",
+      "preferences": "Personalization",
+      "security": "Security",
+      "signOut": "Sign out"
+    },
+    "emailLink": {
+      "title": "Continue securely",
+      "body": "You can return to your destination when you are ready."
+    },
+    "action": {
+      "title": "Continue securely",
+      "body": "This page is ready for the next secure step."
+    }
+  },
   "Search": {
     "title": "Search",
     "label": "Search nanoHome",

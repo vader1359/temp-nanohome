@@ -338,6 +338,33 @@
       "callbackError": "Không thể hoàn tất xác thực. Vui lòng thử lại."
     }
   },
+  "Account": {
+    "common": {
+      "continue": "Tiếp tục",
+      "backToStore": "Quay lại cửa hàng",
+      "loading": "Đang tải tài khoản…",
+      "retry": "Thử lại",
+      "empty": "Chưa có nội dung để hiển thị"
+    },
+    "navigation": {
+      "profile": "Thông tin cá nhân",
+      "orders": "Đơn hàng",
+      "wishlist": "Sản phẩm yêu thích",
+      "cart": "Giỏ hàng",
+      "offers": "Ưu đãi của bạn",
+      "preferences": "Cá nhân hóa",
+      "security": "Bảo mật",
+      "signOut": "Đăng xuất"
+    },
+    "emailLink": {
+      "title": "Tiếp tục an toàn",
+      "body": "Bạn có thể quay lại điểm đến của mình khi sẵn sàng."
+    },
+    "action": {
+      "title": "Tiếp tục an toàn",
+      "body": "Trang này đã sẵn sàng cho bước bảo mật tiếp theo."
+    }
+  },
   "Search": {
     "title": "Tìm kiếm",
     "label": "Tìm kiếm nanoHome",
