@@ -18,7 +18,7 @@ describe("/api/account/preferences/disconnect-amis", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(null);
 
     // When: AMIS disconnection is requested.
-    const response = await POST();
+    const response = await POST(new Request("https://app.test/api/account/preferences/disconnect-amis", { method: "POST" }));
 
     // Then: it fails closed without calling the account port.
     expect(response.status).toBe(401);
