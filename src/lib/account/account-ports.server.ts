@@ -6,6 +6,7 @@ import { createFakeAccountOrdersPort } from "./orders-port";
 import { createFakeAccountProfilePort } from "./profile-port";
 import { createFakeAccountWishlistPort } from "./wishlist-port";
 import { createFakeAccountOffersPort } from "./offers-port";
+import { createFakeAccountPreferencesPort } from "./preferences-port";
 
 const anonymousAuthPort = createFakeAccountAuthPort(null);
 const fakeOrdersPort = createFakeAccountOrdersPort();
@@ -13,6 +14,7 @@ const fakeProfilePort = createFakeAccountProfilePort();
 const fakeCartPort = createFakeAccountCartPort();
 const fakeWishlistPort = createFakeAccountWishlistPort();
 const fakeOffersPort = createFakeAccountOffersPort();
+const fakePreferencesPort = createFakeAccountPreferencesPort();
 
 /**
  * Development-only Account-lane ports. Foundation replaces these accessors
@@ -40,4 +42,8 @@ export function getAccountWishlistPort() {
 
 export function getAccountOffersPort() {
   return fakeOffersPort;
+}
+
+export function getAccountPreferencesPort() {
+  return fakePreferencesPort;
 }

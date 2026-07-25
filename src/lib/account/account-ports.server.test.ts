@@ -5,6 +5,7 @@ import {
   getAccountCartPort,
   getAccountOffersPort,
   getAccountOrdersPort,
+  getAccountPreferencesPort,
   getAccountProfilePort,
   getAccountWishlistPort,
 } from "./account-ports.server";
@@ -85,6 +86,17 @@ describe("Account development ports", () => {
     const second = getAccountOffersPort();
 
     // Then: reads share the development fake offer source.
+    expect(second).toBe(first);
+  });
+
+  it("returns the same account-scoped fake preferences port", () => {
+    // Given: two Account-lane accessor calls.
+    const first = getAccountPreferencesPort();
+
+    // When: the accessor is invoked again.
+    const second = getAccountPreferencesPort();
+
+    // Then: preference mutations share the development fake repository.
     expect(second).toBe(first);
   });
 });
