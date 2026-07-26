@@ -1,0 +1,96 @@
+create table public.decision_a_preflight_state (
+  scenario text primary key,
+  source_id uuid not null,
+  target_id uuid not null
+);
+
+select set_config('decision_a_preflight.scenario', :'scenario', false);
+
+do $setup$
+declare
+  scenario_name text := current_setting('decision_a_preflight.scenario');
+  source_id uuid;
+  target_id uuid := '00000000-0000-4000-8000-0000000000b1'::uuid;
+begin
+  insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at)
+  values (target_id, 'authenticated', 'authenticated', 'decision-a-preflight@example.test', '', now());
+
+  select id
+  into source_id
+  from public.customer_accounts
+  where legacy_supabase_user_id = target_id;
+
+  insert into public.customer_firebase_principals (account_id, firebase_uid)
+  values (source_id, 'decision-a-preflight-' || scenario_name);
+
+  insert into public.decision_a_preflight_state (scenario, source_id, target_id)
+  values (scenario_name, source_id, target_id);
+
+  case scenario_name
+    when 'success' then
+      null;
+    when 'collision' then
+      insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at)
+      values (
+        '00000000-0000-4000-8000-0000000000b2',
+        'authenticated',
+        'authenticated',
+        'decision-a-preflight-collision@example.test',
+        '',
+        now()
+      );
+
+      update public.customer_accounts
+      set legacy_supabase_user_id = null
+      where legacy_supabase_user_id = '00000000-0000-4000-8000-0000000000b2'::uuid;
+
+      insert into public.customer_accounts (id)
+      values ('00000000-0000-4000-8000-0000000000b2'::uuid);
+
+      update public.customer_accounts
+      set legacy_supabase_user_id = '00000000-0000-4000-8000-0000000000b2'::uuid
+      where id = source_id;
+
+      update public.decision_a_preflight_state
+      set target_id = '00000000-0000-4000-8000-0000000000b2'::uuid
+      where scenario = scenario_name;
+    when 'missing-auth' then
+      alter table public.customer_accounts
+        drop constraint customer_accounts_legacy_supabase_user_id_fkey;
+
+      update public.customer_accounts
+      set legacy_supabase_user_id = '00000000-0000-4000-8000-0000000000b3'::uuid
+      where id = source_id;
+
+      update public.decision_a_preflight_state
+      set target_id = '00000000-0000-4000-8000-0000000000b3'::uuid
+      where scenario = scenario_name;
+
+      alter table public.customer_accounts
+        add constraint customer_accounts_legacy_supabase_user_id_fkey
+        foreign key (legacy_supabase_user_id) references auth.users(id) on delete set null not valid;
+    when 'duplicate-legacy' then
+      alter table public.customer_accounts
+        drop constraint customer_accounts_legacy_supabase_user_id_key;
+
+      insert into public.customer_accounts (legacy_supabase_user_id)
+      values (target_id);
+    when 'orphan-child' then
+      alter table public.customer_firebase_principals
+        drop constraint customer_firebase_principals_account_id_fkey;
+
+      insert into public.customer_firebase_principals (account_id, firebase_uid)
+      values ('00000000-0000-4000-8000-0000000000b4'::uuid, 'decision-a-preflight-orphan');
+
+      alter table public.customer_firebase_principals
+        add constraint customer_firebase_principals_account_id_fkey
+        foreign key (account_id) references public.customer_accounts(id) on delete restrict not valid;
+    when 'manifest-drift' then
+      create table public.decision_a_manifest_drift (
+        account_id uuid references public.customer_accounts(id) on delete restrict
+      );
+    else
+      raise exception 'unknown Decision A preflight scenario: %', scenario_name;
+  end case;
+end;
+$setup$;
