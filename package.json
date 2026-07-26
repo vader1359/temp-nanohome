@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "db:types:local": "supabase/plan00-local/generate-database-types.sh",
     "korean-backfill:drafts": "tsx scripts/korean-backfill-drafts.ts",
     "korean-backfill:apply": "tsx scripts/apply-korean-backfill.ts",
     "korean-backfill:export": "tsx scripts/export-korean-backfill.ts",
