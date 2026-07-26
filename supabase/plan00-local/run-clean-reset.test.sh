@@ -161,7 +161,7 @@ done
 HARNESS_LOG="$log" SUPABASE_BIN="$fake_bin" DOCKER_BIN="$fake_docker" "$repo_root/supabase/plan00-local/run-clean-reset.sh" --target foundation
 foundation_test=$(grep '^test db ' "$log")
 case "$foundation_test" in
-  *foundation_decision_a_identity_test.sql*foundation_identity_accounts_test.sql*foundation_legacy_account_ownership_test.sql*)
+  *foundation_customer_memory_ownership_test.sql*foundation_decision_a_identity_test.sql*foundation_identity_accounts_test.sql*foundation_legacy_account_ownership_test.sql*)
     ;;
   *)
     printf '%s\n' 'foundation target omitted a Foundation suite' >&2

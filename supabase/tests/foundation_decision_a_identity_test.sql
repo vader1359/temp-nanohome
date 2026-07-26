@@ -129,8 +129,8 @@ select is(
   (
     select count(*) from decision_a_account_references
   ),
-  8::bigint,
-  'all eight current foreign keys to customer_accounts.id are inventoried'
+  11::bigint,
+  'all eleven current foreign keys to customer_accounts.id are inventoried'
 );
 
 select is(
@@ -140,7 +140,7 @@ select is(
     where confdeltype = 'r'
       and constraint_definition like '%ON DELETE RESTRICT%'
   ),
-  8::bigint,
+  11::bigint,
   'the dynamic FK manifest preserves all current RESTRICT delete actions'
 );
 
@@ -153,8 +153,8 @@ select is(
     )
     from decision_a_account_references
   ),
-  'public.account_policy_acceptances.account_id,public.carts.account_id,public.customer_account_deletion_requests.account_id,public.customer_auth_identities.account_id,public.customer_firebase_principals.account_id,public.customer_firebase_principals.merged_into_account_id,public.orders.account_id,public.profiles.account_id',
-  'the FK manifest covers principals, identities, policy acceptance, deletion, carts, orders, and profiles'
+  'public.account_policy_acceptances.account_id,public.carts.account_id,public.customer_account_deletion_requests.account_id,public.customer_amis_links.account_id,public.customer_auth_identities.account_id,public.customer_firebase_principals.account_id,public.customer_firebase_principals.merged_into_account_id,public.customer_identity_ledger.account_id,public.customer_memory_projections.account_id,public.orders.account_id,public.profiles.account_id',
+  'the FK manifest covers principals, ledgers, AMIS memory, policy acceptance, deletion, carts, orders, and profiles'
 );
 
 select is(
@@ -162,7 +162,7 @@ select is(
     select string_agg(conname, ',' order by conname)
     from decision_a_account_references
   ),
-  'account_policy_acceptances_account_id_fkey,carts_account_id_fkey,customer_account_deletion_requests_account_id_fkey,customer_auth_identities_account_id_fkey,customer_firebase_principals_account_id_fkey,customer_firebase_principals_merged_into_account_id_fkey,orders_account_id_fkey,profiles_account_id_fkey',
+  'account_policy_acceptances_account_id_fkey,carts_account_id_fkey,customer_account_deletion_requests_account_id_fkey,customer_amis_links_account_id_fkey,customer_auth_identities_account_id_fkey,customer_firebase_principals_account_id_fkey,customer_firebase_principals_merged_into_account_id_fkey,customer_identity_ledger_account_id_fkey,customer_memory_projections_account_id_fkey,orders_account_id_fkey,profiles_account_id_fkey',
   'the dynamic FK manifest preserves every current constraint name'
 );
 
