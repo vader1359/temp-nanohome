@@ -93,6 +93,13 @@ export interface CustomerMemoryPort {
   }): Promise<CustomerMemory | null>;
 }
 
+export interface NotificationPort {
+  notify(message: {
+    readonly subject: string;
+    readonly body: string;
+  }): Promise<{ readonly kind: "sent" | "skipped" }>;
+}
+
 export interface RecommendationPort {
   recommend(request: RecommendationRequest): Promise<RecommendationResponse>;
 }

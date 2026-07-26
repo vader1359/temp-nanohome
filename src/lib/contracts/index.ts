@@ -26,6 +26,7 @@ export type {
   CustomerMemoryPort,
   InventoryAvailability,
   InventoryProvider,
+  NotificationPort,
   OperationalOrderProvider,
   PaymentCancellationResult,
   PaymentGateway,
