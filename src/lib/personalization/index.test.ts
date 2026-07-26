@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { AccountId } from "@/lib/account-session";
 import type { CustomerMemory, RecommendationResponse } from "@/lib/contracts";
 import { createPersonalizationResolver, selectPersonalizedModules } from "./index";
 
@@ -20,8 +21,10 @@ const recommendation: RecommendationResponse = {
   items: [{ variantId: "variant-related", reasonCode: "similar_price_band" }],
 };
 
+const accountId = new AccountId("11111111-1111-4111-8111-111111111111");
+
 const baseInput = {
-  userId: null,
+  accountId: null,
   consent: { personalization: false },
   locale: "en",
   recent: [],
@@ -88,14 +91,14 @@ describe("local personalization domain", () => {
 
     const result = await resolver.resolve({
       ...baseInput,
-      userId: "user-1",
+      accountId,
       consent: { personalization: true },
     });
 
     expect(result.mode).toBe("customer_memory");
     expect(result.customerMemory).toEqual(memory);
     expect(result.explanationKeys).toEqual(["customer_memory"]);
-    expect(memoryPort.getForAuthenticatedCustomer).toHaveBeenCalledWith({ userId: "user-1", purpose: "personalization" });
+    expect(memoryPort.getForAuthenticatedCustomer).toHaveBeenCalledWith({ accountId, purpose: "personalization" });
   });
 
   it("Given explicit preferences and customer memory, When context resolves, Then explicit preference remains first", async () => {
@@ -106,7 +109,7 @@ describe("local personalization domain", () => {
 
     const result = await resolver.resolve({
       ...baseInput,
-      userId: "user-1",
+      accountId,
       consent: { personalization: true },
       explicit: [{ key: "room", value: "living-room", labelKey: "selected_room" }],
     });
@@ -131,7 +134,7 @@ describe("local personalization domain", () => {
       maxMemoryAgeMs: 1,
       flags: enabledFlags,
     });
-    const input = { ...baseInput, userId: "user-1", consent: { personalization: true } };
+    const input = { ...baseInput, accountId, consent: { personalization: true } };
 
     await expect(unavailable.resolve(input)).resolves.toMatchObject({ mode: "default" });
     await expect(missing.resolve(input)).resolves.toMatchObject({ mode: "default" });

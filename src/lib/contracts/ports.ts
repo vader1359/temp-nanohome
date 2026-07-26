@@ -1,3 +1,4 @@
+import type { AccountId } from "@/lib/account-session";
 import type {
   CustomerMemory,
   CommerceOrderSnapshot,
@@ -87,7 +88,7 @@ export interface PaymentGateway {
 
 export interface CustomerMemoryPort {
   getForAuthenticatedCustomer(input: {
-    readonly userId: string;
+    readonly accountId: AccountId;
     readonly purpose: "concierge" | "personalization";
   }): Promise<CustomerMemory | null>;
 }

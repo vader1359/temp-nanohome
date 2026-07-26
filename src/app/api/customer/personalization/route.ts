@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { customerIdentityCookieNames, customerTokens } from "@/lib/customer-context/identity";
 import { createCustomerRepository } from "@/lib/customer-context/repository";
-import { createSupabaseCustomerMemoryPort } from "@/lib/amis-customer-memory/supabase-customer-memory-port";
+import { AccountId } from "@/lib/account-session";
+import {
+  createSupabaseCustomerMemoryPort,
+  createSupabaseCustomerMemoryProjectionReader,
+} from "@/lib/amis-customer-memory/supabase-customer-memory-port";
 import { createPersonalizationResolver } from "@/lib/personalization";
 import { loadPlan07CustomerFeatures } from "@/lib/personalization/customer-runtime";
 import { isSupportedLocale } from "@/i18n/routing";
@@ -54,11 +58,7 @@ export const GET = async (request: Request): Promise<Response> => {
   if (userError !== null || userData.user === null) {
     return json({ error: "Authentication required" }, 401);
   }
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData.session?.access_token;
-  if (accessToken === undefined || accessToken.length === 0) {
-    return json({ error: "Authentication required" }, 401);
-  }
+  const accountId = new AccountId(userData.user.id);
 
   const tokens = customerTokens(requestCookies(request));
   if (tokens === null) {
@@ -80,7 +80,9 @@ export const GET = async (request: Request): Promise<Response> => {
     visitorId: identity.visitorId,
   });
   const resolver = createPersonalizationResolver({
-    memoryPort: createSupabaseCustomerMemoryPort({ accessToken }),
+    memoryPort: createSupabaseCustomerMemoryPort({
+      readProjection: createSupabaseCustomerMemoryProjectionReader(),
+    }),
     flags: {
       personalizationEnabled: true,
       recentlyViewedEnabled: true,
@@ -89,7 +91,7 @@ export const GET = async (request: Request): Promise<Response> => {
     },
   });
   const context = await resolver.resolve({
-    userId: userData.user.id,
+    accountId,
     consent: { personalization: true },
     locale,
     recent: features.recent,
