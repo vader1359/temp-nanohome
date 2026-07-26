@@ -9,7 +9,7 @@
   },
   "writer": "Sisyphus",
   "sessionId": null,
-  "continuationNonce": "foundation-batch-todo-20-20260726",
+  "continuationNonce": "foundation-batch-todo-21-20260726",
   "serialization": "single-writer",
   "progress": {
     "createdAt": "2026-07-26T00:00:00Z",
@@ -657,7 +657,7 @@
     {
       "id": 20,
       "title": "Resolve Foundation-owned TypeScript adoption fallout",
-      "state": "implementing",
+      "state": "completed",
       "dependsOn": [
         16,
         18,
@@ -665,14 +665,20 @@
       ],
       "gate": "targeted",
       "startedAt": "2026-07-26T18:00:05.756251+00:00",
-      "completedAt": null,
-      "commit": null,
-      "evidence": []
+      "completedAt": "2026-07-26T18:04:51.384484+00:00",
+      "commit": "57b2d6a",
+      "evidence": [
+        "tsc --noEmit: clean (0 errors)",
+        "vitest: 11/11 pass (3 test files)",
+        "migration 20260726001100 adds DEFAULT NULL to nullable RPC params",
+        "database.types.ts updated with optional fields (?: string)",
+        "inventory-sync.ts uses generated DB type, no null for RPC args"
+      ]
     },
     {
       "id": 21,
       "title": "Run and classify every local verification gate",
-      "state": "not-started",
+      "state": "idle",
       "dependsOn": [
         20
       ],
