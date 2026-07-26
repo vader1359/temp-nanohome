@@ -5009,12 +5009,12 @@ export type Database = {
         Args: {
           p_baseline_lines: Json
           p_completed_at: string
-          p_expected_baseline_id: string
-          p_expected_watermark: string
           p_mode: string
           p_order_lines: Json
           p_orders: Json
-          p_watermark: string
+          p_expected_baseline_id?: string
+          p_expected_watermark?: string
+          p_watermark?: string
         }
         Returns: Json
       }

@@ -6,7 +6,7 @@ import { createAmisClientConfig, fetchAmisStockLedger } from "@/lib/amis/client"
 import { fetchAmisSaleOrders, type AmisSaleOrder } from "@/lib/amis/sale-order-client";
 import { env } from "@/lib/env";
 import { createAmisSyncAdminClient } from "@/lib/supabase/admin";
-import type { Json, TypedSupabaseClient } from "@/types/db";
+import type { Database, Json, TypedSupabaseClient } from "@/types/db";
 
 const INVENTORY_SYNC_KEY = "inventory";
 const rpcResultSchema = z.object({ items_processed: z.number().int().nonnegative() });
@@ -16,6 +16,8 @@ const STOCK_READ_FAILURE = "AMIS stock read failed";
 const SALE_ORDER_READ_FAILURE = "AMIS Sale Order read failed";
 
 export type InventorySyncResult = { readonly status: "success" | "failed"; readonly itemsProcessed: number; readonly error: string | null };
+
+type InventorySyncRpcArgs = Database["public"]["Functions"]["apply_amis_inventory_sync"]["Args"];
 
 export async function runAmisInventoryBaseline(): Promise<InventorySyncResult> {
   const supabase = createAmisSyncAdminClient();
@@ -33,9 +35,7 @@ export async function runAmisInventoryBaseline(): Promise<InventorySyncResult> {
     p_baseline_lines: ledger.records.map((record) => ({ sku: record.sku, stock: record.stock })),
     p_orders: [],
     p_order_lines: [],
-    p_watermark: null,
-    p_expected_baseline_id: state?.active_baseline_id ?? null,
-    p_expected_watermark: null,
+    p_expected_baseline_id: state?.active_baseline_id ?? undefined,
   });
 }
 
@@ -49,28 +49,18 @@ export async function runAmisSaleOrderDelta(): Promise<InventorySyncResult> {
   if (config === null) return failed("Missing AMIS credentials.");
   const orders = await fetchAmisSaleOrders(config, state.sale_order_watermark);
   if (orders.kind !== "success") return failed(SALE_ORDER_READ_FAILURE);
+  const watermark = latestWatermark(state.sale_order_watermark, orders.records.map((order) => order.modifiedDate));
   return applyInventorySync(supabase, {
     p_mode: "sale_orders",
     p_completed_at: new Date().toISOString(),
     p_baseline_lines: [],
     p_orders: orders.records.map(toPersistedOrder),
     p_order_lines: orders.records.flatMap(toPersistedLines),
-    p_watermark: latestWatermark(state.sale_order_watermark, orders.records.map((order) => order.modifiedDate)),
+    p_watermark: watermark ?? undefined,
     p_expected_baseline_id: state.active_baseline_id,
-    p_expected_watermark: state.sale_order_watermark,
+    p_expected_watermark: state.sale_order_watermark ?? undefined,
   });
 }
-
-type InventorySyncRpcArgs = {
-  readonly p_mode: string;
-  readonly p_completed_at: string;
-  readonly p_baseline_lines: Json;
-  readonly p_orders: Json;
-  readonly p_order_lines: Json;
-  readonly p_watermark: string | null;
-  readonly p_expected_baseline_id: string | null;
-  readonly p_expected_watermark: string | null;
-};
 
 async function applyInventorySync(supabase: TypedSupabaseClient, args: InventorySyncRpcArgs): Promise<InventorySyncResult> {
   const { data, error } = await supabase.rpc("apply_amis_inventory_sync", args);
@@ -110,3 +100,4 @@ function latestWatermark(current: string | null, dates: readonly string[]): stri
 function failed(error: string): InventorySyncResult {
   return { status: "failed", itemsProcessed: 0, error };
 }
+
