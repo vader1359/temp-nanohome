@@ -27,13 +27,22 @@ export class ServerSessionCookie {
   }
 }
 
+export type AccountSessionClaims = Readonly<{
+  issuer: string;
+  audience: string;
+  issuedAt: number;
+  expiresAt: number;
+}>;
+
 export class AccountSession {
   readonly accountId: AccountId;
   readonly externalSubject: ExternalPrincipalSubject;
+  readonly claims?: AccountSessionClaims;
 
-  constructor(accountId: AccountId, externalSubject: ExternalPrincipalSubject) {
+  constructor(accountId: AccountId, externalSubject: ExternalPrincipalSubject, claims?: AccountSessionClaims) {
     this.accountId = accountId;
     this.externalSubject = externalSubject;
+    this.claims = claims;
   }
 }
 
