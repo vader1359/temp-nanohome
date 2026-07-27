@@ -74,6 +74,14 @@ Foundation owns the following changes. This lane does not supply them.
 - Browser/accessibility evidence on local Next server (`127.0.0.1:3107`): Playwright found one localized sign-in heading and one localized completion heading for each `vi`, `en`, and `ko`; first Tab focus landed on a button; accessibility snapshot exposed named Account navigation, method buttons, email textbox, and continue button. Screenshot: `account-complete-ko.png` in Playwright artifacts. Dev-only HMR WebSocket handshake errors were observed; HTTP pages returned 200 and rendered successfully.
 - Rollback: revert the bounded Account localization commits. No migrations, environment schema, generated types, lockfiles, cloud configuration, credentials, deployment, or live data changed.
 
+## Verification rerun (2026-07-27)
+
+- `npx vitest run messages/account-parity.test.ts messages/auth-parity.test.ts src/components/account/*.test.tsx src/components/auth/auth-panel.test.tsx src/components/auth/auth-provider.test.tsx src/lib/account/*.test.ts src/app/api/account/**/*.test.ts src/app/auth/routes.test.ts src/app/auth/route-cookie-contract.test.ts --reporter=json --outputFile=/tmp/account-lane-closeout-vitest.json` — exit 0; 94 suites and 158 tests passed.
+- `npx tsc --noEmit --pretty false` — exit 0.
+- `npx eslint "src/app/[locale]/account/**/*.tsx" "src/app/[locale]/auth/email-link/**/*.tsx" "src/app/[locale]/auth/action/**/*.tsx" "src/app/api/account/**/*.ts" "src/components/account/*.tsx" "src/components/auth/auth-panel.tsx" "src/components/auth/auth-provider.tsx" "src/lib/account/*.ts" "messages/account-parity.test.ts" "messages/auth-parity.test.ts"` — exit 0.
+- `npm run build` — exit 0.
+- Working tree after verification retains only unrelated tracked changes in `entities.json` and `mempalace.yaml`, plus untracked `.omo/run-continuation/**`; no Account-owned source changed during this rerun.
+
 ## Remaining external blockers
 
 - Real Firebase/provider sessions, identity mapping, route protection, durable cart/wishlist and guest merge, persisted offers/preferences/security effects, cross-account RLS, phone-only authenticated accounts, and live provider callback QA remain blocked on Foundation contracts and cloud configuration listed above.
