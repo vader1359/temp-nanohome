@@ -1,14 +1,11 @@
 import "server-only";
 
-import type { CatalogEligibility } from "@/lib/catalog/eligibility";
+import { z } from "zod";
+
+import { env } from "@/lib/env";
 import { firstProductImage } from "@/lib/image";
-import {
-  getVariantProducts,
-  getVariantProductsBySkus,
-  type VariantProductListItem,
-} from "@/lib/queries/products";
 import { variantDetailHref } from "@/lib/queries/variant-url";
-import { getCatalogEligibility } from "@/lib/recommendations/catalog";
+import { supabaseReadOnlyFetch } from "@/lib/remote-read-only";
 
 import type { PublicChatLocale } from "./contracts";
 import type {
@@ -21,34 +18,158 @@ type CatalogAdapterRecord = PublicCatalogRecord & {
   readonly current: boolean;
 };
 
+const nullableCatalogTextSchema = z.string().nullable();
+const publicChatCatalogVariantSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  name_vi: nullableCatalogTextSchema,
+  name_ko: nullableCatalogTextSchema,
+  description: nullableCatalogTextSchema,
+  description_vi: nullableCatalogTextSchema,
+  description_ko: nullableCatalogTextSchema,
+  designer_description: nullableCatalogTextSchema,
+  designer_description_vi: nullableCatalogTextSchema,
+  designer_description_ko: nullableCatalogTextSchema,
+  short_name: nullableCatalogTextSchema,
+  short_name_vi: nullableCatalogTextSchema,
+  short_name_ko: nullableCatalogTextSchema,
+  slug: nullableCatalogTextSchema,
+  slug_vi: nullableCatalogTextSchema,
+  slug_ko: nullableCatalogTextSchema,
+  packshot_url: nullableCatalogTextSchema,
+  gallery_urls: z.array(z.string()),
+  finish: nullableCatalogTextSchema,
+  finish_vi: nullableCatalogTextSchema,
+  finish_ko: nullableCatalogTextSchema,
+  size: nullableCatalogTextSchema,
+  product_name_denorm: nullableCatalogTextSchema,
+  product_line: nullableCatalogTextSchema,
+  designer_name: nullableCatalogTextSchema,
+  filter_category: nullableCatalogTextSchema,
+  filter_product_line: nullableCatalogTextSchema,
+  cldr_media_lifestyle_1: nullableCatalogTextSchema,
+  cldr_media_lifestyle_2: nullableCatalogTextSchema,
+  media_long: nullableCatalogTextSchema,
+  media_closeup: nullableCatalogTextSchema,
+  product_id: nullableCatalogTextSchema,
+  product_name: nullableCatalogTextSchema,
+  localized_product_name: nullableCatalogTextSchema,
+  brand_name: nullableCatalogTextSchema,
+  public_price: z.number().finite().nonnegative().nullable(),
+  public_price_mode: z.enum(["fixed", "contact", "unavailable"]),
+  public_stock_state: z.enum(["available", "unknown"]),
+  is_recommendable: z.boolean(),
+  is_current: z.boolean(),
+}).strict();
+
+type PublicChatCatalogVariant = Readonly<z.infer<typeof publicChatCatalogVariantSchema>>;
+
 export type PublicCatalogAdapterDependencies = Readonly<{
-  loadEligibility: () => Promise<readonly CatalogEligibility[]>;
   searchVariants: (
     query: string,
     limit: number,
-  ) => Promise<readonly VariantProductListItem[]>;
-  loadVariantsBySkus: (
-    skus: readonly string[],
-  ) => Promise<readonly VariantProductListItem[]>;
+    signal?: AbortSignal,
+  ) => Promise<readonly PublicChatCatalogVariant[]>;
 }>;
 
 const defaultDependencies: PublicCatalogAdapterDependencies = {
-  loadEligibility: getCatalogEligibility,
-  searchVariants: (query, limit) =>
-    getVariantProducts({
-      page: 1,
-      pageSize: Math.min(Math.max(limit * 4, limit), 48),
-      search: query,
-      sort: "priority",
-    }),
-  loadVariantsBySkus: getVariantProductsBySkus,
+  searchVariants: searchPublicChatCatalogVariants,
 };
+
+const searchAliases: readonly Readonly<{ readonly pattern: RegExp; readonly query: string }>[] = [
+  { pattern: /ghế/iu, query: "chair" },
+  { pattern: /chairs?/iu, query: "chair" },
+  { pattern: /bàn/iu, query: "table" },
+  { pattern: /tables?/iu, query: "table" },
+  { pattern: /đèn/iu, query: "lamp" },
+  { pattern: /lamps?/iu, query: "lamp" },
+  { pattern: /sofa/iu, query: "sofa" },
+  { pattern: /giường/iu, query: "bed" },
+  { pattern: /beds?/iu, query: "bed" },
+  { pattern: /tủ/iu, query: "cabinet" },
+  { pattern: /cabinets?/iu, query: "cabinet" },
+  { pattern: /bình hoa/iu, query: "vase" },
+  { pattern: /vases?/iu, query: "vase" },
+  { pattern: /의자/iu, query: "chair" },
+  { pattern: /테이블|탁자/iu, query: "table" },
+  { pattern: /조명|램프/iu, query: "lamp" },
+  { pattern: /소파/iu, query: "sofa" },
+  { pattern: /침대/iu, query: "bed" },
+  { pattern: /수납장|캐비닛/iu, query: "cabinet" },
+  { pattern: /꽃병|화병/iu, query: "vase" },
+];
+
+export function catalogSearchQueries(query: string): readonly string[] {
+  const normalized = query.trim();
+  const aliases = searchAliases.flatMap(({ pattern, query: alias }) => pattern.test(normalized) ? [alias] : []);
+  return [...new Set([normalized, ...aliases])].filter((item) => item.length > 0).slice(0, 3);
+}
+
+export async function searchPublicChatCatalogVariants(
+  query: string,
+  limit: number,
+  signal?: AbortSignal,
+): Promise<readonly PublicChatCatalogVariant[]> {
+  const normalizedQuery = query.trim().slice(0, 240);
+  if (normalizedQuery.length === 0) return [];
+
+  const integerLimit = Number.isFinite(limit) ? Math.trunc(limit) : 5;
+  const boundedLimit = Math.min(Math.max(integerLimit, 1), 12);
+  const endpoint = new URL(
+    "/rest/v1/rpc/search_public_chat_catalog",
+    env.NEXT_PUBLIC_SUPABASE_URL,
+  );
+  endpoint.searchParams.set("search_query", normalizedQuery);
+  endpoint.searchParams.set("result_limit", String(boundedLimit));
+
+  const response = await supabaseReadOnlyFetch(endpoint, {
+    headers: {
+      apikey: env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    signal,
+  });
+  if (!response.ok) {
+    throw new Error(`Public chat catalog search failed: ${response.status}`);
+  }
+
+  const data: unknown = await response.json();
+  if (!Array.isArray(data)) {
+    throw new Error("Public chat catalog search response was not an array");
+  }
+  return data.flatMap((row) => {
+    const parsed = publicChatCatalogVariantSchema.safeParse(row);
+    return parsed.success ? [parsed.data] : [];
+  });
+}
 
 function throwIfAborted(signal?: AbortSignal): void {
   if (!signal?.aborted) return;
   const error = new Error("Catalog request aborted");
   error.name = "AbortError";
   throw error;
+}
+
+async function retryCatalogRead<T>(
+  operation: () => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    throwIfAborted(signal);
+    try {
+      return await operation();
+    } catch (error) {
+      throwIfAborted(signal);
+      lastError = error;
+      if (attempt === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 75));
+      }
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Public chat catalog read unavailable");
 }
 
 function safeText(value: unknown, maximum = 300): string {
@@ -61,7 +182,7 @@ function safeText(value: unknown, maximum = 300): string {
 }
 
 function localizedVariantText(
-  variant: VariantProductListItem,
+  variant: PublicChatCatalogVariant,
   locale: PublicChatLocale,
   field: "name" | "short_name" | "finish" | "description" | "designer_description",
 ): string {
@@ -77,44 +198,45 @@ function localizedVariantText(
   return safeText(localized) || safeText(english) || safeText(vietnamese) || safeText(korean);
 }
 
-function priceFor(
-  row: CatalogEligibility,
-): PublicCatalogRecord["price"] {
+function priceFor(variant: PublicChatCatalogVariant): PublicCatalogRecord["price"] {
   if (
-    row.price_mode === "fixed" &&
-    row.price !== null &&
-    Number.isFinite(row.price) &&
-    row.price >= 0
+    variant.public_price_mode === "fixed" &&
+    variant.public_price !== null &&
+    variant.public_price > 1
   ) {
-    return { mode: "fixed", amount: row.price, currency: "VND" };
+    return { mode: "fixed", amount: variant.public_price, currency: "VND" };
   }
-  if (row.price_mode === "contact") return { mode: "contact" };
+  if (
+    variant.public_price_mode === "contact" ||
+    (variant.public_price_mode === "fixed" &&
+      variant.public_price !== null &&
+      variant.public_price <= 1)
+  ) {
+    return { mode: "contact" };
+  }
   return { mode: "unavailable" };
 }
 
-function stockFor(
-  row: CatalogEligibility,
-): PublicCatalogRecord["stock"] {
-  return row.has_fresh_stock && row.stock !== null && row.stock > 0
+function stockFor(variant: PublicChatCatalogVariant): PublicCatalogRecord["stock"] {
+  return variant.public_stock_state === "available"
     ? { state: "available" }
     : { state: "unknown" };
 }
 
 function attributesFor(
-  variant: VariantProductListItem,
-  row: CatalogEligibility,
+  variant: PublicChatCatalogVariant,
   locale: PublicChatLocale,
 ): Readonly<Record<string, string>> {
   const attributes: Record<string, string> = {};
   const dimensions = safeText(variant.size);
   const finish = localizedVariantText(variant, locale, "finish");
-  const brand = safeText(row.brand_name);
+  const brand = safeText(variant.brand_name);
   const product = safeText(
     locale === "vi"
-      ? row.localized_product_name
+      ? variant.localized_product_name
       : locale === "ko"
-        ? variant.product_name_denorm ?? row.product_name
-        : row.product_name,
+        ? variant.product_name_denorm ?? variant.product_name
+        : variant.product_name,
   );
   const designer = safeText(variant.designer_name);
   const category = safeText(variant.filter_category);
@@ -140,118 +262,110 @@ function attributesFor(
 }
 
 function toCatalogRecord(
-  row: CatalogEligibility,
-  variant: VariantProductListItem,
+  variant: PublicChatCatalogVariant,
   locale: PublicChatLocale,
 ): CatalogAdapterRecord | undefined {
-  if (row.variant_id !== variant.id) return undefined;
   const title =
     localizedVariantText(variant, locale, "name") ||
     localizedVariantText(variant, locale, "short_name");
   if (title.length === 0) return undefined;
+  const galleryUrls = Array.isArray(variant.gallery_urls)
+    ? variant.gallery_urls
+    : [];
   const imageUrl = firstProductImage([
-    row.image_url,
     variant.packshot_url,
-    ...variant.gallery_urls,
+    ...galleryUrls,
     variant.cldr_media_lifestyle_1,
     variant.cldr_media_lifestyle_2,
     variant.media_long,
     variant.media_closeup,
   ]);
   const hasCanonicalImage =
-    row.has_supported_media &&
+    variant.is_recommendable &&
     imageUrl !== "/images/placeholder.webp";
   return {
-    canonicalId: row.product_id ?? row.variant_id,
-    variantId: row.variant_id,
+    canonicalId: variant.product_id ?? variant.id,
+    variantId: variant.id,
     title,
     canonicalLink: `/${locale}${variantDetailHref(variant, locale)}`,
-    image: { id: row.variant_id, alt: title, src: imageUrl },
-    price: priceFor(row),
-    stock: stockFor(row),
-    attributes: attributesFor(variant, row, locale),
-    eligible: row.recommendation && hasCanonicalImage,
-    current: row.catalog_approved_validated,
+    // Public chat schemas accept only approved public media.  Do not let an
+    // unsupported image from one non-eligible variant invalidate the whole
+    // catalog result before eligible records can be filtered in.
+    image: hasCanonicalImage
+      ? { id: variant.id, alt: title, src: imageUrl }
+      : { id: variant.id, alt: title },
+    price: priceFor(variant),
+    stock: stockFor(variant),
+    attributes: attributesFor(variant, locale),
+    eligible: variant.is_recommendable && hasCanonicalImage,
+    current: variant.is_current,
   };
 }
 
-function preferredRow(
-  rows: readonly CatalogEligibility[],
-  canonicalId: string,
-): CatalogEligibility | undefined {
-  return rows
-    .filter((row) => (row.product_id ?? row.variant_id) === canonicalId && row.sku !== null)
-    .sort(
-      (left, right) =>
-        Number(right.recommendation) - Number(left.recommendation) ||
-        Number(right.has_fresh_stock) - Number(left.has_fresh_stock) ||
-        left.variant_id.localeCompare(right.variant_id),
-    )[0];
+async function loadExactCatalogRecords(
+  ids: readonly string[],
+  field: "canonicalId" | "variantId",
+  locale: PublicChatLocale,
+  dependencies: PublicCatalogAdapterDependencies,
+  signal?: AbortSignal,
+): Promise<readonly CatalogAdapterRecord[]> {
+  const recordsByRequestedId = await Promise.all(ids.map(async (id) => {
+    const variants = await retryCatalogRead(
+      () => dependencies.searchVariants(id, 12, signal),
+      signal,
+    );
+    const records = variants.flatMap((variant) => {
+      const record = toCatalogRecord(variant, locale);
+      return record === undefined ? [] : [record];
+    });
+    return records.find((record) => record[field] === id);
+  }));
+  throwIfAborted(signal);
+  return recordsByRequestedId.flatMap((record) => record === undefined ? [] : [record]);
 }
 
 export function createPublicCatalogAdapters(
   locale: PublicChatLocale,
   dependencies: PublicCatalogAdapterDependencies = defaultDependencies,
 ): PublicCatalogAdapters {
-  let eligibilityPromise: Promise<readonly CatalogEligibility[]> | undefined;
-  const loadEligibility = (): Promise<readonly CatalogEligibility[]> => {
-    eligibilityPromise ??= dependencies.loadEligibility();
-    return eligibilityPromise;
-  };
-
   return {
     search: async (query, limit, signal) => {
       throwIfAborted(signal);
-      const [rows, variants] = await Promise.all([
-        loadEligibility(),
-        dependencies.searchVariants(query, limit),
-      ]);
-      throwIfAborted(signal);
-      const eligibilityByVariant = new Map(rows.map((row) => [row.variant_id, row]));
-      return variants.flatMap((variant) => {
-        const row = eligibilityByVariant.get(variant.id);
-        const record = row === undefined ? undefined : toCatalogRecord(row, variant, locale);
-        return record === undefined ? [] : [record];
-      });
-    },
-    details: async (canonicalIds, signal) => {
-      throwIfAborted(signal);
-      const rows = await loadEligibility();
-      const requestedRows = canonicalIds.map((canonicalId) => preferredRow(rows, canonicalId));
-      const skus = requestedRows.flatMap((row) => row?.sku === null || row?.sku === undefined ? [] : [row.sku]);
-      const variants = skus.length === 0
-        ? []
-        : await dependencies.loadVariantsBySkus([...new Set(skus)]);
-      throwIfAborted(signal);
-      const variantsBySku = new Map(
-        variants.flatMap((variant) => variant.sku === null ? [] : [[variant.sku, variant] as const]),
+      const queries = catalogSearchQueries(query);
+      const variantSettlements = await Promise.allSettled(
+        queries.map((candidate) =>
+          retryCatalogRead(
+            () => dependencies.searchVariants(candidate, limit, signal),
+            signal,
+          ),
+        ),
       );
-      return requestedRows.flatMap((row) => {
-        if (row?.sku === null || row?.sku === undefined) return [];
-        const variant = variantsBySku.get(row.sku);
-        const record = variant === undefined ? undefined : toCatalogRecord(row, variant, locale);
-        return record === undefined ? [] : [record];
-      });
-    },
-    compare: async (variantIds, _attributeKeys, signal) => {
       throwIfAborted(signal);
-      const rows = await loadEligibility();
-      const eligibilityByVariant = new Map(rows.map((row) => [row.variant_id, row]));
-      const requestedRows = variantIds.map((variantId) => eligibilityByVariant.get(variantId));
-      const skus = requestedRows.flatMap((row) => row?.sku === null || row?.sku === undefined ? [] : [row.sku]);
-      const variants = skus.length === 0
-        ? []
-        : await dependencies.loadVariantsBySkus([...new Set(skus)]);
-      throwIfAborted(signal);
-      const variantsBySku = new Map(
-        variants.flatMap((variant) => variant.sku === null ? [] : [[variant.sku, variant] as const]),
+      const variantLists = variantSettlements.flatMap((settlement) =>
+        settlement.status === "fulfilled" ? [settlement.value] : []
       );
-      return requestedRows.flatMap((row) => {
-        if (row?.sku === null || row?.sku === undefined) return [];
-        const variant = variantsBySku.get(row.sku);
-        const record = variant === undefined ? undefined : toCatalogRecord(row, variant, locale);
+      if (variantLists.length === 0 && queries.length > 0) {
+        const failure = variantSettlements.find(
+          (settlement): settlement is PromiseRejectedResult =>
+            settlement.status === "rejected",
+        );
+        throw failure?.reason instanceof Error
+          ? failure.reason
+          : new Error("Public chat catalog search unavailable");
+      }
+      const variants = variantLists.flat();
+      const seenVariantIds = new Set<string>();
+      const variantRecords = variants.flatMap((variant) => {
+        if (seenVariantIds.has(variant.id)) return [];
+        seenVariantIds.add(variant.id);
+        const record = toCatalogRecord(variant, locale);
         return record === undefined ? [] : [record];
       });
+      return variantRecords.slice(0, limit);
     },
+    details: (canonicalIds, signal) =>
+      loadExactCatalogRecords(canonicalIds, "canonicalId", locale, dependencies, signal),
+    compare: (variantIds, _attributeKeys, signal) =>
+      loadExactCatalogRecords(variantIds, "variantId", locale, dependencies, signal),
   };
 }

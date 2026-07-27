@@ -88,7 +88,7 @@ SET LOCAL ROLE anon;
 SELECT set_config('request.jwt.claims', '{"role":"anon"}', true);
 SELECT set_config('request.jwt.claim.sub', '', true);
 SELECT set_config('app.order_number', 'RLS-GUEST-ORDER', true);
-SELECT is((SELECT count(*) FROM public.orders where id = :'guest_order_id'), 1::bigint, 'anon reads the requested guest order only');
+SELECT is((SELECT count(*) FROM public.orders where id = :'guest_order_id'), 0::bigint, 'an order number alone no longer authorizes a guest order read');
 SELECT throws_ok($$ insert into public.orders (order_number, email, full_name, phone, address) values ('FORGED-GUEST-ORDER', 'forged@example.test', 'Forged', '500', 'Forged address') $$, '42501', NULL, 'anon cannot insert orders directly');
 
 SET LOCAL ROLE authenticated;
@@ -110,7 +110,7 @@ SELECT is((SELECT count(*) FROM public.order_status_history), 0::bigint, 'anon c
 SELECT throws_ok($$ insert into public.order_items (order_id, quantity) values ('00000000-0000-4000-8000-000000000093', 1) $$, '42501', NULL, 'anon cannot insert order items');
 SELECT throws_ok($$ insert into public.order_status_history (order_id, status) values ('00000000-0000-4000-8000-000000000093', 'confirmed') $$, '42501', NULL, 'anon cannot insert order history');
 SELECT set_config('app.order_number', 'RLS-GUEST-ORDER', true);
-SELECT is((SELECT count(*) FROM public.order_items where order_id = :'guest_order_id'), 1::bigint, 'anon reads requested guest order items only');
+SELECT is((SELECT count(*) FROM public.order_items where order_id = :'guest_order_id'), 0::bigint, 'an order number alone no longer authorizes a guest order item read');
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims', json_build_object('sub', :'authenticated_user_id', 'role', 'authenticated')::text, true);

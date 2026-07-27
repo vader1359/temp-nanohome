@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import type { PublicChatLocale } from "@/lib/chat/contracts";
+import { clientCustomerContextSchema } from "@/lib/contracts/schemas";
 import {
   publicChatEventSchema,
   type PublicChatEvent,
@@ -49,6 +50,7 @@ type TranscriptEntry = Readonly<{
 const labels = {
   vi: {
     launcher: "Mở trợ lý nanoHome",
+    launcherLabel: "Tư vấn AI",
     close: "Đóng trợ lý nanoHome",
     title: "Trợ lý nanoHome",
     subtitle: "Tư vấn từ thông tin sản phẩm đã được xác thực",
@@ -69,6 +71,7 @@ const labels = {
   },
   en: {
     launcher: "Open nanoHome assistant",
+    launcherLabel: "AI advice",
     close: "Close nanoHome assistant",
     title: "nanoHome assistant",
     subtitle: "Advice grounded in verified product information",
@@ -89,6 +92,7 @@ const labels = {
   },
   ko: {
     launcher: "nanoHome 도우미 열기",
+    launcherLabel: "AI 상담",
     close: "nanoHome 도우미 닫기",
     title: "nanoHome 도우미",
     subtitle: "검증된 제품 정보를 바탕으로 안내합니다",
@@ -186,7 +190,7 @@ function uniqueBy<T>(
 
 function priceLabel(product: ChatProduct, locale: PublicChatLocale): string {
   const text = labels[locale];
-  if (product.price?.mode === "fixed") {
+  if (product.price?.mode === "fixed" && product.price.amount > 1) {
     const numberLocale = locale === "vi" ? "vi-VN" : locale === "ko" ? "ko-KR" : "en-US";
     try {
       return new Intl.NumberFormat(numberLocale, {
@@ -198,7 +202,10 @@ function priceLabel(product: ChatProduct, locale: PublicChatLocale): string {
       return `${product.price.amount.toLocaleString(numberLocale)} ${product.price.currency}`;
     }
   }
-  return product.price?.mode === "contact" ? text.contactPrice : text.unavailablePrice;
+  return product.price?.mode === "contact" ||
+    (product.price?.mode === "fixed" && product.price.amount <= 1)
+    ? text.contactPrice
+    : text.unavailablePrice;
 }
 
 function stockLabel(product: ChatProduct, locale: PublicChatLocale): string {
@@ -301,12 +308,37 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
   const [status, setStatus] = useState("");
   const [entries, setEntries] = useState<readonly TranscriptEntry[]>([]);
   const [lastQuestion, setLastQuestion] = useState("");
+  const [aiProcessingAllowed, setAiProcessingAllowed] = useState(false);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => () => activeControllerRef.current?.abort(), []);
+  useEffect(() => {
+    const controller = new AbortController();
+    const refreshConsent = async () => {
+      try {
+        const response = await fetch("/api/customer/context", {
+          cache: "no-store",
+          credentials: "same-origin",
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const parsed = clientCustomerContextSchema.safeParse(await response.json());
+        if (parsed.success) setAiProcessingAllowed(parsed.data.consent.aiProcessing === true);
+      } catch (error: unknown) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) setAiProcessingAllowed(false);
+      }
+    };
+    const onCustomerContextChanged = () => { void refreshConsent(); };
+    void refreshConsent();
+    window.addEventListener("nanohome:customer-context-changed", onCustomerContextChanged);
+    return () => {
+      controller.abort();
+      window.removeEventListener("nanohome:customer-context-changed", onCustomerContextChanged);
+    };
+  }, []);
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -328,6 +360,14 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
   const close = () => {
     setOpen(false);
     launcherRef.current?.focus();
+  };
+
+  const openAssistant = () => {
+    if (!aiProcessingAllowed) {
+      window.dispatchEvent(new Event("nanohome:open-consent-settings"));
+      return;
+    }
+    setOpen(true);
   };
 
   const submit = async (rawQuestion: string) => {
@@ -423,12 +463,12 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
         aria-expanded={open}
         aria-label={text.launcher}
         className="fixed bottom-24 right-4 z-[70] flex h-12 items-center gap-2 rounded-full bg-nh-footer px-4 text-sm font-semibold text-white shadow-xl transition-transform hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent motion-reduce:transition-none"
-        onClick={() => setOpen(true)}
+        onClick={openAssistant}
         ref={launcherRef}
         type="button"
       >
         <MessageCircle aria-hidden="true" className="size-5" />
-        <span className="hidden sm:inline">AI</span>
+        <span>{text.launcherLabel}</span>
       </button>
       {open ? (
         <section

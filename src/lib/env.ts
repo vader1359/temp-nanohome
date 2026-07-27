@@ -1,69 +1,173 @@
 import { z } from "zod";
 
-// Env schema for nanohome.
-//
-// Public (NEXT_PUBLIC_*) vars are inlined by Next.js at build time, so they
-// are referenced as static `process.env.NEXT_PUBLIC_*` member expressions in
-// consumer code (see src/lib/supabase/browser.ts, instrumentation, etc.).
-//
-// Server-only vars never reach the client bundle. Anything that must NOT be
-// exposed to the browser MUST NOT be prefixed with NEXT_PUBLIC_.
-const optionalEnvString = z.preprocess((value) => (value === "" ? undefined : value), z.string().min(1).optional());
-const optionalEnvUrl = z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional());
+const optionalEnvString = z.preprocess((value) => value === "" ? undefined : value, z.string().min(1).optional());
+const optionalEnvUrl = z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional());
+const optionalHttpsUrl = z.preprocess(
+  (value) => value === "" ? undefined : value,
+  z.string().url().refine((value) => value.startsWith("https://"), "URL must use HTTPS").optional(),
+);
+const envBoolean = (defaultValue: "true" | "false") => z.preprocess(
+  (value) => value === "" ? undefined : value,
+  z.enum(["true", "false"]).default(defaultValue).transform((value) => value === "true"),
+);
+const optionalInteger = (minimum: number, maximum: number) => z.preprocess(
+  (value) => value === "" || value === undefined ? undefined : Number(value),
+  z.number().int().min(minimum).max(maximum).optional(),
+);
 
 const envSchema = z.object({
-  // --- PUBLIC (browser-safe) ---
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
-  NEXT_PUBLIC_CLARITY_ID: z.string().min(1).optional(),
-  NEXT_PUBLIC_AXIOM_DATASET: z.string().min(1).optional(),
-  NEXT_PUBLIC_AXIOM_TOKEN: z.string().min(1).optional(),
+  NEXT_PUBLIC_CLARITY_ID: optionalEnvString,
+  NEXT_PUBLIC_AXIOM_DATASET: optionalEnvString,
+  NEXT_PUBLIC_AXIOM_TOKEN: optionalEnvString,
   NEXT_PUBLIC_MEDIA_URL: optionalEnvUrl,
+  NEXT_PUBLIC_APP_ORIGIN: optionalHttpsUrl,
+  NEXT_PUBLIC_FIREBASE_API_KEY: optionalEnvString,
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: optionalEnvString,
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: optionalEnvString,
+  NEXT_PUBLIC_FIREBASE_APP_ID: optionalEnvString,
+  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: optionalEnvString,
+  NEXT_PUBLIC_FIREBASE_APP_CHECK_SITE_KEY: optionalEnvString,
+  NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL: optionalEnvUrl,
+  NEXT_PUBLIC_FIREBASE_TENANT_ID: optionalEnvString,
 
-  // --- SERVER-ONLY ---
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   CRON_SECRET: z.string().min(1),
 
-  // --- AMIS (server-only) ---
+  AUTH_PROVIDER: z.enum(["supabase", "firebase", "disabled", "fake", "noop", "off"]).default("supabase"),
+  PAYMENT_MODE: z.enum(["off", "sepay_sandbox", "sepay_primary"]).default("off"),
+  CHAT_ENABLED: envBoolean("false"),
+
+  DEEPSEEK_API_KEY: optionalEnvString,
+  DEEPSEEK_MODEL: z.enum(["deepseek-v4-flash", "deepseek-v4-pro", "deepseek-chat", "deepseek-reasoner"]).optional(),
+  DEEPSEEK_BASE_URL: optionalHttpsUrl,
+  PROMPT_VERSION: optionalEnvString,
+  CHAT_HANDOFF_ENABLED: envBoolean("false"),
+  ADVISOR_INBOX_ENABLED: envBoolean("false"),
+  ADVISOR_NOTIFICATION_PROVIDER: z.enum(["noop", "fake", "off", "webhook"]).default("noop"),
+  ADVISOR_NOTIFICATION_DESTINATION: optionalEnvString,
+  ADVISOR_NOTIFICATION_API_KEY: optionalEnvString,
+
+  VISION_PROVIDER: z.enum(["off", "fake", "noop", "primary"]).default("off"),
+  VISION_MODEL: optionalEnvString,
+  VISION_API_KEY: optionalEnvString,
+  VISION_PRIVATE_BUCKET: optionalEnvString,
+  VISION_UPLOAD_ENABLED: envBoolean("false"),
+  ROOM_ANALYSIS_ENABLED: envBoolean("false"),
+  VISUAL_SIMILARITY_ENABLED: envBoolean("false"),
+  VISION_RETENTION_DAYS: optionalInteger(1, 3650),
+  VISION_EVALUATION_STORAGE_ENABLED: envBoolean("false"),
+
+  SEPAY_ENV: z.enum(["sandbox", "primary"]).optional(),
+  SEPAY_MERCHANT_ID: optionalEnvString,
+  SEPAY_MERCHANT_SECRET: optionalEnvString,
+  SEPAY_IPN_SECRET: optionalEnvString,
+  SEPAY_PAYMENT_METHOD: z.literal("BANK_TRANSFER").optional(),
+  SEPAY_SUCCESS_URL: optionalHttpsUrl,
+  SEPAY_ERROR_URL: optionalHttpsUrl,
+  SEPAY_CANCEL_URL: optionalHttpsUrl,
+  SEPAY_RECONCILIATION_ENABLED: envBoolean("false"),
+
   AMIS_API_BASE_URL: optionalEnvUrl,
   AMIS_CLIENT_ID: optionalEnvString,
   AMIS_CLIENT_SECRET: optionalEnvString,
+  AMIS_SYNC_ENABLED: envBoolean("false"),
+  AMIS_WRITES_ENABLED: envBoolean("false"),
+  AMIS_PERSONALIZATION_ENABLED: envBoolean("false"),
+  RECOMMENDATIONS_SHADOW_MODE: envBoolean("true"),
 
-  // --- DeepSeek public-chat provider (server-only, optional) ---
-  DEEPSEEK_API_KEY: optionalEnvString,
-  DEEPSEEK_MODEL: z.enum([
-    "deepseek-v4-flash",
-    "deepseek-v4-pro",
-    "deepseek-chat",
-    "deepseek-reasoner",
-  ]).optional(),
+  ACCOUNT_CENTER_ENABLED: envBoolean("false"),
+  AUTH_FIREBASE_ROLLOUT_PERCENT: optionalInteger(0, 100).default(0),
+  AUTH_LEGACY_LOGIN_ENABLED: envBoolean("true"),
+  FIREBASE_ADMIN_PROJECT_ID: optionalEnvString,
+  FIREBASE_ADMIN_CLIENT_EMAIL: optionalEnvString,
+  FIREBASE_ADMIN_PRIVATE_KEY: optionalEnvString,
+  AUTH_SESSION_COOKIE_NAME: optionalEnvString,
+  AUTH_SESSION_TTL_SECONDS: optionalInteger(300, 1_209_600),
+  FIREBASE_AUTH_EMULATOR_HOST: optionalEnvString,
+  AUTH_CSRF_SECRET: optionalEnvString,
+  GOOGLE_APPLICATION_CREDENTIALS: optionalEnvString,
+  KAKAO_APP_ID: optionalEnvString,
+  KAKAO_ADMIN_KEY: optionalEnvString,
+  KAKAO_REST_API_KEY: optionalEnvString,
+  KAKAO_CLIENT_SECRET: optionalEnvString,
 
-  // --- Instagram Graph API (server-only, optional) ---
   INSTAGRAM_ACCESS_TOKEN: optionalEnvString,
   INSTAGRAM_BUSINESS_ACCOUNT_ID: optionalEnvString,
   META_APP_ID: optionalEnvString,
   META_APP_SECRET: optionalEnvString,
-
-  // --- Cloudinary and Wistia (server-only, optional) ---
   CLOUDINARY_URL: optionalEnvString,
   CF_R2_ACCESS_KEY_ID: optionalEnvString,
   CF_R2_SECRET_ACCESS_KEY: optionalEnvString,
   CF_R2_ENDPOINT: optionalEnvUrl,
   CF_R2_BUCKET: optionalEnvString,
   WISTIA_API_TOKEN: optionalEnvString,
+}).passthrough().superRefine((value, context) => {
+  for (const key of Object.keys(value)) {
+    if (key.startsWith("NEXT_PUBLIC_SEPAY_") || key.startsWith("NEXT_PUBLIC_KAKAO_")) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: `${key} must remain server-only`, path: [key] });
+    }
+  }
+
+  if (value.AUTH_PROVIDER === "firebase") {
+    const requiredPublic = [
+      value.NEXT_PUBLIC_APP_ORIGIN, value.NEXT_PUBLIC_FIREBASE_API_KEY, value.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      value.NEXT_PUBLIC_FIREBASE_PROJECT_ID, value.NEXT_PUBLIC_FIREBASE_APP_ID, value.FIREBASE_ADMIN_PROJECT_ID,
+    ];
+    if (requiredPublic.some((entry) => entry === undefined)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "Firebase auth requires public and admin Firebase configuration", path: ["AUTH_PROVIDER"] });
+    }
+    if (value.NEXT_PUBLIC_FIREBASE_PROJECT_ID !== value.FIREBASE_ADMIN_PROJECT_ID) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "Firebase public and admin project IDs must match", path: ["FIREBASE_ADMIN_PROJECT_ID"] });
+    }
+    const hasEmail = value.FIREBASE_ADMIN_CLIENT_EMAIL !== undefined;
+    const hasPrivateKey = value.FIREBASE_ADMIN_PRIVATE_KEY !== undefined;
+    const hasExplicit = hasEmail && hasPrivateKey;
+    const hasAdcPath = value.GOOGLE_APPLICATION_CREDENTIALS !== undefined;
+    if (hasEmail !== hasPrivateKey || (hasExplicit && hasAdcPath)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "Firebase auth requires exactly one Firebase Admin credential mode", path: ["FIREBASE_ADMIN_CLIENT_EMAIL"] });
+    }
+  }
+
+  const activePayment = value.PAYMENT_MODE !== "off";
+  const sepayValues = [value.SEPAY_ENV, value.SEPAY_MERCHANT_ID, value.SEPAY_MERCHANT_SECRET, value.SEPAY_IPN_SECRET,
+    value.SEPAY_PAYMENT_METHOD, value.SEPAY_SUCCESS_URL, value.SEPAY_ERROR_URL, value.SEPAY_CANCEL_URL];
+  const expectedSePayEnv = value.PAYMENT_MODE === "sepay_sandbox" ? "sandbox" : "primary";
+  if (activePayment && (sepayValues.some((entry) => entry === undefined) || value.SEPAY_ENV !== expectedSePayEnv)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "SePay active mode requires complete matching configuration", path: ["PAYMENT_MODE"] });
+  }
+
+  if (value.CHAT_ENABLED && [value.DEEPSEEK_API_KEY, value.DEEPSEEK_MODEL, value.DEEPSEEK_BASE_URL, value.PROMPT_VERSION].some((entry) => entry === undefined)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Chat requires complete DeepSeek configuration", path: ["CHAT_ENABLED"] });
+  }
+  if (value.ADVISOR_NOTIFICATION_PROVIDER === "webhook"
+    && [value.ADVISOR_NOTIFICATION_DESTINATION, value.ADVISOR_NOTIFICATION_API_KEY].some((entry) => entry === undefined)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Advisor notification requires complete configuration", path: ["ADVISOR_NOTIFICATION_PROVIDER"] });
+  }
+
+  const visionFeatureEnabled = value.VISION_UPLOAD_ENABLED || value.ROOM_ANALYSIS_ENABLED
+    || value.VISUAL_SIMILARITY_ENABLED || value.VISION_EVALUATION_STORAGE_ENABLED;
+  if ((value.VISION_PROVIDER === "primary" || visionFeatureEnabled)
+    && [value.VISION_MODEL, value.VISION_API_KEY, value.VISION_PRIVATE_BUCKET, value.VISION_RETENTION_DAYS].some((entry) => entry === undefined)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Vision activation requires complete configuration", path: ["VISION_PROVIDER"] });
+  }
+
+  const amisEnabled = value.AMIS_SYNC_ENABLED || value.AMIS_WRITES_ENABLED || value.AMIS_PERSONALIZATION_ENABLED;
+  if (amisEnabled && [value.AMIS_API_BASE_URL, value.AMIS_CLIENT_ID, value.AMIS_CLIENT_SECRET].some((entry) => entry === undefined)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "AMIS activation requires complete configuration", path: ["AMIS_SYNC_ENABLED"] });
+  }
 });
 
-/**
- * Parsed, typed environment for the app. Import where needed instead of
- * reading `process.env` directly.
- *
- * Throws a ZodError at module load if any required var is missing or invalid,
- * which surfaces as a hard build/runtime failure — exactly what we want for
- * misconfigured secrets.
- *
- * `NEXT_PUBLIC_*` keys are kept as strings (zod `.url()` validates but does
- * not coerce to a URL instance) so Next.js can inline them at build time.
- */
 export const env = envSchema.parse(process.env);
-
-export type Env = z.infer<typeof envSchema>;
+type ParsedEnv = z.infer<typeof envSchema>;
+type SchemaEnv = {
+  [Key in keyof ParsedEnv as string extends Key ? never : number extends Key ? never : Key]: ParsedEnv[Key];
+};
+type DefaultedEnvKey =
+  | "AUTH_PROVIDER" | "PAYMENT_MODE" | "CHAT_ENABLED" | "CHAT_HANDOFF_ENABLED" | "ADVISOR_INBOX_ENABLED"
+  | "ADVISOR_NOTIFICATION_PROVIDER" | "VISION_PROVIDER" | "VISION_UPLOAD_ENABLED" | "ROOM_ANALYSIS_ENABLED"
+  | "VISUAL_SIMILARITY_ENABLED" | "VISION_EVALUATION_STORAGE_ENABLED" | "SEPAY_RECONCILIATION_ENABLED"
+  | "AMIS_SYNC_ENABLED" | "AMIS_WRITES_ENABLED" | "AMIS_PERSONALIZATION_ENABLED" | "RECOMMENDATIONS_SHADOW_MODE"
+  | "ACCOUNT_CENTER_ENABLED" | "AUTH_FIREBASE_ROLLOUT_PERCENT" | "AUTH_LEGACY_LOGIN_ENABLED";
+export type Env = Omit<SchemaEnv, DefaultedEnvKey> & Partial<Pick<SchemaEnv, DefaultedEnvKey>>;

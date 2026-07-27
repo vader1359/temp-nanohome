@@ -1,3 +1,5 @@
+import "server-only";
+
 import { parseCatalogEligibilityRow } from "@/lib/catalog/eligibility";
 import type { CatalogEligibility } from "@/lib/catalog/eligibility";
 import { env } from "@/lib/env";
@@ -8,8 +10,8 @@ export async function getCatalogEligibility(): Promise<readonly CatalogEligibili
     `${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/catalog_eligibility?select=*`,
     {
       headers: {
-        apikey: env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
+        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
       },
     },
   );
@@ -20,5 +22,14 @@ export async function getCatalogEligibility(): Promise<readonly CatalogEligibili
   if (!Array.isArray(data)) {
     throw new Error("Catalog eligibility response was not an array");
   }
-  return data.map((row) => parseCatalogEligibilityRow(row));
+  // A legacy/incomplete view row must never make the whole public catalog
+  // unavailable. Each row is independently schema-validated and malformed
+  // rows are excluded (fail-closed) before an adapter can surface a card.
+  return data.flatMap((row) => {
+    try {
+      return [parseCatalogEligibilityRow(row)];
+    } catch {
+      return [];
+    }
+  });
 }

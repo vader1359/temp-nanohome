@@ -1,3 +1,4 @@
+import type { AccountId } from "@/lib/account-session";
 import type { CustomerMemory, RecommendationResponse } from "@/lib/contracts";
 import type { CustomerMemoryPort, RecommendationPort } from "@/lib/contracts";
 
@@ -31,7 +32,7 @@ export type PersonalizationContext = {
 };
 
 export type PersonalizationInput = {
-	readonly userId: string | null;
+	readonly accountId: AccountId | null;
 	readonly consent: { readonly personalization: boolean };
   readonly locale: string;
   readonly recent: readonly RecentEntity[];
@@ -68,8 +69,8 @@ export function createPersonalizationResolver(dependencies: PersonalizationDepen
 	return {
 		resolve: async (input) => {
 			const personalizationAllowed = flags.personalizationEnabled && input.consent.personalization;
-			const customerMemory = personalizationAllowed && flags.customerMemoryEnabled && input.userId !== null
-				? await loadFreshMemory(dependencies, input.userId, input.now)
+			const customerMemory = personalizationAllowed && flags.customerMemoryEnabled && input.accountId !== null
+					? await loadFreshMemory(dependencies, input.accountId, input.now)
 				: undefined;
 			const explicit = personalizationAllowed && flags.explicitPreferencesEnabled ? input.explicit : [];
 			const recent = flags.personalizationEnabled && flags.recentlyViewedEnabled ? input.recent : [];
@@ -111,11 +112,11 @@ function resolveMode(input: ModeInput): PersonalizationMode {
 
 async function loadFreshMemory(
 	dependencies: PersonalizationDependencies,
-	userId: string,
+	accountId: AccountId,
 	now: string,
 ): Promise<CustomerMemory | undefined> {
 	try {
-		const memory = await dependencies.memoryPort.getForAuthenticatedCustomer({ userId, purpose: "personalization" });
+			const memory = await dependencies.memoryPort.getForAuthenticatedCustomer({ accountId, purpose: "personalization" });
 		if (memory === null) return undefined;
 		const age = Date.parse(now) - Date.parse(memory.sourceUpdatedAt);
     const maxAge = dependencies.maxMemoryAgeMs ?? DEFAULT_MEMORY_AGE_MS;

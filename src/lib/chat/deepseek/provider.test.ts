@@ -38,6 +38,16 @@ describe("DeepSeek provider boundary", () => {
     expect(parsed).not.toContain("secret thought");
   });
 
+  it("accepts the documented V4 streaming envelope while ignoring provider metadata and reasoning", () => {
+    const parsed = parseDeepSeekStream(
+      'data: {"id":"completion","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant","content":null,"reasoning_content":"private reasoning"},"logprobs":null,"finish_reason":null}]}\n\n' +
+      'data: {"id":"completion","choices":[{"index":0,"delta":{"content":"public answer","reasoning_content":null},"logprobs":null,"finish_reason":null}]}\n\n' +
+      'data: [DONE]\n\n',
+    );
+    expect(parsed).toBe("public answer");
+    expect(parsed).not.toContain("private reasoning");
+  });
+
   it("consumes an SSE provider response without exposing reasoning content", async () => {
     const requests: RequestInit[] = [];
     const result = await requestDeepSeek({
@@ -57,6 +67,65 @@ describe("DeepSeek provider boundary", () => {
 
     expect(result).toEqual({ kind: "answer", answer: { text: "Public answer.", blocks: [], evidence: [], followUps: [] } });
     expect(JSON.parse(String(requests[0]?.body)).stream).toBe(true);
+    expect(String(requests[0]?.body)).toContain("search_catalog");
+    expect(String(requests[0]?.body)).toContain("never use search_products");
+  });
+
+  it("instructs the provider to answer after a successful catalog result", async () => {
+    const requests: RequestInit[] = [];
+    await requestDeepSeek({
+      apiKey: "secret",
+      fetcher: async (_input, init) => {
+        requests.push(init);
+        return new Response("data: [DONE]\n\n", { headers: { "content-type": "text/event-stream" } });
+      },
+      question: "Find a chair",
+      locale: "en",
+      evidence: [],
+      toolResults: [{
+        kind: "catalog",
+        records: [{ canonicalId: "chair", variantId: "chair-one", title: "Chair", canonicalLink: "/products/chair", image: { id: "chair-image", alt: "Chair" }, price: { mode: "contact" }, stock: { state: "unknown" }, attributes: {} }],
+      }],
+    });
+    expect(String(requests[0]?.body)).toContain("Return kind answer now and do not call any tool");
+    expect(String(requests[0]?.body)).toContain("only supplied variantIds");
+  });
+
+  it("requires an immediate grounded answer when approved evidence is supplied", async () => {
+    const requests: RequestInit[] = [];
+    await requestDeepSeek({
+      apiKey: "secret",
+      fetcher: async (_input, init) => {
+        requests.push(init);
+        return new Response("data: [DONE]\n\n", { headers: { "content-type": "text/event-stream" } });
+      },
+      question: "What is nanoHome?",
+      locale: "en",
+      evidence: [{ sourceId: "about_nanohome", text: "nanoHome curates authentic international furniture." }],
+      toolResults: [],
+    });
+
+    const serialized = String(requests[0]?.body);
+    const parsedBody = JSON.parse(serialized) as {
+      readonly response_format?: unknown;
+      readonly messages?: readonly { readonly content?: string }[];
+    };
+    const systemPrompt = parsedBody.messages?.[0]?.content ?? "";
+    expect(serialized).toContain("Approved grounding data is supplied");
+    expect(serialized).toContain("Return kind answer now and do not call any tool");
+    expect(serialized).toContain("Include each supplied sourceId used in answer.evidence");
+    expect(serialized).toContain("answer.evidence must contain only objects shaped exactly as");
+    expect(serialized).toContain("Never return paragraph");
+    expect(serialized).toContain("Answer only in the supplied locale");
+    expect(serialized).toContain("vi means Vietnamese, en means English, and ko means Korean");
+    expect(parsedBody).toEqual(
+      expect.objectContaining({
+        temperature: 0,
+        response_format: { type: "json_object" },
+      }),
+    );
+    expect(systemPrompt).toContain('"kind":"answer"');
+    expect(systemPrompt).toContain('"type":"link_list"');
   });
 
   it("joins multiple data lines in one SSE event before parsing JSON", () => {

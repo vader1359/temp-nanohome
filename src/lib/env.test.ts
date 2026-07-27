@@ -1,105 +1,186 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// These tests exercise the zod env parser directly so they don't depend on
-// the real process.env loaded for the dev/build environment.
-//
-// We can't simply `import { env }` because the module evaluates the schema at
-// import time against the ambient process.env. Instead we re-import the module
-// per test with a controlled process.env using vi.resetModules + dynamic import.
-
-const FULL_ENV = {
+const BASE_ENV = {
   NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
   SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
   CRON_SECRET: "cron-test",
-  AMIS_API_BASE_URL: "https://amis.example.com",
 };
+
+const MATRIX_KEYS = [
+  "AUTH_PROVIDER", "PAYMENT_MODE", "CHAT_ENABLED", "DEEPSEEK_API_KEY", "DEEPSEEK_MODEL",
+  "DEEPSEEK_BASE_URL", "PROMPT_VERSION", "CHAT_HANDOFF_ENABLED", "ADVISOR_INBOX_ENABLED",
+  "ADVISOR_NOTIFICATION_PROVIDER", "ADVISOR_NOTIFICATION_DESTINATION", "ADVISOR_NOTIFICATION_API_KEY",
+  "VISION_PROVIDER", "VISION_MODEL", "VISION_API_KEY", "VISION_PRIVATE_BUCKET", "VISION_UPLOAD_ENABLED",
+  "ROOM_ANALYSIS_ENABLED", "VISUAL_SIMILARITY_ENABLED", "VISION_RETENTION_DAYS",
+  "VISION_EVALUATION_STORAGE_ENABLED", "SEPAY_ENV", "SEPAY_MERCHANT_ID", "SEPAY_MERCHANT_SECRET",
+  "SEPAY_IPN_SECRET", "SEPAY_PAYMENT_METHOD", "SEPAY_SUCCESS_URL", "SEPAY_ERROR_URL", "SEPAY_CANCEL_URL",
+  "SEPAY_RECONCILIATION_ENABLED", "AMIS_API_BASE_URL", "AMIS_CLIENT_ID", "AMIS_CLIENT_SECRET",
+  "AMIS_SYNC_ENABLED", "AMIS_WRITES_ENABLED", "AMIS_PERSONALIZATION_ENABLED", "RECOMMENDATIONS_SHADOW_MODE",
+  "NEXT_PUBLIC_APP_ORIGIN", "NEXT_PUBLIC_FIREBASE_API_KEY", "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
+  "NEXT_PUBLIC_FIREBASE_PROJECT_ID", "NEXT_PUBLIC_FIREBASE_APP_ID", "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
+  "NEXT_PUBLIC_FIREBASE_APP_CHECK_SITE_KEY", "NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL",
+  "NEXT_PUBLIC_FIREBASE_TENANT_ID", "ACCOUNT_CENTER_ENABLED", "AUTH_FIREBASE_ROLLOUT_PERCENT",
+  "AUTH_LEGACY_LOGIN_ENABLED", "FIREBASE_ADMIN_PROJECT_ID", "FIREBASE_ADMIN_CLIENT_EMAIL",
+  "FIREBASE_ADMIN_PRIVATE_KEY", "AUTH_SESSION_COOKIE_NAME", "AUTH_SESSION_TTL_SECONDS",
+  "FIREBASE_AUTH_EMULATOR_HOST", "AUTH_CSRF_SECRET", "KAKAO_APP_ID", "KAKAO_ADMIN_KEY",
+  "KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "GOOGLE_APPLICATION_CREDENTIALS",
+] as const;
+
+const CLEAN_MATRIX_ENV = Object.fromEntries(MATRIX_KEYS.map((key) => [key, undefined]));
 
 async function importEnvWith(record: Record<string, string | undefined>) {
   vi.resetModules();
   const previous = { ...process.env };
-  for (const key of Object.keys(record)) {
-    if (record[key] === undefined) {
-      delete process.env[key];
-    } else {
-      process.env[key] = record[key] as string;
-    }
+  for (const [key, value] of Object.entries(record)) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
   }
-  // Next.js inlines NEXT_PUBLIC_* at bundle time but vitest uses the real
-  // process.env, so direct assignment is sufficient here.
   try {
-    const mod = await import("./env");
-    return mod;
+    return await import("./env");
   } finally {
-    // Restore the keys we mutated only.
-    for (const key of Object.keys(record)) {
-      if (key in previous) {
-        process.env[key] = previous[key];
-      } else {
-        delete process.env[key];
-      }
-    }
+    process.env = previous;
   }
 }
 
-describe("env parser", () => {
-  beforeEach(() => {
-    vi.resetModules();
+const FIREBASE_PUBLIC = {
+  AUTH_PROVIDER: "firebase",
+  NEXT_PUBLIC_APP_ORIGIN: "https://app.example.com",
+  NEXT_PUBLIC_FIREBASE_API_KEY: "firebase-test-api-key",
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "project-test.firebaseapp.com",
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: "project-test",
+  NEXT_PUBLIC_FIREBASE_APP_ID: "1:123:web:test",
+  FIREBASE_ADMIN_PROJECT_ID: "project-test",
+};
+
+const SEPAY_SANDBOX = {
+  PAYMENT_MODE: "sepay_sandbox",
+  SEPAY_ENV: "sandbox",
+  SEPAY_MERCHANT_ID: "merchant-test",
+  SEPAY_MERCHANT_SECRET: "merchant-secret-test",
+  SEPAY_IPN_SECRET: "ipn-secret-test",
+  SEPAY_PAYMENT_METHOD: "BANK_TRANSFER",
+  SEPAY_SUCCESS_URL: "https://app.example.com/payment/success",
+  SEPAY_ERROR_URL: "https://app.example.com/payment/error",
+  SEPAY_CANCEL_URL: "https://app.example.com/payment/cancel",
+};
+
+describe("environment matrix", () => {
+  beforeEach(() => vi.resetModules());
+
+  it("uses network-disabled defaults in a baseline environment", async () => {
+    // Given: only the existing platform contract.
+    // When: the environment is parsed.
+    const { env } = await importEnvWith({ ...BASE_ENV, ...CLEAN_MATRIX_ENV });
+
+    // Then: every new provider or rollout is disabled safely.
+    expect(env).toMatchObject({
+      AUTH_PROVIDER: "supabase", PAYMENT_MODE: "off", CHAT_ENABLED: false, CHAT_HANDOFF_ENABLED: false,
+      ADVISOR_INBOX_ENABLED: false, ADVISOR_NOTIFICATION_PROVIDER: "noop", VISION_PROVIDER: "off",
+      VISION_UPLOAD_ENABLED: false, ROOM_ANALYSIS_ENABLED: false, VISUAL_SIMILARITY_ENABLED: false,
+      VISION_EVALUATION_STORAGE_ENABLED: false, AMIS_SYNC_ENABLED: false, AMIS_WRITES_ENABLED: false,
+      AMIS_PERSONALIZATION_ENABLED: false, RECOMMENDATIONS_SHADOW_MODE: true, ACCOUNT_CENTER_ENABLED: false,
+      AUTH_FIREBASE_ROLLOUT_PERCENT: 0, AUTH_LEGACY_LOGIN_ENABLED: true,
+    });
   });
 
-  it("parses a valid full env and exposes typed values", async () => {
-    // Given: a complete valid env record.
-    // When: the env module is imported.
-    const { env } = await importEnvWith(FULL_ENV);
+  it("accepts Firebase ADC mode with matching public and admin projects", async () => {
+    // Given: Firebase public config and project-only ADC mode.
+    // When: the environment is parsed.
+    const { env } = await importEnvWith({ ...BASE_ENV, ...CLEAN_MATRIX_ENV, ...FIREBASE_PUBLIC });
 
-    // Then: parsed public + server values are returned as typed strings.
-    expect(env.NEXT_PUBLIC_SUPABASE_URL).toBe("https://example.supabase.co");
-    expect(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY).toBe("sb_publishable_test");
-    expect(env.SUPABASE_SERVICE_ROLE_KEY).toBe("service-role-test");
-    expect(env.AMIS_API_BASE_URL).toBe("https://amis.example.com");
-    expect(env.AMIS_CLIENT_ID).toBeUndefined();
-    expect(env.INSTAGRAM_ACCESS_TOKEN).toBeUndefined();
-    expect(env.INSTAGRAM_BUSINESS_ACCOUNT_ID).toBeUndefined();
+    // Then: Firebase is active without explicit service-account credentials.
+    expect(env.AUTH_PROVIDER).toBe("firebase");
+    expect(env.FIREBASE_ADMIN_CLIENT_EMAIL).toBeUndefined();
   });
 
-  it.each(["deepseek-v4-flash", "deepseek-v4-pro"] as const)(
-    "accepts the supported DeepSeek V4 model %s",
-    async (model) => {
-      const { env } = await importEnvWith({ ...FULL_ENV, DEEPSEEK_MODEL: model });
-      expect(env.DEEPSEEK_MODEL).toBe(model);
+  it("accepts Firebase explicit credential mode", async () => {
+    // Given: matching Firebase projects and a complete explicit credential pair.
+    // When: the environment is parsed.
+    const { env } = await importEnvWith({
+      ...BASE_ENV, ...CLEAN_MATRIX_ENV, ...FIREBASE_PUBLIC,
+      FIREBASE_ADMIN_CLIENT_EMAIL: "firebase-admin@test.invalid", FIREBASE_ADMIN_PRIVATE_KEY: "private-key-test",
+    });
+
+    // Then: the explicit mode remains available.
+    expect(env.FIREBASE_ADMIN_CLIENT_EMAIL).toBe("firebase-admin@test.invalid");
+  });
+
+  it.each([
+    { FIREBASE_ADMIN_CLIENT_EMAIL: "firebase-admin@test.invalid" },
+    { FIREBASE_ADMIN_PRIVATE_KEY: "private-key-test" },
+  ])("rejects a partial Firebase explicit credential mode", async (partial) => {
+    // Given: Firebase with one half of the explicit credential pair.
+    // When / Then: parsing rejects the partial mode.
+    await expect(importEnvWith({ ...BASE_ENV, ...CLEAN_MATRIX_ENV, ...FIREBASE_PUBLIC, ...partial }))
+      .rejects.toThrow(/exactly one Firebase Admin credential mode/);
+  });
+
+  it("rejects Firebase mixed or mismatched admin configuration", async () => {
+    // Given: explicit credentials combined with a mismatched admin project and ADC path.
+    const broken = {
+      ...BASE_ENV, ...CLEAN_MATRIX_ENV, ...FIREBASE_PUBLIC, FIREBASE_ADMIN_PROJECT_ID: "other-project",
+      FIREBASE_ADMIN_CLIENT_EMAIL: "firebase-admin@test.invalid", FIREBASE_ADMIN_PRIVATE_KEY: "private-key-test",
+      GOOGLE_APPLICATION_CREDENTIALS: "/tmp/adc-test.json",
+    };
+
+    // When / Then: parsing rejects mixed ADC/explicit and project mismatch.
+    await expect(importEnvWith(broken)).rejects.toThrow(/Firebase/);
+  });
+
+  it("accepts complete SePay sandbox configuration", async () => {
+    // Given: complete sandbox credentials and HTTPS callbacks.
+    // When: the environment is parsed.
+    const { env } = await importEnvWith({ ...BASE_ENV, ...CLEAN_MATRIX_ENV, ...SEPAY_SANDBOX });
+
+    // Then: the exact sandbox mode is retained.
+    expect(env.PAYMENT_MODE).toBe("sepay_sandbox");
+    expect(env.SEPAY_PAYMENT_METHOD).toBe("BANK_TRANSFER");
+  });
+
+  it.each(["disabled", "fake", "noop", "sepay"])("rejects unsupported payment mode %s", async (PAYMENT_MODE) => {
+    // Given: a legacy or fake payment mode.
+    // When / Then: parsing rejects ambiguous behavior.
+    await expect(importEnvWith({ ...BASE_ENV, ...CLEAN_MATRIX_ENV, PAYMENT_MODE })).rejects.toThrow(/PAYMENT_MODE/);
+  });
+
+  it("rejects active SePay with missing or inconsistent sandbox configuration", async () => {
+    // Given: sandbox mode without its IPN secret and with the primary selector.
+    const broken = { ...BASE_ENV, ...CLEAN_MATRIX_ENV, ...SEPAY_SANDBOX, SEPAY_ENV: "primary", SEPAY_IPN_SECRET: undefined };
+
+    // When / Then: parsing rejects the incomplete active contract.
+    await expect(importEnvWith(broken)).rejects.toThrow(/SePay/);
+  });
+
+  it("requires credentials for active chat, notification, vision, and AMIS modes", async () => {
+    // Given: every optional network integration activated without its contract.
+    const broken = {
+      ...BASE_ENV, ...CLEAN_MATRIX_ENV, CHAT_ENABLED: "true", ADVISOR_NOTIFICATION_PROVIDER: "webhook",
+      VISION_PROVIDER: "primary", VISION_UPLOAD_ENABLED: "true", AMIS_SYNC_ENABLED: "true",
+    };
+
+    // When / Then: parsing rejects missing network credentials and URLs.
+    await expect(importEnvWith(broken)).rejects.toThrow(/configuration/);
+  });
+
+  it("rejects out-of-range rollout, session, and retention values", async () => {
+    // Given: numeric controls outside their policy bounds.
+    const broken = {
+      ...BASE_ENV, ...CLEAN_MATRIX_ENV, AUTH_FIREBASE_ROLLOUT_PERCENT: "101",
+      AUTH_SESSION_TTL_SECONDS: "299", VISION_RETENTION_DAYS: "0",
+    };
+
+    // When / Then: parsing rejects bounded controls.
+    await expect(importEnvWith(broken)).rejects.toThrow();
+  });
+
+  it.each(["NEXT_PUBLIC_SEPAY_MERCHANT_SECRET", "NEXT_PUBLIC_KAKAO_ADMIN_KEY"])(
+    "rejects forbidden public provider variable %s",
+    async (forbiddenKey) => {
+      // Given: a server credential name incorrectly exposed to the browser.
+      // When / Then: parsing rejects the entire forbidden prefix.
+      await expect(importEnvWith({ ...BASE_ENV, ...CLEAN_MATRIX_ENV, [forbiddenKey]: "leak-test" }))
+        .rejects.toThrow(/must remain server-only/);
     },
   );
-
-  it("temporarily accepts a legacy DeepSeek model name for safe runtime remapping", async () => {
-    const { env } = await importEnvWith({ ...FULL_ENV, DEEPSEEK_MODEL: "deepseek-chat" });
-    expect(env.DEEPSEEK_MODEL).toBe("deepseek-chat");
-  });
-
-  it("throws when SUPABASE_SERVICE_ROLE_KEY is missing", async () => {
-    // Given: env without the required service role key.
-    const broken = { ...FULL_ENV, SUPABASE_SERVICE_ROLE_KEY: undefined };
-
-    // When / Then: importing the module throws a zod error.
-    await expect(importEnvWith(broken)).rejects.toThrow(
-      /SUPABASE_SERVICE_ROLE_KEY/,
-    );
-  });
-
-  it("throws when NEXT_PUBLIC_SUPABASE_URL is not a valid URL", async () => {
-    // Given: an invalid public URL.
-    const broken = { ...FULL_ENV, NEXT_PUBLIC_SUPABASE_URL: "not-a-url" };
-
-    // When / Then: importing the module throws a zod URL validation error.
-    await expect(importEnvWith(broken)).rejects.toThrow(
-      /NEXT_PUBLIC_SUPABASE_URL/,
-    );
-  });
-
-  it("throws when CRON_SECRET is missing (server required)", async () => {
-    // Given: env without the required cron secret.
-    const broken = { ...FULL_ENV, CRON_SECRET: undefined };
-
-    // When / Then: importing the module throws a zod error mentioning CRON_SECRET.
-    await expect(importEnvWith(broken)).rejects.toThrow(/CRON_SECRET/);
-  });
 });

@@ -178,6 +178,7 @@ function buildHeroProduct(variant: Variant, locale: Locale) {
     discount: discounted ? `-${variant.discount_percent}%` : "",
     colors: COLORS,
     gallery: gallery.length > 0 ? gallery : [FALLBACK_PRODUCT_IMAGE],
+    size: variantText(variant.size),
   };
 }
 

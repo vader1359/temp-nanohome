@@ -1,70 +1,92 @@
 import { describe, expect, it, vi } from "vitest";
+import { AccountId } from "@/lib/account-session";
 import { customerMemoryFixture } from "@/lib/contracts";
-import { createSupabaseCustomerMemoryPort } from "./supabase-customer-memory-port";
+import {
+  createSupabaseCustomerMemoryPort,
+  createSupabaseCustomerMemoryProjectionReader,
+} from "./supabase-customer-memory-port";
 
-const options = {
-  accessToken: "account-access-token",
-  baseUrl: "https://supabase.test",
-  publishableKey: "public-key",
-  now: () => "2026-07-23T00:00:00.000Z",
-};
+const accountId = new AccountId("00000000-0000-4000-8000-000000000016");
+const now = () => "2026-07-23T00:00:00.000Z";
 
 describe("Supabase customer memory port", () => {
-  it("returns only the authenticated customer's safe, active projection", async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify([{
+  it("reads an active safe projection through the injected account repository", async () => {
+    const readProjection = vi.fn().mockResolvedValue({
+      account_id: accountId.value,
       memory: customerMemoryFixture,
       expires_at: "2026-08-23T00:00:00.000Z",
-    }]), { status: 200 }));
-    const port = createSupabaseCustomerMemoryPort({ ...options, fetcher });
+    });
+    const port = createSupabaseCustomerMemoryPort({ readProjection, now });
 
     await expect(port.getForAuthenticatedCustomer({
-      userId: "account-1",
+      accountId,
       purpose: "personalization",
     })).resolves.toEqual(customerMemoryFixture);
-
-    const [input, init] = fetcher.mock.calls[0];
-    const url = new URL(String(input));
-    expect(url.pathname).toBe("/rest/v1/customer_memory_projections");
-    expect(url.searchParams.get("select")).toBe("memory,expires_at");
-    expect(url.searchParams.get("user_id")).toBe("eq.account-1");
-    expect(init).toMatchObject({ cache: "no-store" });
-    expect(new Headers(init?.headers).get("authorization")).toBe("Bearer account-access-token");
+    expect(readProjection).toHaveBeenCalledWith(accountId);
   });
 
-  it("fails closed for expired or malformed projections", async () => {
+  it("denies a projection returned for another account", async () => {
+    const port = createSupabaseCustomerMemoryPort({
+      readProjection: vi.fn().mockResolvedValue({
+        account_id: "00000000-0000-4000-8000-000000000099",
+        memory: customerMemoryFixture,
+        expires_at: null,
+      }),
+      now,
+    });
+
+    await expect(port.getForAuthenticatedCustomer({ accountId, purpose: "personalization" })).resolves.toBeNull();
+  });
+
+  it("fails closed for expired or malformed projection DTOs", async () => {
     const expired = createSupabaseCustomerMemoryPort({
-      ...options,
-      fetcher: vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify([{
+      readProjection: vi.fn().mockResolvedValue({
+        account_id: accountId.value,
         memory: customerMemoryFixture,
         expires_at: "2026-07-22T00:00:00.000Z",
-      }]), { status: 200 })),
+      }),
+      now,
     });
     const malformed = createSupabaseCustomerMemoryPort({
-      ...options,
-      fetcher: vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify([{
+      readProjection: vi.fn().mockResolvedValue({
+        account_id: accountId.value,
         memory: { rawNotes: "not allowed" },
         expires_at: null,
-      }]), { status: 200 })),
+      }),
+      now,
     });
 
-    await expect(expired.getForAuthenticatedCustomer({
-      userId: "account-1",
-      purpose: "personalization",
-    })).resolves.toBeNull();
-    await expect(malformed.getForAuthenticatedCustomer({
-      userId: "account-1",
-      purpose: "personalization",
-    })).resolves.toBeNull();
+    await expect(expired.getForAuthenticatedCustomer({ accountId, purpose: "personalization" })).resolves.toBeNull();
+    await expect(malformed.getForAuthenticatedCustomer({ accountId, purpose: "personalization" })).resolves.toBeNull();
   });
 
-  it("does not read a projection for another purpose", async () => {
-    const fetcher = vi.fn<typeof fetch>();
-    const port = createSupabaseCustomerMemoryPort({ ...options, fetcher });
+  it("queries only safe projection columns by internal account without forwarding bearer material", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response("[]", {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }));
+    const readProjection = createSupabaseCustomerMemoryProjectionReader(fetcher);
 
-    await expect(port.getForAuthenticatedCustomer({
-      userId: "account-1",
-      purpose: "concierge",
-    })).resolves.toBeNull();
+    await expect(readProjection(accountId)).resolves.toBeNull();
+
+    const [request, init] = fetcher.mock.calls[0] ?? [];
+    expect(request).toBeInstanceOf(URL);
+    const url = new URL(String(request));
+    expect(url.searchParams.get("select")).toBe("account_id,memory,expires_at");
+    expect(url.searchParams.get("account_id")).toBe(`eq.${accountId.value}`);
+    expect(url.searchParams.has("user_id")).toBe(false);
+    const headers = new Headers(init?.headers);
+    expect(headers.has("authorization")).toBe(false);
+    expect(headers.has("cookie")).toBe(false);
+  });
+
+  it("keeps the disabled purpose off the repository and network", async () => {
+    const readProjection = vi.fn();
+    const fetcher = vi.fn<typeof fetch>();
+    const port = createSupabaseCustomerMemoryPort({ readProjection, now });
+
+    await expect(port.getForAuthenticatedCustomer({ accountId, purpose: "concierge" })).resolves.toBeNull();
+    expect(readProjection).not.toHaveBeenCalled();
     expect(fetcher).not.toHaveBeenCalled();
   });
 });

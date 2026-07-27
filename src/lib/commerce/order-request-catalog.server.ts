@@ -9,7 +9,7 @@ import { resolveOrderRequestCatalog } from "./order-request-catalog";
 export async function resolveOrderRequestCatalogFromSupabase(input: unknown) {
   const client = createClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    env.SUPABASE_SERVICE_ROLE_KEY,
     {
       auth: { autoRefreshToken: false, persistSession: false },
       global: { fetch: supabaseReadOnlyFetch },
