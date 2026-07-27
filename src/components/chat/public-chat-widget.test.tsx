@@ -162,7 +162,6 @@ describe("PublicChatWidget", () => {
 
   it("keeps the launcher visible and clears a visible footer at every width on document scroll", async () => {
     // Given: a visible semantic footer reaches into the viewport below the launcher.
-    vi.stubGlobal("fetch", vi.fn(async () => customerContext()));
     Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
     let footerTop = 650;
     const footer = document.createElement("footer");
@@ -171,7 +170,6 @@ describe("PublicChatWidget", () => {
     render(<PublicChatWidget locale="vi" />);
 
     // When: the widget measures the footer and document scroll occurs.
-    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
     const launcher = screen.getByRole("button", { name: "Mở trợ lý nanoHome" });
     expect(launcher.style.bottom).toBe("174px");
 
