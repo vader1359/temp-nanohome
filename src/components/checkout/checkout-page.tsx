@@ -194,24 +194,7 @@ export function CheckoutPage() {
               {/* Payment Card (Step 3 on mobile, always on desktop) */}
               <div className={`border border-[#E5E5E5] bg-white p-6 sm:p-8 ${step !== 3 ? 'hidden lg:block' : ''}`}>
                 <h2 className="text-xl text-[#1A1A1A] mb-6">{t("payment")}</h2>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="flex cursor-not-allowed flex-col border border-[#E5E5E5] bg-[#FAFAFA] p-4 opacity-50">
-                     <div className="mb-3 flex items-center justify-between">
-                       <input type="radio" name="payment" disabled className="h-4 w-4 cursor-not-allowed appearance-none rounded-full border border-[#CCCCCC] bg-white" />
-                       <span className="font-semibold text-[#1A1A1A]">ZaloPay</span>
-                     </div>
-                     <span className="text-sm text-[#666666]">{t("comingSoon")}</span>
-                   </label>
-
-                   <label className="flex cursor-not-allowed flex-col border border-[#E5E5E5] bg-[#FAFAFA] p-4 opacity-50">
-                     <div className="mb-3 flex items-center justify-between">
-                       <input type="radio" name="payment" disabled className="h-4 w-4 cursor-not-allowed appearance-none rounded-full border border-[#CCCCCC] bg-white" />
-                       <span className="font-bold text-[#1A1A1A]">VNPAY</span>
-                     </div>
-                     <span className="text-sm text-[#666666]">{t("comingSoon")}</span>
-                   </label>
-                 </div>
-                 <p className="mt-4 text-xs leading-5 text-[#666666]">{t("paymentUnavailable")}</p>
+                <p className="text-sm text-[#666666]">{t("paymentUnavailable")}</p>
               </div>
             </div>
 
