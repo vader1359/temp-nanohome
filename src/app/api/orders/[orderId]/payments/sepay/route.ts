@@ -16,9 +16,9 @@ import { buildSePayCheckoutRequest } from "@/lib/payments/sepay/checkout";
  */
 export async function POST(
   request: Request,
-  { params }: { params: { orderId: string } }
+  { params }: { params: Promise<{ orderId: string }> }
 ): Promise<Response> {
-  const { orderId } = params;
+  const { orderId } = await params;
 
   // Foundation prerequisite: typed env with PAYMENT_MODE check
   const paymentMode = process.env.PAYMENT_MODE ?? "off";

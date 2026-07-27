@@ -12,9 +12,9 @@
  */
 export async function GET(
   request: Request,
-  { params }: { params: { orderId: string } }
+  { params }: { params: Promise<{ orderId: string }> }
 ): Promise<Response> {
-  const { orderId } = params;
+  const { orderId } = await params;
 
   // Foundation prerequisite: session/owner resolution
   // Auth: customer_accounts.id from Firebase session cookie
