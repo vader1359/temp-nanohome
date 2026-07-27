@@ -363,6 +363,96 @@
     "action": {
       "title": "Tiếp tục an toàn",
       "body": "Trang này đã sẵn sàng cho bước bảo mật tiếp theo."
+    },
+    "profile": {
+      "title": "Hồ sơ của tôi",
+      "description": "Cập nhật thông tin để nanoHome phục vụ bạn tốt hơn.",
+      "unavailable": "Thông tin hồ sơ hiện chưa khả dụng."
+    },
+    "orders": {
+      "title": "Đơn hàng của tôi",
+      "description": "Theo dõi và xem lại các đơn hàng đã đặt.",
+      "unavailable": "Đơn hàng hiện chưa khả dụng.",
+      "empty": "Bạn chưa có đơn hàng nào.",
+      "orderPrefix": "Đơn",
+      "statusFulfilled": "Đã hoàn tất",
+      "statusPaid": "Đã thanh toán",
+      "loadMoreCta": "Xem đơn cũ hơn",
+      "listLabel": "Danh sách đơn hàng",
+      "detailLabel": "Chi tiết đơn hàng",
+      "dateLabel": "Ngày đặt",
+      "statusLabel": "Trạng thái",
+      "totalLabel": "Tổng cộng",
+      "orderTitle": "Đơn hàng"
+    },
+    "cart": {
+      "title": "Giỏ hàng",
+      "unavailable": "Giỏ hàng hiện chưa khả dụng.",
+      "empty": "Giỏ hàng của bạn đang trống.",
+      "exploreCta": "Khám phá sản phẩm"
+    },
+    "wishlist": {
+      "title": "Danh sách yêu thích",
+      "description": "Các sản phẩm bạn đã lưu để xem lại sau.",
+      "unavailable": "Danh sách yêu thích hiện chưa khả dụng.",
+      "empty": "Chưa có sản phẩm yêu thích.",
+      "exploreCta": "Khám phá sản phẩm"
+    },
+    "offers": {
+      "title": "Ưu đãi của tôi",
+      "description": "Các ưu đãi dành riêng cho tài khoản của bạn.",
+      "unavailable": "Ưu đãi hiện chưa khả dụng.",
+      "empty": "Hiện chưa có ưu đãi dành cho bạn.",
+      "listLabel": "Danh sách ưu đãi",
+      "noMinimum": "Không yêu cầu mức tối thiểu",
+      "minimumPrefix": "Từ",
+      "validityLabel": "Hiệu lực",
+      "scopeLabel": "Áp dụng cho",
+      "minimumLabel": "Đơn tối thiểu",
+      "combinationLabel": "Kết hợp",
+      "remainingUses": "Còn {count} lượt sử dụng",
+      "statusExpired": "Đã hết hạn",
+      "statusUsed": "Đã sử dụng"
+    },
+    "preferences": {
+      "title": "Tùy chọn tài khoản",
+      "description": "Quản lý cách dữ liệu tài khoản được sử dụng cho trải nghiệm của bạn.",
+      "unavailable": "Tùy chọn tài khoản hiện chưa khả dụng."
+    },
+    "security": {
+      "title": "Bảo mật tài khoản",
+      "description": "Quản lý phương thức đăng nhập, phiên sử dụng và yêu cầu xóa tài khoản.",
+      "unavailable": "Bảo mật tài khoản hiện chưa khả dụng."
+    },
+    "authFlow": {
+      "back": "Quay lại",
+      "chooseAnotherMethod": "Chọn phương thức khác",
+      "continue": "Tiếp tục",
+      "continueToDestination": "Tiếp tục đến điểm đến của bạn",
+      "description": "Chọn cách an toàn để tiếp tục.",
+      "email": "Email",
+      "error": "Không thể hoàn tất đăng nhập. Hãy thử lại hoặc chọn phương thức khác.",
+      "google": "Google",
+      "kakao": "Kakao",
+      "magicLink": "Liên kết đăng nhập",
+      "methodListLabel": "Phương thức đăng nhập",
+      "password": "Mật khẩu",
+      "phoneNumber": "Số điện thoại",
+      "phoneOtp": "Mã OTP điện thoại",
+      "signIn": "Đăng nhập",
+      "signInComplete": "Đăng nhập hoàn tất",
+      "signInCompleteDescription": "Đăng nhập hoàn tất. Bạn có thể tiếp tục khi sẵn sàng.",
+      "tryAgain": "Thử lại",
+      "verificationCode": "Mã xác minh",
+      "verificationDescription": "Nhập mã xác minh để tiếp tục.",
+      "verifyCode": "Xác minh mã",
+      "verifying": "Đang xác minh…",
+      "verifySignIn": "Xác minh đăng nhập"
+    },
+    "complete": {
+      "title": "Đăng nhập hoàn tất",
+      "description": "Bạn có thể tiếp tục đến điểm đến của mình một cách an toàn.",
+      "continue": "Tiếp tục"
     }
   },
   "Search": {

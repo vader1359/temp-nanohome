@@ -363,6 +363,96 @@
     "action": {
       "title": "Continue securely",
       "body": "This page is ready for the next secure step."
+    },
+    "profile": {
+      "title": "My Profile",
+      "description": "Update your information so nanoHome can serve you better.",
+      "unavailable": "Profile information is currently unavailable."
+    },
+    "orders": {
+      "title": "My Orders",
+      "description": "Track and review your placed orders.",
+      "unavailable": "Orders are currently unavailable.",
+      "empty": "You have no orders yet.",
+      "orderPrefix": "Order",
+      "statusFulfilled": "Fulfilled",
+      "statusPaid": "Paid",
+      "loadMoreCta": "View older orders",
+      "listLabel": "Order list",
+      "detailLabel": "Order details",
+      "dateLabel": "Date placed",
+      "statusLabel": "Status",
+      "totalLabel": "Total",
+      "orderTitle": "Order"
+    },
+    "cart": {
+      "title": "Cart",
+      "unavailable": "Cart is currently unavailable.",
+      "empty": "Your cart is empty.",
+      "exploreCta": "Explore products"
+    },
+    "wishlist": {
+      "title": "Wishlist",
+      "description": "Products you saved to review later.",
+      "unavailable": "Wishlist is currently unavailable.",
+      "empty": "No favorite products yet.",
+      "exploreCta": "Explore products"
+    },
+    "offers": {
+      "title": "My Offers",
+      "description": "Offers exclusive to your account.",
+      "unavailable": "Offers are currently unavailable.",
+      "empty": "No offers available for you yet.",
+      "listLabel": "Offer list",
+      "noMinimum": "No minimum required",
+      "minimumPrefix": "From",
+      "validityLabel": "Validity",
+      "scopeLabel": "Applies to",
+      "minimumLabel": "Minimum order",
+      "combinationLabel": "Combination",
+      "remainingUses": "{count} uses remaining",
+      "statusExpired": "Expired",
+      "statusUsed": "Used"
+    },
+    "preferences": {
+      "title": "Account Preferences",
+      "description": "Manage how account data is used for your experience.",
+      "unavailable": "Account preferences are currently unavailable."
+    },
+    "security": {
+      "title": "Account Security",
+      "description": "Manage sign-in methods, sessions, and account deletion requests.",
+      "unavailable": "Account security is currently unavailable."
+    },
+    "authFlow": {
+      "back": "Back",
+      "chooseAnotherMethod": "Choose another method",
+      "continue": "Continue",
+      "continueToDestination": "Continue to your destination",
+      "description": "Choose a secure way to continue.",
+      "email": "Email",
+      "error": "We could not complete sign-in. Try again or choose another method.",
+      "google": "Google",
+      "kakao": "Kakao",
+      "magicLink": "Magic link",
+      "methodListLabel": "Sign-in methods",
+      "password": "Password",
+      "phoneNumber": "Phone number",
+      "phoneOtp": "Phone OTP",
+      "signIn": "Sign in",
+      "signInComplete": "Sign-in complete",
+      "signInCompleteDescription": "Sign-in complete. Continue when you are ready.",
+      "tryAgain": "Try again",
+      "verificationCode": "Verification code",
+      "verificationDescription": "Enter the verification code to continue.",
+      "verifyCode": "Verify code",
+      "verifying": "Verifying…",
+      "verifySignIn": "Verify your sign-in"
+    },
+    "complete": {
+      "title": "Sign-in complete",
+      "description": "You can safely continue to your destination.",
+      "continue": "Continue"
     }
   },
   "Search": {
