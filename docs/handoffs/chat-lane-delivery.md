@@ -35,6 +35,7 @@
 - Playwright production QA at `/vi` passed at 1440×900 and 390×844: launcher opened the assistant, localized fallback rendered, `/api/chat` returned HTTP 200, browser console had 0 errors, and Escape closed the panel and restored focus to `Mở trợ lý nanoHome`.
 - Fresh settled-state captures: `chat-default-off-desktop.png` and `chat-default-off-mobile.png` (local QA artifacts, not committed). Independent design-system/functional and Vietnamese visual-precision reviewers both returned PASS with high confidence and no blockers.
 - `next dev` locale compilation remains an environment-only blocker: it retries while compiling `/[locale]`. Production build and `next start` paths pass, so no production-mode Chat blocker remains.
+- Continuation rerun on 2026-07-27: targeted Chat tests passed — 3 files, 35 tests; `bunx tsc --noEmit` passed; `bun run lint` passed with the same 18 pre-existing non-Chat warnings; `git diff --check` passed.
 
 ## Foundation deltas and rollback
 
