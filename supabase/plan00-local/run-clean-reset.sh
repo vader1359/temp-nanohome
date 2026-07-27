@@ -175,7 +175,13 @@ while IFS= read -r source_test; do
 done <"$test_manifest"
 
 pre_start_containers=$("$docker_bin" ps -aq)
-"$supabase_bin" start --workdir "$harness_dir" >/dev/null 2>&1
+if "$supabase_bin" start --workdir "$harness_dir"; then
+  :
+else
+  status=$?
+  printf '%s\n' 'Local Supabase start failed.' >&2
+  exit "$status"
+fi
 stack_started=1
 "$supabase_bin" db reset --local --no-seed --yes --workdir "$harness_dir" >/dev/null 2>&1
 if [ "$mode" = foundation-decision-a ]; then

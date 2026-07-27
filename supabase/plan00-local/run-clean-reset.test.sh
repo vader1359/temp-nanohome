@@ -38,6 +38,10 @@ case "$1" in
     if [ "${FAKE_START_WAIT:-0}" = 1 ]; then
       while :; do sleep 1; done
     fi
+    if [ "${FAKE_START_EXIT:-0}" -ne 0 ]; then
+      printf '%s\n' 'fake local start failure' >&2
+      exit "$FAKE_START_EXIT"
+    fi
     exit 0
     ;;
   stop)
@@ -257,6 +261,26 @@ for args in '' '--target' '--target unknown' '--target foundation --full' '--ful
     exit 1
   fi
 done
+
+: >"$log"
+start_output="$test_parent/start-output"
+set +e
+HARNESS_LOG="$log" FAKE_START_EXIT=9 SUPABASE_BIN="$fake_bin" DOCKER_BIN="$fake_docker" \
+  "$repo_root/supabase/plan00-local/run-clean-reset.sh" --full >"$start_output" 2>&1
+status=$?
+set -e
+if [ "$status" -ne 9 ]; then
+  printf '%s\n' 'local start failure did not propagate' >&2
+  exit 1
+fi
+if ! grep -F 'Local Supabase start failed.' "$start_output" >/dev/null; then
+  printf '%s\n' 'local start failure did not identify its stage' >&2
+  exit 1
+fi
+if ! grep -F 'fake local start failure' "$start_output" >/dev/null; then
+  printf '%s\n' 'local start failure output was hidden' >&2
+  exit 1
+fi
 
 : >"$log"
 set +e
