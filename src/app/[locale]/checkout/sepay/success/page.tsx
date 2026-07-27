@@ -14,13 +14,12 @@ import { useEffect, useState } from "react";
 export default function SePaySuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
-  const [status, setStatus] = useState<"loading" | "paid" | "pending" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "paid" | "pending" | "error">(
+    orderId ? "loading" : "error",
+  );
 
   useEffect(() => {
-    if (!orderId) {
-      setStatus("error");
-      return;
-    }
+    if (!orderId) return;
 
     // Query server state, never trust redirect params
     fetch(`/api/orders/${orderId}/payment-status`)
