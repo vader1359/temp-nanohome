@@ -62,12 +62,48 @@ pnpm vitest run \
   src/app/api/customer/personalization/route.test.ts
 ```
 
-Result: **10 files, 107 tests passed**.
+Result: **10 files, 109 tests passed**.
 
 - `pnpm lint`: 0 errors; 18 pre-existing warnings in unrelated files.
 - `pnpm build`: passed; compiled, typechecked, and generated 53 static pages.
 - `git diff --check`: passed at handoff preparation.
 - TypeScript LSP diagnostics were unavailable because the server installation was previously declined.
+
+## Acceptance criteria audit
+
+Plan 03 section 14 defines acceptance tests for sync, classification, security, and recommendations. Lane-owned, locally testable criteria coverage:
+
+### Classification acceptance
+
+**Verified with existing tests:**
+- Unapproved orders never enter `purchased` signal (mapper.test.ts).
+- Deleted/cancelled orders produce no signal (mapper.test.ts).
+- Ambiguous/unmapped SKUs produce no signal (mapper.test.ts).
+
+**Verified with new tests (added this session):**
+- Approved order transition occurs once: enters `purchasedVariantIds` only, not `discussedVariantIds` (mapper.test.ts).
+- Exact customer link required: mapper rejects SaleOrder input without valid `linkId` (mapper.test.ts).
+
+### Security acceptance
+
+**Verified with existing tests:**
+- Multi-customer isolation: user A cannot read user B data (customer-memory-port.test.ts line 29).
+- Log/analytics safety: AMIS client errors return fixed generic messages without exposing raw response content (customer-client.test.ts lines 48-61).
+
+**Verified by design audit:**
+- Arbitrary lookup prevention: port interface accepts only `userId` parameter; no phone/email/AMIS ID lookup paths exist. API route requires Supabase auth and uses only authenticated `userData.user.id`.
+- Cache invalidation on logout/switch: all personalization fetchers use `cache: "no-store"`; no cache exists to invalidate.
+
+### Recommendations acceptance
+
+**Out of lane scope:**
+- Purchased durable suppression, previous interest boost, explicit preference ranking: customer memory mapper exists but not integrated with recommendation service. Plan 03 defines scoring weights (lines 400-479), but handoff scope is "deterministic catalog recommendations" only. Customer memory → recommendation integration requires service refactor outside lane ownership.
+- Runtime toggle (disable/reset applies immediately): satisfied by design (per-request settings read, no cache) but untestable without DB-backed settings reader (external blocker #2).
+
+### Sync acceptance
+
+**Out of lane scope:**
+- Pagination change/missing page failure, duplicate/out-of-order idempotency, cursor advancement after commit, deleted/merged reconciliation: no sync worker in lane scope (external blocker #3).
 
 ## Proposed Foundation and Integration deltas
 

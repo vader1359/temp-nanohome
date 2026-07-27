@@ -139,4 +139,37 @@ describe("AMIS customer memory mapper", () => {
     expect(result.discussedVariantIds).toEqual(["variant-interested"]);
     expect(result.sourceUpdatedAt).toBe("2026-01-06T00:00:00.000Z");
   });
+
+  it("Given an order that was approved, When mapped, Then approved transition occurs once (purchased only, not discussed)", () => {
+    // Given: an order that has approvedStatus="Đã duyệt" (approved).
+    const result = mapAmisCustomerMemory({
+      linkId: "link-1",
+      customer: { id: "customer-1", updatedAt: "2026-01-02T00:00:00.000Z" },
+      orders: [{
+        id: "approved-order",
+        updatedAt: "2026-01-03T00:00:00.000Z",
+        approvedStatus: "Đã duyệt",
+        status: "approved",
+        isDeleted: false,
+        lines: [{ sku: "sku-1", canonicalVariantId: "variant-1" }],
+      }],
+    });
+
+    // When: classification logic applies.
+    // Then: the variant enters purchased, NOT discussed (approved transition occurs once).
+    expect(result.purchasedVariantIds).toEqual(["variant-1"]);
+    expect(result.discussedVariantIds).toEqual([]);
+  });
+
+  it("Given input without exact customer link, When mapped, Then it rejects the input", () => {
+    // Given: AMIS memory input missing the required linkId.
+    // When: validation runs.
+    // Then: the mapper rejects input without exact customer linkage.
+    expect(() =>
+      mapAmisCustomerMemory({
+        customer: { id: "customer-1", updatedAt: "2026-01-02T00:00:00.000Z" },
+        orders: [],
+      })
+    ).toThrow();
+  });
 });
