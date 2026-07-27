@@ -10,7 +10,12 @@ import {
 } from "./capabilities";
 
 describe("default-off chat capability contracts", () => {
-  it("rejects persistence requests that carry message content or identity", () => {
+  it("accepts opaque persistence references but rejects message content or identity", () => {
+    expect(chatConversationPersistenceRequestSchema.safeParse({
+      conversationRef: "conversation_01",
+      messageRef: "message_01",
+    }).success).toBe(true);
+
     const result = chatConversationPersistenceRequestSchema.safeParse({
       conversationRef: "conversation_01",
       messageRef: "message_01",
@@ -31,10 +36,13 @@ describe("default-off chat capability contracts", () => {
     expect(chatVisualAnalysisEnvelopeSchema.safeParse({ attachmentRef: "attachment_01", state: "disabled", roomType: "bedroom" }).success).toBe(false);
   });
 
-  it("fails closed without invoking a provider or storage", async () => {
+  it("fails closed for every capability without invoking a provider or storage", async () => {
     const adapter = createDisabledChatCapabilityAdapter();
 
+    await expect(adapter.execute("conversationPersistence")).resolves.toEqual({ kind: "capability_unavailable", capability: "conversationPersistence" });
+    await expect(adapter.execute("advisorHandoff")).resolves.toEqual({ kind: "capability_unavailable", capability: "advisorHandoff" });
     await expect(adapter.execute("attachment")).resolves.toEqual({ kind: "capability_unavailable", capability: "attachment" });
+    await expect(adapter.execute("visualAnalysis")).resolves.toEqual({ kind: "capability_unavailable", capability: "visualAnalysis" });
     expect(chatCapabilityRegistry).toEqual({
       conversationPersistence: false,
       advisorHandoff: false,
