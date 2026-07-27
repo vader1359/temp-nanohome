@@ -16,7 +16,6 @@ describe("POST /api/cart/submit", () => {
     vi.stubEnv("FILLOUT_API_KEY", "test-api-key");
     // Clear other env vars that might interfere
     vi.stubEnv("FILLOUT_CART_QUESTION_VAT_REQUESTED_ID", "");
-    vi.stubEnv("FILLOUT_CART_QUESTION_ZALOPAY_REQUESTED_ID", "");
     vi.stubEnv("FILLOUT_CART_QUESTION_VNPAY_REQUESTED_ID", "");
     vi.stubEnv("FILLOUT_CART_QUESTION_TOTAL_ID", "");
     catalogMocks.resolveOrderRequestCatalogFromSupabase.mockReset();
@@ -60,9 +59,8 @@ describe("POST /api/cart/submit", () => {
   };
 
   it("omitted flags map defaults false", async () => {
-    // Configure env IDs for all three boolean questions
+    // Configure env IDs for boolean questions
     vi.stubEnv("FILLOUT_CART_QUESTION_VAT_REQUESTED_ID", "vat_id");
-    vi.stubEnv("FILLOUT_CART_QUESTION_ZALOPAY_REQUESTED_ID", "zalo_id");
     vi.stubEnv("FILLOUT_CART_QUESTION_VNPAY_REQUESTED_ID", "vnpay_id");
 
     const fetchMock = vi.fn().mockResolvedValue({
@@ -87,11 +85,9 @@ describe("POST /api/cart/submit", () => {
     const questions = body.submissions[0].questions;
 
     const vatQuestion = questions.find((q: { id?: string }) => q.id === "vat_id");
-    const zaloQuestion = questions.find((q: { id?: string }) => q.id === "zalo_id");
     const vnpayQuestion = questions.find((q: { id?: string }) => q.id === "vnpay_id");
 
     expect(vatQuestion).toEqual({ id: "vat_id", value: false });
-    expect(zaloQuestion).toEqual({ id: "zalo_id", value: false });
     expect(vnpayQuestion).toEqual({ id: "vnpay_id", value: false });
   });
 
@@ -103,7 +99,7 @@ describe("POST /api/cart/submit", () => {
     { label: "array", value: [] },
   ];
 
-  for (const flag of ["vatRequested", "zaloPayRequested", "vnPayRequested"] as const) {
+  for (const flag of ["vatRequested", "vnPayRequested"] as const) {
     for (const { label, value } of invalidValues) {
       it(`invalid ${label} for ${flag} returns 400`, async () => {
         const payload = {
@@ -125,9 +121,8 @@ describe("POST /api/cart/submit", () => {
   }
 
   it("optional individual configured Fillout env IDs append only their own boolean question and no absent-ID question", async () => {
-    // Configure only vatRequestedId, leave other two empty/undefined
+    // Configure only vatRequestedId, leave vnpay empty/undefined
     vi.stubEnv("FILLOUT_CART_QUESTION_VAT_REQUESTED_ID", "vat_id");
-    vi.stubEnv("FILLOUT_CART_QUESTION_ZALOPAY_REQUESTED_ID", "");
     vi.stubEnv("FILLOUT_CART_QUESTION_VNPAY_REQUESTED_ID", "");
 
     const fetchMock = vi.fn().mockResolvedValue({
@@ -141,7 +136,6 @@ describe("POST /api/cart/submit", () => {
       body: JSON.stringify({
         ...validBasePayload,
         vatRequested: true,
-        zaloPayRequested: true,
         vnPayRequested: true,
       }),
     });
@@ -158,10 +152,8 @@ describe("POST /api/cart/submit", () => {
     const vatQuestion = questions.find((q: { id?: string }) => q.id === "vat_id");
     expect(vatQuestion).toEqual({ id: "vat_id", value: true });
 
-    // Must NOT find questions for zaloPayRequested or vnPayRequested
-    const hasZalo = questions.some((q: { id?: string }) => q.id === "" || q.id === "zalo_id");
+    // Must NOT find questions for vnPayRequested
     const hasVnpay = questions.some((q: { id?: string }) => q.id === "" || q.id === "vnpay_id");
-    expect(hasZalo).toBe(false);
     expect(hasVnpay).toBe(false);
   });
 
