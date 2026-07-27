@@ -149,10 +149,6 @@ mkdir -p "$harness_dir/supabase/migrations" "$harness_dir/tests"
 cp "$repo_root/supabase/config.toml" "$harness_dir/supabase/config.toml"
 sed -i "s/^project_id = .*/project_id = \"$stack_project\"/" "$harness_dir/supabase/config.toml"
 cp "$repo_root"/supabase/migrations/*.sql "$harness_dir/supabase/migrations/"
-mv "$harness_dir/supabase/migrations/20260710000003_add_korean_read_columns.sql" \
-  "$harness_dir/supabase/migrations/20260710000006_add_korean_read_columns.sql"
-mv "$harness_dir/supabase/migrations/20260711000000_use_strict_amis_inventory_cutoff.sql" \
-  "$harness_dir/supabase/migrations/20260711000004_use_strict_amis_inventory_cutoff.sql"
 cp "$repo_root/supabase/plan00-local/00000000000000_catalog_baseline.sql" \
   "$harness_dir/supabase/migrations/00000000000000_catalog_baseline.sql"
 cp "$repo_root/supabase/seed.sql" "$harness_dir/tests/seed.sql"
