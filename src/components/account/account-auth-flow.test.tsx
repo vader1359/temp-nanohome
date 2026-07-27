@@ -1,13 +1,50 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 
 import { AccountAuthFlow } from "./account-auth-flow";
+
+const authFlowMessages = {
+  authFlow: {
+    back: "Back",
+    chooseAnotherMethod: "Choose another method",
+    continue: "Continue",
+    continueToDestination: "Continue to your destination",
+    description: "Choose a secure way to continue.",
+    email: "Email",
+    error: "We could not complete sign-in. Try again or choose another method.",
+    google: "Google",
+    kakao: "Kakao",
+    magicLink: "Magic link",
+    methodListLabel: "Sign-in methods",
+    password: "Password",
+    phoneNumber: "Phone number",
+    phoneOtp: "Phone OTP",
+    signIn: "Sign in",
+    signInComplete: "Sign-in complete",
+    signInCompleteDescription: "Sign-in complete. Continue when you are ready.",
+    tryAgain: "Try again",
+    verificationCode: "Verification code",
+    verificationDescription: "Enter the verification code to continue.",
+    verifyCode: "Verify code",
+    verifying: "Verifying…",
+    verifySignIn: "Verify your sign-in",
+  },
+} as const;
+
+function renderAuthFlow(locale = "vi", messages = authFlowMessages) {
+  return render(
+    <NextIntlClientProvider locale={locale} messages={{ Account: messages }}>
+      <AccountAuthFlow locale={locale} returnTo={`/${locale}/products`} />
+    </NextIntlClientProvider>,
+  );
+}
 
 describe("AccountAuthFlow", () => {
   it("offers all five methods and completes password sign-in through the private API", async () => {
     // Given: a private Account flow endpoint that completes the selected method.
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ kind: "completed", returnTo: "/vi/products" }), { status: 200 }));
-    render(<AccountAuthFlow locale="vi" returnTo="/vi/products" />);
+    renderAuthFlow();
 
     // When: the visitor selects password and submits the form.
     fireEvent.click(screen.getByRole("button", { name: "Password" }));
@@ -24,12 +61,26 @@ describe("AccountAuthFlow", () => {
     vi.restoreAllMocks();
   });
 
+  it("renders controls from localized Account messages", () => {
+    // Given: Korean Account messages supplied through the client provider.
+    const koreanMessages = {
+      ...authFlowMessages,
+      authFlow: { ...authFlowMessages.authFlow, signIn: "로그인", continue: "계속" },
+    };
+    renderAuthFlow("ko", koreanMessages);
+
+    // When: the sign-in flow first renders.
+    // Then: its visible controls use the active locale.
+    expect(screen.getByRole("heading", { name: "로그인" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "계속" })).toBeInTheDocument();
+  });
+
   it("keeps the user in a recoverable phone verification state after an invalid OTP", async () => {
     // Given: phone authentication first requires an OTP and then rejects it generically.
     const fetchSpy = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response(JSON.stringify({ kind: "verification_required", method: "phone_otp", returnTo: "/vi" }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ kind: "retryable_error" }), { status: 200 }));
-    render(<AccountAuthFlow locale="vi" returnTo="/vi" />);
+    renderAuthFlow();
 
     // When: the visitor requests a phone code and submits an invalid one.
     fireEvent.click(screen.getByRole("button", { name: "Phone OTP" }));
@@ -50,7 +101,7 @@ describe("AccountAuthFlow", () => {
   it("keeps the visitor recoverable when a successful response is malformed", async () => {
     // Given: a private endpoint that returns an invalid successful response.
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{", { status: 200 }));
-    render(<AccountAuthFlow locale="vi" returnTo="/vi" />);
+    renderAuthFlow();
 
     // When: the visitor starts the default magic-link method.
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
