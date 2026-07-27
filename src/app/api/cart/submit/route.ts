@@ -16,7 +16,6 @@ type SubmissionRequest = {
   pageUrl?: unknown;
   cartItems?: unknown;
   vatRequested?: unknown;
-  zaloPayRequested?: unknown;
   vnPayRequested?: unknown;
   vatCompanyName?: unknown;
   vatTaxCode?: unknown;
@@ -94,7 +93,6 @@ async function postToFillout(data: {
   cartItems: string;
   total: number | null;
   vatRequested: boolean;
-  zaloPayRequested: boolean;
   vnPayRequested: boolean;
   vatCompanyName: string;
   vatTaxCode: string;
@@ -116,7 +114,6 @@ async function postToFillout(data: {
   const pageUrlParamId = process.env.FILLOUT_CART_PARAM_PAGE_URL_ID ?? process.env.FILLOUT_PARAM_PAGE_URL_ID ?? "page_url";
 
   const vatRequestedId = process.env.FILLOUT_CART_QUESTION_VAT_REQUESTED_ID ?? "vfJ6";
-  const zaloPayRequestedId = process.env.FILLOUT_CART_QUESTION_ZALOPAY_REQUESTED_ID;
   const vnPayRequestedId = process.env.FILLOUT_CART_QUESTION_VNPAY_REQUESTED_ID;
   const vatCompanyNameId = process.env.FILLOUT_CART_QUESTION_VAT_COMPANY_NAME_ID ?? "joRB";
   const vatTaxCodeId = process.env.FILLOUT_CART_QUESTION_VAT_TAX_CODE_ID ?? "rsSg";
@@ -139,10 +136,6 @@ async function postToFillout(data: {
   questions.push({ id: vatCompanyNameId, value: data.vatCompanyName });
   questions.push({ id: vatTaxCodeId, value: data.vatTaxCode });
   questions.push({ id: vatInvoiceAddressId, value: data.vatInvoiceAddress });
-
-  if (zaloPayRequestedId) {
-    questions.push({ id: zaloPayRequestedId, value: data.zaloPayRequested });
-  }
 
   if (vnPayRequestedId) {
     questions.push({ id: vnPayRequestedId, value: data.vnPayRequested });
@@ -219,15 +212,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let zaloPayRequested = false;
-  if ("zaloPayRequested" in body) {
-    if (typeof body.zaloPayRequested === "boolean") {
-      zaloPayRequested = body.zaloPayRequested;
-    } else {
-      return NextResponse.json({ error: "zaloPayRequested must be a boolean" }, { status: 400 });
-    }
-  }
-
   let vnPayRequested = false;
   if ("vnPayRequested" in body) {
     if (typeof body.vnPayRequested === "boolean") {
@@ -275,7 +259,6 @@ export async function POST(request: NextRequest) {
     cartItems,
     total,
     vatRequested,
-    zaloPayRequested,
     vnPayRequested,
     vatCompanyName,
     vatTaxCode,
