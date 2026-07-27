@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AccountAuthFlow } from "./account-auth-flow";
 
-const authFlowMessages = {
+const authFlowMessages: Record<"authFlow", Record<string, string>> = {
   authFlow: {
     back: "Back",
     chooseAnotherMethod: "Choose another method",
