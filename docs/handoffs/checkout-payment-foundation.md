@@ -36,6 +36,36 @@ No database migrations, environment schemas, generated database types,
 lockfiles, external provider calls, AMIS work, deployments, or identity/RLS
 changes were made.
 
+### Local Checkout Cleanup (2026-07-27)
+
+- Removed deprecated ZaloPay/VNPAY disabled cards from
+  `src/components/checkout/checkout-page.tsx`; off-mode checkout now presents
+  unavailable payment copy only. `src/components/zalo-widget.tsx` remains
+  untouched, preserving Zalo OA chat.
+- Removed `zaloPayRequested` and
+  `FILLOUT_CART_QUESTION_ZALOPAY_REQUESTED_ID` from cart submission parsing,
+  validation, and Fillout payload assembly. VNPAY remains because this lane
+  only owned ZaloPay removal.
+- Updated SePay dynamic route handlers for Next 16 asynchronous `params`:
+  `POST /api/orders/[orderId]/payments/sepay` and
+  `GET /api/orders/[orderId]/payment-status` now await route params.
+- Source audit found no ZaloPay translation or analytics references to remove.
+
+**Verification:**
+- `npm test -- src/app/api/cart/submit/route.test.ts --run` — 15/15 passed
+- `npm test -- src/lib/payments src/app/api/cart/submit/route.test.ts --run` — passed
+- `npx tsc --noEmit` — passed
+- `npm run build` — passed after asynchronous-route-param fix
+
+**Rollback:** revert Checkout cleanup commits independently; revert `dc3d3c9`
+to remove Foundation-gated SePay route scaffolds. Keep `PAYMENT_MODE=off`.
+
+**Still blocked:** production behavior needs Foundation schema/types, validated
+server-only environment, transactional repositories, owner cookie resolution,
+reconciliation worker, refund approvals, and monitoring. No live SePay or AMIS
+call was made.
+
+
 ## Foundation-Owned Prerequisites
 
 Foundation must deliver before Checkout can activate payment routes:
