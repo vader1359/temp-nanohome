@@ -1,5 +1,16 @@
 import { render, screen } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import messages from "../../../../../messages/vi.json";
+
+function renderPage(page: ReactNode): void {
+  render(
+    <NextIntlClientProvider locale="vi" messages={messages}>
+      {page}
+    </NextIntlClientProvider>,
+  );
+}
 
 const ports = vi.hoisted(() => ({
   getAuthenticatedAccount: vi.fn(),
@@ -26,9 +37,9 @@ describe("AccountOrdersPage", () => {
     // Given: no authenticated Account identity.
     ports.getAuthenticatedAccount.mockResolvedValue(null);
     // When: the order list page renders.
-    render(await AccountOrdersPage({ params: Promise.resolve({ locale: "vi" }), searchParams: Promise.resolve({}) }));
+    renderPage(await AccountOrdersPage({ params: Promise.resolve({ locale: "vi" }), searchParams: Promise.resolve({}) }));
     // Then: it stays neutral and does not access the orders port.
-    expect(screen.getByText("Thông tin đơn hàng hiện chưa khả dụng.")).toBeInTheDocument();
+    expect(screen.getByText("Đơn hàng hiện chưa khả dụng.")).toBeInTheDocument();
     expect(ports.listOrders).not.toHaveBeenCalled();
   });
 
@@ -37,7 +48,7 @@ describe("AccountOrdersPage", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
     ports.listOrders.mockResolvedValue({ orders: [order], nextCursor: null });
     // When: the list page renders after a cursor.
-    render(await AccountOrdersPage({ params: Promise.resolve({ locale: "ko" }), searchParams: Promise.resolve({ after: "opaque_cursor" }) }));
+    renderPage(await AccountOrdersPage({ params: Promise.resolve({ locale: "ko" }), searchParams: Promise.resolve({ after: "opaque_cursor" }) }));
     // Then: the cursor is forwarded unchanged and links use the locale.
     expect(ports.listOrders).toHaveBeenCalledWith(account, { cursor: "opaque_cursor", limit: 20 });
     expect(screen.getByRole("link", { name: /Đơn 1001/ })).toHaveAttribute("href", "/ko/account/orders/order_01");

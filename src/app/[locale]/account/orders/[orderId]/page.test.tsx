@@ -1,5 +1,16 @@
 import { render, screen } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import messages from "../../../../../../messages/vi.json";
+
+function renderPage(page: ReactNode): void {
+  render(
+    <NextIntlClientProvider locale="vi" messages={messages}>
+      {page}
+    </NextIntlClientProvider>,
+  );
+}
 
 const ports = vi.hoisted(() => ({
   getAuthenticatedAccount: vi.fn(),
@@ -29,9 +40,9 @@ describe("AccountOrderPage", () => {
     // Given: no authenticated Account identity.
     ports.getAuthenticatedAccount.mockResolvedValue(null);
     // When: the order detail page renders.
-    render(await AccountOrderPage({ params: Promise.resolve({ orderId: "order_01" }) }));
+    renderPage(await AccountOrderPage({ params: Promise.resolve({ orderId: "order_01" }) }));
     // Then: it stays neutral and does not access the orders port.
-    expect(screen.getByText("Thông tin đơn hàng hiện chưa khả dụng.")).toBeInTheDocument();
+    expect(screen.getByText("Đơn hàng hiện chưa khả dụng.")).toBeInTheDocument();
     expect(ports.getOrder).not.toHaveBeenCalled();
   });
 
@@ -51,7 +62,7 @@ describe("AccountOrderPage", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
     ports.getOrder.mockResolvedValue(order);
     // When: the detail page renders.
-    render(await AccountOrderPage({ params: Promise.resolve({ orderId: "order_01" }) }));
+    renderPage(await AccountOrderPage({ params: Promise.resolve({ orderId: "order_01" }) }));
     // Then: the historical detail is presented.
     expect(screen.getByRole("heading", { name: "Đơn 1001" })).toBeInTheDocument();
   });
