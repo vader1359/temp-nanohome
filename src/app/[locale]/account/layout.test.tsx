@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import AccountLayout from "./layout";
 
 vi.mock("next-intl/server", () => ({
+  getTranslations: async () => (key: string) => key === "navigation.profile" ? "Thông tin cá nhân" : key,
   setRequestLocale: vi.fn(),
 }));
 
@@ -25,8 +26,8 @@ describe("AccountLayout", () => {
     render(layout);
 
     // Then: it exposes a responsive navigation landmark and main content.
-    expect(screen.getByRole("navigation", { name: "Tài khoản" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Thông tin cá nhân" })).toBeInTheDocument();
     expect(screen.getByRole("main")).toHaveTextContent("Profile content");
-    expect(screen.getByRole("heading", { level: 1, name: "Tài khoản" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Thông tin cá nhân" })).toBeInTheDocument();
   });
 });
