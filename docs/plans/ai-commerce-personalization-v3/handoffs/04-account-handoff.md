@@ -62,6 +62,22 @@ Foundation owns the following changes. This lane does not supply them.
 - Foundation must add unit, integration, SQL/RLS, and authenticated browser coverage for all five methods, session issue/revoke, provider collision/link/unlink, non-UUID Firebase UID mapping, guest merges, private-cache invalidation, phone-only account access, and neutral error handling.
 - Before canary: test desktop/mobile route protection and return-path safety, keyboard/focus behavior, provider callback failures, logout/account-switch cache isolation, migration rehearsal, accessibility, locale rendering, and rollback. Run visual QA after the real Account shell/header integration, not against these neutral placeholders alone.
 
+## Local Account completion delta (2026-07-27)
+
+- Localized Account shell, profile, orders/detail, wishlist, cart, offers, preferences, security, sign-in, and completion UX in Vietnamese, English, and Korean. Date/currency presentation now follows active locale.
+- Kept fake auth boundary unchanged: all five method selectors and local OTP/error/completion states are presentation-only until Foundation supplies verified provider/session contracts.
+- Automated evidence:
+  - `npx vitest run messages/account-parity.test.ts src/components/account/*.test.tsx src/lib/account/account-ports.server.test.ts --reporter=default` — exit 0; 35 tests passed.
+  - `npx tsc --noEmit --pretty false` — exit 0.
+  - `npx eslint "src/app/[locale]/account/**/*.tsx" "src/components/account/*.tsx" "messages/account-parity.test.ts"` — exit 0.
+  - `npm run build` (`next build --webpack`) — exit 0.
+- Browser/accessibility evidence on local Next server (`127.0.0.1:3107`): Playwright found one localized sign-in heading and one localized completion heading for each `vi`, `en`, and `ko`; first Tab focus landed on a button; accessibility snapshot exposed named Account navigation, method buttons, email textbox, and continue button. Screenshot: `account-complete-ko.png` in Playwright artifacts. Dev-only HMR WebSocket handshake errors were observed; HTTP pages returned 200 and rendered successfully.
+- Rollback: revert the bounded Account localization commits. No migrations, environment schema, generated types, lockfiles, cloud configuration, credentials, deployment, or live data changed.
+
+## Remaining external blockers
+
+- Real Firebase/provider sessions, identity mapping, route protection, durable cart/wishlist and guest merge, persisted offers/preferences/security effects, cross-account RLS, phone-only authenticated accounts, and live provider callback QA remain blocked on Foundation contracts and cloud configuration listed above.
+
 ## No hidden completion work
 
 This handoff does not claim Firebase setup, provider console configuration, secrets, migration execution, RLS replacement, real session wiring, durable commerce state, offer activation, AMIS activation, header cutover, deployment, or customer migration. Those items remain explicit Foundation/integration work.
