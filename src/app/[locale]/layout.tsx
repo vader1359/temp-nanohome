@@ -12,7 +12,6 @@ import { AuthProvider } from "@/components/auth/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalizedMetadata } from "@/lib/site-metadata";
-import { ConsentCenter } from "@/components/privacy/consent-center";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -57,7 +56,6 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
       <div className="locale-shell" lang={locale}>
         <Providers>
           <Toaster position="top-center" offset="168px" mobileOffset="96px" />
-          <ConsentCenter locale={locale} />
           <Suspense fallback={null}>
             <AuthProvider isAuthenticated={isAuthenticated}>
               <Header />

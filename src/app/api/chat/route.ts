@@ -197,7 +197,6 @@ export async function POST(request: Request): Promise<Response> {
   if (request.signal.aborted) return chatResponse(cancelled(id));
 
   const dependencies = getServerChatDependencies(input.locale);
-  if (!await dependencies.authorizeAiProcessing(request)) return noStore(403);
   if (dependencies.rateLimit !== undefined) {
     try {
       if (!await dependencies.rateLimit(request)) return noStore(429);
