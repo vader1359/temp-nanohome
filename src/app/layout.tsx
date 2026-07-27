@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Libre_Franklin, Noto_Sans_KR } from "next/font/google";
+import { getLocale } from "next-intl/server";
 import { TrackingProvider } from "@/components/analytics/tracking-provider";
 import { getLocalizedMetadata, SITE_NAME, SITE_URL } from "@/lib/site-metadata";
 import "./globals.css";
@@ -72,9 +73,11 @@ interface RootLayoutProps {
   children: React.ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const locale = await getLocale();
+
   return (
-    <html lang="vi">
+    <html lang={locale}>
       <head />
       <body className={`${libreFranklin.variable} ${notoSansKr.variable} antialiased font-[family-name:var(--font-libre-franklin)]`}>
         {children}

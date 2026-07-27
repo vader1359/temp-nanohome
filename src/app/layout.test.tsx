@@ -22,7 +22,26 @@ vi.mock("next/font/google", () => ({
 
 vi.mock("next/script", () => ({ default: () => null }));
 
+const localeState = vi.hoisted(() => ({ value: "vi" }));
+
+vi.mock("next-intl/server", () => ({
+  getLocale: vi.fn(async () => localeState.value),
+}));
+
 import RootLayout from "./layout";
+
+describe("RootLayout document locale", () => {
+  it.each(["vi", "en", "ko"])("uses getLocale() result for html lang: %s", async (locale) => {
+    // Given: next-intl resolves current request locale
+    localeState.value = locale;
+
+    // When: root document renders
+    const rendered = await RootLayout({ children: <div data-testid="child" /> });
+
+    // Then: document language matches resolved locale
+    expect(rendered.props.lang).toBe(locale);
+  });
+});
 
 describe("RootLayout production font loading", () => {
   it("does not configure unused Geist font families", () => {
