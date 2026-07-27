@@ -55,6 +55,8 @@ pnpm vitest run \
   src/lib/amis/contact-client.test.ts \
   src/lib/remote-read-only.test.ts \
   src/lib/amis-customer-memory/mapper.test.ts \
+  src/lib/amis-customer-memory/customer-memory-port.test.ts \
+  src/lib/amis-customer-memory/supabase-customer-memory-port.test.ts \
   src/lib/amis-customer-memory/advisor-context.test.ts \
   src/lib/personalization/settings.test.ts \
   src/lib/personalization/index.test.ts \
@@ -62,9 +64,9 @@ pnpm vitest run \
   src/app/api/customer/personalization/route.test.ts
 ```
 
-Result: **10 files, 109 tests passed**.
+Result: **12 files, 115 tests passed**. All AMIS and Supabase adapters used synthetic fetch fixtures only.
 
-- `pnpm exec tsc --noEmit`: passed after the completed Next.js build regenerated `.next/types`. An earlier concurrent invocation raced `next build` and reported only missing generated `.next/types` files; the serialized rerun passed with no output.
+- `pnpm exec tsc --noEmit`: passed after completed `pnpm build`, with no output.
 - `pnpm lint`: passed with 0 errors and 18 warnings in unrelated files.
 - `pnpm build`: passed; compilation and Next.js TypeScript validation completed successfully.
 - `git diff --check`: passed after final verification.
@@ -89,6 +91,7 @@ Plan 03 section 14 defines acceptance tests for sync, classification, security, 
 
 **Verified with existing tests:**
 - Multi-customer isolation: user A cannot read user B data (customer-memory-port.test.ts line 29).
+- Production customer-memory port: synthetic coverage verifies `user_id` filter derived from authenticated identity, bearer forwarding, `cache: "no-store"`, safe `memory,expires_at` selection, and fail-closed empty/expired/malformed results; non-personalization purpose performs no fetch (supabase-customer-memory-port.test.ts). This proves adapter behavior, not production RLS policy.
 - Log/analytics safety: AMIS client errors return fixed generic messages without exposing raw response content (customer-client.test.ts lines 48-61).
 
 **Verified by design audit:**
