@@ -13,13 +13,16 @@ describe("AMIS customer memory mapper", () => {
         roomIds: ["room-1"],
         brandIds: ["brand-1"],
         projectStage: "planning",
-        customerVisibleSummary: "Prefers warm modern living rooms.",
+        customerVisibleSummary: "Customer private@example.test prefers warm modern living rooms.",
         email: "private@example.test",
         internalScore: 99,
       },
       orders: [{
         id: "order-1",
         updatedAt: "2026-01-03T00:00:00.000Z",
+        approvedStatus: "Đã duyệt",
+        status: "approved",
+        isDeleted: false,
         lines: [{ sku: "sku-1", canonicalVariantId: "variant-1", quantity: 1, unitPrice: 999 }],
         debt: 123,
       }],
@@ -34,7 +37,6 @@ describe("AMIS customer memory mapper", () => {
       discussedVariantIds: [],
       purchasedVariantIds: ["variant-1"],
       projectStage: "planning",
-      customerVisibleSummary: "Prefers warm modern living rooms.",
       sourceUpdatedAt: "2026-01-03T00:00:00.000Z",
     });
     expect(result).not.toHaveProperty("email");
@@ -42,12 +44,132 @@ describe("AMIS customer memory mapper", () => {
   });
 
   it("Given an order line without a canonical variant, When mapped, Then it is omitted", () => {
+    // Given: an approved order has a line that cannot map to a storefront variant.
     const result = mapAmisCustomerMemory({
       linkId: "link-1",
       customer: { id: "customer-1", updatedAt: "2026-01-02T00:00:00.000Z" },
-      orders: [{ id: "order-1", updatedAt: "2026-01-02T00:00:00.000Z", lines: [{ sku: "unknown" }] }],
+      orders: [{
+        id: "order-1",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        approvedStatus: "Đã duyệt",
+        status: "approved",
+        isDeleted: false,
+        lines: [{ sku: "unknown" }],
+      }],
     });
 
+    // When: the safe projection is derived.
+    // Then: no unmapped line is exposed as purchase history.
     expect(result.purchasedVariantIds).toEqual([]);
+  });
+
+  it("Given duplicate and unordered AMIS values, When mapped, Then it produces canonical safe memory", () => {
+    const result = mapAmisCustomerMemory({
+      linkId: "link-1",
+      customer: {
+        id: "customer-1",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        roomIds: ["room-b", "room-a", "room-b"],
+        brandIds: ["brand-b", "brand-a", "brand-b"],
+      },
+      orders: [{
+        id: "approved-order",
+        updatedAt: "2026-01-01T23:00:00.000-02:00",
+        approvedStatus: "Đã duyệt",
+        status: "approved",
+        isDeleted: false,
+        lines: [
+          { sku: "sku-b", canonicalVariantId: "variant-b" },
+          { sku: "sku-a", canonicalVariantId: "variant-a" },
+          { sku: "sku-b-duplicate", canonicalVariantId: "variant-b" },
+        ],
+      }],
+    });
+
+    expect(result.preferredRoomIds).toEqual(["room-a", "room-b"]);
+    expect(result.preferredBrandIds).toEqual(["brand-a", "brand-b"]);
+    expect(result.purchasedVariantIds).toEqual(["variant-a", "variant-b"]);
+    expect(result.sourceUpdatedAt).toBe("2026-01-01T23:00:00.000-02:00");
+  });
+
+  it("Given active approved and interested orders, When mapped, Then it separates purchased and discussed variants", () => {
+    // Given: synthetic approved, open quote, cancelled, and deleted orders.
+    const result = mapAmisCustomerMemory({
+      linkId: "link-1",
+      customer: { id: "customer-1", updatedAt: "2026-01-02T00:00:00.000Z" },
+      orders: [
+        {
+          id: "approved-order",
+          updatedAt: "2026-01-03T00:00:00.000Z",
+          approvedStatus: "Đã duyệt",
+          status: "approved",
+          isDeleted: false,
+          lines: [{ sku: "sku-approved", canonicalVariantId: "variant-purchased" }],
+        },
+        {
+          id: "quote-order",
+          updatedAt: "2026-01-04T00:00:00.000Z",
+          approvedStatus: null,
+          status: "quoted",
+          isDeleted: false,
+          lines: [{ sku: "sku-quote", canonicalVariantId: "variant-interested" }],
+        },
+        {
+          id: "cancelled-order",
+          updatedAt: "2026-01-05T00:00:00.000Z",
+          approvedStatus: null,
+          status: "cancelled",
+          isDeleted: false,
+          lines: [{ sku: "sku-cancelled", canonicalVariantId: "variant-cancelled" }],
+        },
+        {
+          id: "deleted-order",
+          updatedAt: "2026-01-06T00:00:00.000Z",
+          approvedStatus: "Đã duyệt",
+          status: "approved",
+          isDeleted: true,
+          lines: [{ sku: "sku-deleted", canonicalVariantId: "variant-deleted" }],
+        },
+      ],
+    });
+
+    // When: restricted memory is projected.
+    // Then: only active approved orders are purchases; active unapproved orders are interests.
+    expect(result.purchasedVariantIds).toEqual(["variant-purchased"]);
+    expect(result.discussedVariantIds).toEqual(["variant-interested"]);
+    expect(result.sourceUpdatedAt).toBe("2026-01-06T00:00:00.000Z");
+  });
+
+  it("Given an order that was approved, When mapped, Then approved transition occurs once (purchased only, not discussed)", () => {
+    // Given: an order that has approvedStatus="Đã duyệt" (approved).
+    const result = mapAmisCustomerMemory({
+      linkId: "link-1",
+      customer: { id: "customer-1", updatedAt: "2026-01-02T00:00:00.000Z" },
+      orders: [{
+        id: "approved-order",
+        updatedAt: "2026-01-03T00:00:00.000Z",
+        approvedStatus: "Đã duyệt",
+        status: "approved",
+        isDeleted: false,
+        lines: [{ sku: "sku-1", canonicalVariantId: "variant-1" }],
+      }],
+    });
+
+    // When: classification logic applies.
+    // Then: the variant enters purchased, NOT discussed (approved transition occurs once).
+    expect(result.purchasedVariantIds).toEqual(["variant-1"]);
+    expect(result.discussedVariantIds).toEqual([]);
+  });
+
+  it("Given input without exact customer link, When mapped, Then it rejects the input", () => {
+    // Given: AMIS memory input missing the required linkId.
+    // When: validation runs.
+    // Then: the mapper rejects input without exact customer linkage.
+    expect(() =>
+      mapAmisCustomerMemory({
+        customer: { id: "customer-1", updatedAt: "2026-01-02T00:00:00.000Z" },
+        orders: [],
+      })
+    ).toThrow();
   });
 });

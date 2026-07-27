@@ -10,19 +10,21 @@ const amisCustomerSchema = z.object({
   roomIds: z.array(z.string().min(1)).optional(),
   brandIds: z.array(z.string().min(1)).optional(),
   projectStage: z.string().min(1).optional(),
-  customerVisibleSummary: z.string().min(1).optional(),
-}).passthrough();
+}).strip();
 
 const amisOrderLineSchema = z.object({
   sku: z.string().min(1),
   canonicalVariantId: z.string().min(1).optional(),
-}).passthrough();
+}).strip();
 
 const amisOrderSchema = z.object({
   id: z.string().min(1),
   updatedAt: z.string().datetime({ offset: true }),
+  approvedStatus: z.string().min(1).nullable(),
+  status: z.string().min(1).nullable(),
+  isDeleted: z.boolean(),
   lines: z.array(amisOrderLineSchema),
-}).passthrough();
+}).strip();
 
 const amisMemoryInputSchema = z.object({
   linkId: z.string().min(1),
@@ -30,31 +32,52 @@ const amisMemoryInputSchema = z.object({
   orders: z.array(amisOrderSchema),
 }).strict();
 
-export type AmisMemoryInput = z.input<typeof amisMemoryInputSchema>;
+const latestTimestamp = (timestamps: readonly string[]): string => timestamps.reduce((latest, candidate) => (
+  Date.parse(candidate) > Date.parse(latest) ? candidate : latest
+));
 
-const latestTimestamp = (timestamps: readonly string[]): string => {
-  const latest = timestamps.reduce((current, candidate) => candidate > current ? candidate : current);
-  return latest;
-};
+const canonicalIds = (values: readonly string[]): readonly string[] => [...new Set(values)].sort();
 
-export const mapAmisCustomerMemory = (input: AmisMemoryInput): CustomerMemory => {
+export const mapAmisCustomerMemory = (input: unknown): CustomerMemory => {
   const parsed = amisMemoryInputSchema.parse(input);
   const sourceUpdatedAt = latestTimestamp([
     parsed.customer.updatedAt,
     ...parsed.orders.map((order) => order.updatedAt),
   ]);
-  const purchasedVariantIds = parsed.orders.flatMap((order) => order.lines.flatMap((line) => line.canonicalVariantId ?? []));
+  const purchasedVariantIds = parsed.orders
+    .filter(isActiveApprovedOrder)
+    .flatMap((order) => variantIds(order));
+  const discussedVariantIds = parsed.orders
+    .filter(isActiveInterestedOrder)
+    .flatMap((order) => variantIds(order));
 
   return customerMemorySchema.parse({
     linkId: parsed.linkId,
     ...(parsed.customer.type === undefined ? {} : { customerType: parsed.customer.type }),
     ...(parsed.customer.createdAt === undefined ? {} : { customerSinceBucket: parsed.customer.createdAt.slice(0, 4) }),
-    preferredRoomIds: parsed.customer.roomIds ?? [],
-    preferredBrandIds: parsed.customer.brandIds ?? [],
-    discussedVariantIds: [],
-    purchasedVariantIds,
+    preferredRoomIds: canonicalIds(parsed.customer.roomIds ?? []),
+    preferredBrandIds: canonicalIds(parsed.customer.brandIds ?? []),
+    discussedVariantIds: canonicalIds(discussedVariantIds),
+    purchasedVariantIds: canonicalIds(purchasedVariantIds),
     ...(parsed.customer.projectStage === undefined ? {} : { projectStage: parsed.customer.projectStage }),
-    ...(parsed.customer.customerVisibleSummary === undefined ? {} : { customerVisibleSummary: parsed.customer.customerVisibleSummary }),
     sourceUpdatedAt,
   });
 };
+
+type ParsedAmisOrder = z.output<typeof amisOrderSchema>;
+
+function isActiveApprovedOrder(order: ParsedAmisOrder): boolean {
+  return isActiveOrder(order) && order.approvedStatus === "Đã duyệt";
+}
+
+function isActiveInterestedOrder(order: ParsedAmisOrder): boolean {
+  return isActiveOrder(order) && order.approvedStatus !== "Đã duyệt";
+}
+
+function isActiveOrder(order: ParsedAmisOrder): boolean {
+  return !order.isDeleted && order.status?.toLocaleLowerCase("vi") !== "cancelled";
+}
+
+function variantIds(order: ParsedAmisOrder): readonly string[] {
+  return order.lines.flatMap((line) => line.canonicalVariantId ?? []);
+}

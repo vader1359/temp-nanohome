@@ -115,6 +115,37 @@ describe("PDP recommendation service", () => {
     expect(result.items).toEqual([{ variantId: "candidate", reasonCode: "similar_price_band" }]);
   });
 
+  it("Given home, cart, and chat requests, When the port is called, Then it returns deterministic eligible-only results", async () => {
+    const service = new PdpRecommendationService(async () => [
+      row({ variant_id: "chat-context", product_id: "chat-context", price: 100 }),
+      row({ variant_id: "cart-context", product_id: "cart-context", price: 100 }),
+      row({ variant_id: "zeta", product_id: "zeta", price: 110 }),
+      row({ variant_id: "alpha", product_id: "alpha", price: 90 }),
+      row({ variant_id: "blocked", product_id: "blocked", recommendation: false }),
+    ], () => "2026-07-22T00:00:00.000Z");
+
+    const home = await service.recommend({ placement: "home", contextVariantIds: [], locale: "en" });
+    const cart = await service.recommend({ placement: "cart", contextVariantIds: ["cart-context"], locale: "en" });
+    const chat = await service.recommend({ placement: "chat", contextVariantIds: ["chat-context"], locale: "en" });
+
+    expect(home.items).toEqual([
+      { variantId: "alpha", reasonCode: "eligible_catalog" },
+      { variantId: "cart-context", reasonCode: "eligible_catalog" },
+      { variantId: "chat-context", reasonCode: "eligible_catalog" },
+      { variantId: "zeta", reasonCode: "eligible_catalog" },
+    ]);
+    expect(cart.items).toEqual([
+      { variantId: "alpha", reasonCode: "similar_price_band" },
+      { variantId: "chat-context", reasonCode: "similar_price_band" },
+      { variantId: "zeta", reasonCode: "similar_price_band" },
+    ]);
+    expect(chat.items).toEqual([
+      { variantId: "alpha", reasonCode: "similar_price_band" },
+      { variantId: "cart-context", reasonCode: "similar_price_band" },
+      { variantId: "zeta", reasonCode: "similar_price_band" },
+    ]);
+  });
+
   it("Given an ineligible PDP context, When the port is called, Then it returns no recommendations", async () => {
     const service = new PdpRecommendationService(async () => [
       row({ variant_id: "current", recommendation: false }),

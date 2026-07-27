@@ -8,6 +8,7 @@ import {
 } from "@/lib/amis-customer-memory/supabase-customer-memory-port";
 import { createPersonalizationResolver } from "@/lib/personalization";
 import { loadPlan07CustomerFeatures } from "@/lib/personalization/customer-runtime";
+import { resolvePersonalizationSettings } from "@/lib/personalization/settings";
 import { isSupportedLocale } from "@/i18n/routing";
 import { createClient } from "@/lib/supabase/server";
 
@@ -60,6 +61,11 @@ export const GET = async (request: Request): Promise<Response> => {
   }
   const accountId = new AccountId(userData.user.id);
 
+  const settings = resolvePersonalizationSettings(undefined);
+  if (!settings.enabled) {
+    return json(defaultPayload(false));
+  }
+
   const tokens = customerTokens(requestCookies(request));
   if (tokens === null) {
     return json(defaultPayload(false));
@@ -89,6 +95,7 @@ export const GET = async (request: Request): Promise<Response> => {
       explicitPreferencesEnabled: true,
       customerMemoryEnabled: true,
     },
+    settings,
   });
   const context = await resolver.resolve({
     accountId,
@@ -106,6 +113,6 @@ export const GET = async (request: Request): Promise<Response> => {
     preferences: context.explicit,
     recent: context.recent,
     memoryConnected: context.customerMemory !== undefined,
-    memorySummary: context.customerMemory?.customerVisibleSummary ?? null,
+    memorySummary: null,
   });
 };

@@ -1,6 +1,7 @@
 import type { AccountId } from "@/lib/account-session";
 import type { CustomerMemory, RecommendationResponse } from "@/lib/contracts";
 import type { CustomerMemoryPort, RecommendationPort } from "@/lib/contracts";
+import { resolvePersonalizationSettings } from "./settings";
 
 const CONTEXT_VERSION = "personalization-local-v1";
 const DEFAULT_MEMORY_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -52,28 +53,36 @@ export type PersonalizationResolver = {
 };
 
 export type PersonalizationDependencies = {
-	readonly memoryPort: CustomerMemoryPort;
-	readonly maxMemoryAgeMs?: number;
-	readonly flags?: Partial<PersonalizationFlags>;
-};
+		readonly memoryPort: CustomerMemoryPort;
+		readonly maxMemoryAgeMs?: number;
+		readonly flags?: Partial<PersonalizationFlags>;
+		readonly settings?: unknown;
+	};
 
 export function createPersonalizationResolver(dependencies: PersonalizationDependencies): PersonalizationResolver {
-	const flags: PersonalizationFlags = {
-		personalizationEnabled: false,
+		const configuredFlags: PersonalizationFlags = {
+			personalizationEnabled: false,
       recentlyViewedEnabled: false,
       explicitPreferencesEnabled: false,
       customerMemoryEnabled: false,
       ...dependencies.flags,
-	};
+		};
+		const settings = resolvePersonalizationSettings(dependencies.settings);
+		const flags: PersonalizationFlags = {
+			personalizationEnabled: configuredFlags.personalizationEnabled && settings.enabled,
+      recentlyViewedEnabled: configuredFlags.recentlyViewedEnabled && settings.useBehaviorHistory,
+      explicitPreferencesEnabled: configuredFlags.explicitPreferencesEnabled && settings.useBehaviorHistory,
+      customerMemoryEnabled: configuredFlags.customerMemoryEnabled && settings.useAmisHistory,
+		};
 
-	return {
+		return {
 		resolve: async (input) => {
 			const personalizationAllowed = flags.personalizationEnabled && input.consent.personalization;
 			const customerMemory = personalizationAllowed && flags.customerMemoryEnabled && input.accountId !== null
 					? await loadFreshMemory(dependencies, input.accountId, input.now)
 				: undefined;
 			const explicit = personalizationAllowed && flags.explicitPreferencesEnabled ? input.explicit : [];
-			const recent = flags.personalizationEnabled && flags.recentlyViewedEnabled ? input.recent : [];
+			const recent = personalizationAllowed && flags.recentlyViewedEnabled ? input.recent : [];
       const explanationKeys = [
         ...explicit.map((feature) => feature.labelKey),
         ...(recent.length > 0 ? ["recently_viewed"] : []),
