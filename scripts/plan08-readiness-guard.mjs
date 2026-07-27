@@ -155,7 +155,7 @@ if (!existsSync(migrationsDirectory)) {
   for (const migration of expectedMigrations) requireFile(`supabase/migrations/${migration}`, "expected merged migration is missing");
   const versions = new Map();
   for (const filename of readdirSync(migrationsDirectory)) {
-    const match = filename.match(/^(2026072[12]\d{4,6})_.*\.sql$/);
+    const match = filename.match(/^(2026\d{10})_.*\.sql$/);
     if (match === null) continue;
     const existing = versions.get(match[1]);
     if (existing !== undefined) failures.push(`supabase/migrations: duplicate version ${match[1]} in ${existing} and ${filename}`);
