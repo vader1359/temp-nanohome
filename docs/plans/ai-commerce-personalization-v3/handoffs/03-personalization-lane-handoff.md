@@ -64,10 +64,11 @@ pnpm vitest run \
 
 Result: **10 files, 109 tests passed**.
 
-- `pnpm lint`: 0 errors; 18 pre-existing warnings in unrelated files.
-- `pnpm build`: passed; compiled, typechecked, and generated 53 static pages.
-- `git diff --check`: passed at handoff preparation.
-- TypeScript LSP diagnostics were unavailable because the server installation was previously declined.
+- `pnpm exec tsc --noEmit`: passed after the completed Next.js build regenerated `.next/types`. An earlier concurrent invocation raced `next build` and reported only missing generated `.next/types` files; the serialized rerun passed with no output.
+- `pnpm lint`: passed with 0 errors and 18 warnings in unrelated files.
+- `pnpm build`: passed; compilation and Next.js TypeScript validation completed successfully.
+- `git diff --check`: passed after final verification.
+- TypeScript LSP diagnostics remain unavailable because the server installation was previously declined.
 
 ## Acceptance criteria audit
 
