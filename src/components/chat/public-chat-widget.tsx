@@ -309,6 +309,7 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
   const [entries, setEntries] = useState<readonly TranscriptEntry[]>([]);
   const [lastQuestion, setLastQuestion] = useState("");
   const [aiProcessingAllowed, setAiProcessingAllowed] = useState(false);
+  const [launcherBottom, setLauncherBottom] = useState(24);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -350,6 +351,20 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
     requestAnimationFrame(() => inputRef.current?.focus());
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open]);
+  useEffect(() => {
+    const updateLauncherPosition = () => {
+      const footer = document.querySelector("footer");
+      const footerTop = footer?.getBoundingClientRect().top ?? window.innerHeight;
+      setLauncherBottom(Math.max(24, window.innerHeight - footerTop + 24));
+    };
+    updateLauncherPosition();
+    window.addEventListener("resize", updateLauncherPosition);
+    document.addEventListener("scroll", updateLauncherPosition, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener("resize", updateLauncherPosition);
+      document.removeEventListener("scroll", updateLauncherPosition, { capture: true });
+    };
+  }, []);
   useEffect(() => {
     const container = scrollRef.current;
     if (typeof container?.scrollTo === "function") {
@@ -462,8 +477,9 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
         aria-controls="public-chat-panel"
         aria-expanded={open}
         aria-label={text.launcher}
-        className="fixed bottom-24 right-4 z-[70] flex h-12 items-center gap-2 rounded-full bg-nh-footer px-4 text-sm font-semibold text-white shadow-xl transition-transform hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent motion-reduce:transition-none"
+        className="fixed right-4 z-[70] flex h-12 items-center gap-2 rounded-full bg-nh-footer px-4 text-sm font-semibold text-white shadow-xl transition-transform hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent motion-reduce:transition-none"
         onClick={openAssistant}
+        style={{ bottom: `${launcherBottom}px` }}
         ref={launcherRef}
         type="button"
       >

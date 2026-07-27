@@ -118,4 +118,18 @@ describe("Header", () => {
       expect(checkoutLink).toBeDefined();
     });
   });
+
+  it("offers a safe Account sign-in landing link from the open mobile drawer", () => {
+    // Given: the header is rendering a locale-prefixed product path.
+    render(<Header />);
+
+    // When: the visitor opens the mobile navigation drawer.
+    fireEvent.click(screen.getByRole("button", { name: "openMenu" }));
+
+    // Then: the drawer retains the local path as an encoded Account return destination.
+    expect(screen.getByRole("link", { name: "account" })).toHaveAttribute(
+      "href",
+      "/account/sign-in?returnTo=%2Fvi%2Fproducts",
+    );
+  });
 });
