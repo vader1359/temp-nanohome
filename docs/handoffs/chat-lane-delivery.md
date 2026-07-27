@@ -24,13 +24,17 @@
 
 ## Verification
 
-- `pnpm vitest run --silent`: passed — 149 test files, 915 tests.
-- `pnpm tsc --noEmit`: passed.
-- `pnpm lint`: passed with no errors; pre-existing warnings remain outside this lane.
+- Full suite baseline: `pnpm vitest run --silent` passed — 149 test files, 915 tests.
+- Final targeted run: `bunx vitest run src/lib/chat/capabilities.test.ts src/app/api/chat/route.test.ts src/components/chat/public-chat-widget.test.tsx` passed — 3 files, 35 tests. Capability coverage now proves valid opaque persistence references and typed unavailable results for all four disabled capabilities.
+- `bunx tsc --noEmit`: passed.
+- `bun run lint`: passed with 0 errors; 18 pre-existing warnings remain outside this lane.
+- `bun run build`: passed, including TypeScript compilation and locale route generation.
 - `git diff --check`: passed after each slice.
-- TypeScript LSP diagnostics are unavailable because the TypeScript server is not installed and installation was previously declined.
-- `pnpm build` completed its TypeScript phase but did not finish in the allotted command execution window. Treat the production build as pending environment investigation.
-- Live browser and HTTP QA remain blocked: the local Next server retries while compiling `/[locale]`, then exits before serving `/vi`. Component and route tests cover the corrected behavior, but no browser PASS is claimed.
+- TypeScript LSP diagnostics remain unavailable because the TypeScript server is not installed and installation was previously declined.
+- Clean default-off production HTTP QA used a fresh `bun run start` process with `CHAT_ENABLED` explicitly unset. `GET /vi` and `GET /vi/products` returned HTTP 200. A valid same-origin `POST /api/chat` returned HTTP 200, `cache-control: no-store`, and exactly `message_started`, localized fallback `text_delta`, and `message_completed` NDJSON events. No live provider was called.
+- Playwright production QA at `/vi` passed at 1440×900 and 390×844: launcher opened the assistant, localized fallback rendered, `/api/chat` returned HTTP 200, browser console had 0 errors, and Escape closed the panel and restored focus to `Mở trợ lý nanoHome`.
+- Fresh settled-state captures: `chat-default-off-desktop.png` and `chat-default-off-mobile.png` (local QA artifacts, not committed). Independent design-system/functional and Vietnamese visual-precision reviewers both returned PASS with high confidence and no blockers.
+- `next dev` locale compilation remains an environment-only blocker: it retries while compiling `/[locale]`. Production build and `next start` paths pass, so no production-mode Chat blocker remains.
 
 ## Foundation deltas and rollback
 
