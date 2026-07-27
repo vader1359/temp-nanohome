@@ -8,8 +8,8 @@ lanes into `codex/ai-commerce-staging` in the isolated worktree
 
 - Remote reviewed baseline: `origin/codex/ai-commerce-staging@b4d28a37cd77d895f8fea3ad72edc6f5fededd44`
 - Local staging start: `b1afa51df3e290431c4a20736827fb4fbaee6810`
-- Final local staging head before this handoff commit:
-  `1a44d45f8c2562ee58eb88c3f4c44a1f6cbcae45`
+- Final local staging head before this handoff update:
+  `28bcfb6d1e1dca678d839bb3f2e9a47a9c97209d`
 - No fetch, push, deploy, billing action, live provider activation, remote
   database operation, or production migration was performed.
 - Existing dirty files in the original Integration worktree were never staged,
@@ -77,21 +77,36 @@ buildable and its tests aligned with the integrated contracts:
 
 | Command | Result |
 | --- | --- |
-| Direct Vitest full suite | PASS — 219 files, 1,171 tests, 270.25s. Vite CJS Node API deprecation notice only. |
+| Direct Vitest full suite | PASS — 220 files, 1,176 tests, 83.16s. Vite CJS Node API deprecation notice only. |
 | Direct ESLint | PASS — 0 errors, 30 warnings. Warnings retained without unrelated cleanup. |
 | Direct `tsc --noEmit` | PASS — 0 errors. |
-| Direct `next build --webpack` | Build artifacts produced after TypeScript completed; `.next/BUILD_ID` and `.next/server/app-paths-manifest.json` present. Tool output did not retain a final route-count line, so this is artifact-based completion evidence. |
-| `git diff --check` | PASS before this documentation change. |
+| Direct `next build --webpack` | TypeScript completed in 30.0s; `.next/BUILD_ID` and `.next/server/app-paths-manifest.json` present. Tool output did not retain a final route-count line, so this is artifact-based completion evidence. |
+| `git diff --check` | PASS after blocker source changes. |
 
 ### Disposable local SQL gate
 
-`timeout 900 bash supabase/plan00-local/run-clean-reset.sh --full` was rerun
-sequentially with the safe overrides and exited **1**. The harness redirects
-its `supabase start`, reset, lint, and test command output to `/dev/null`, so
-no failing-file or test-count detail was emitted. This remains a local,
-disposable SQL/RLS blocker; no remote database was contacted. It needs a
-separate diagnostic run that preserves local harness diagnostics before a
-release decision.
+The harness now preserves local `supabase start` stderr and its exit status.
+Its shell regression test passes, including a fake-start failure that returns
+status 9 and emits both child stderr and `Local Supabase start failed.`
+
+`timeout 900 bash supabase/plan00-local/run-clean-reset.sh --full` still exits
+**1** in the disposable local stack. The captured fresh-reset failure is:
+
+```text
+ERROR: column "brief_version" does not exist (SQLSTATE 42703)
+create unique index if not exists customer_memory_briefs_link_version_unique
+on public.customer_memory_briefs (link_id, brief_version)
+```
+
+`20260725100000_plan03_safe_personalization_projections.sql` creates a legacy
+`customer_memory_briefs` table without `brief_version`. Historical migration
+`20260726001000_personalization_foundation_contracts.sql` then uses `create
+table if not exists`, which preserves that legacy shape, before it creates the
+index above. A forward migration cannot run because reset stops at this earlier
+migration; migration-history repair and harness-only injection would conceal
+the invalid clean-install graph. A safe repair requires an explicitly approved,
+broad historical contract upgrade for this and other legacy tables. No remote
+database was contacted and no migration source was changed for this blocker.
 
 ### Browser and accessibility evidence
 
@@ -101,30 +116,27 @@ Safe-mode Chromium command:
 ./node_modules/.bin/playwright test e2e/smoke-i18n.spec.ts e2e/product-navigation.spec.ts --project=chromium --workers=1
 ```
 
-Result: **12 passed, 3 failed** of 15.
+Focused locale/navigation Chromium gate passed **15/15**. A later combined
+smoke, navigation, and tracker accessibility run had **16 passed, 1 failed**:
+Vietnamese product navigation stayed on `/vi/products` after clicking
+`article[data-product-card] a[data-product-image-frame]`. The selector is more
+specific than the original generic link but still does not prove product-detail
+navigation under the combined run, so it is not release evidence.
 
-1. Vietnamese product navigation stayed at `/vi/products` after the test chose
-   its first `a[href*='/products/']`; expected a detail URL. English navigation
-   passed.
-2. `/en` returned 200 but root `<html lang>` was `vi`, not `en`.
-3. `/ko` returned 200 but root `<html lang>` was `vi`, not `ko`.
-
-Source inspection found the root layout hardcodes `lang="vi"`, while the
-localized layout applies locale only to an inner shell. These root-layout and
-selector issues predate this integration and are outside scoped merge-conflict
-reconciliation. They block full locale/accessibility E2E completion. Server
-notices also included the middleware-to-proxy deprecation, an LCP image
-advisory, and an existing asynchronous React state-update warning.
+Root `src/app/layout.tsx` now awaits `next-intl/server` `getLocale()` and sets
+`<html lang={locale}>`, while keeping root document ownership required by the
+top-level 404 route. Root-layout unit coverage checks `vi`, `en`, and `ko`
+language values. The document-language failures are cleared; product-detail
+browser navigation still needs a deterministic fixture or canonical navigation
+contract before release.
 
 ## Required follow-up before release
 
-1. Diagnose the suppressed local SQL gate failure and rerun it with captured
-   local-only diagnostics.
-2. Correct root document locale ownership using the repository's current Next
-   App Router and `next-intl` guidance, then rerun locale/accessibility E2E.
-3. Tighten Vietnamese product-detail E2E selection to a real canonical product
-   link, then rerun product navigation.
-4. Run authenticated E2E, visual/Percy, external Sandbox proofs, and release
+1. Approve and execute a broad historical migration-contract upgrade, then
+   rerun the disposable full SQL gate.
+2. Repair the Vietnamese product-detail navigation E2E contract and rerun the
+   combined accessibility browser suite.
+3. Run authenticated E2E, visual/Percy, external Sandbox proofs, and release
    acceptance mapping only after their required credentials and approvals.
 
 ## Feature flags, rollback, and release status
@@ -138,6 +150,10 @@ approved shared schema reversal must use a new forward migration, never edit a
 historical migration.
 
 **Readiness: local merge complete; release not ready.** All five lane branches
-are integrated locally and application unit/type/lint gates pass, but local SQL
-and browser locale/product-navigation gates remain non-zero. Production remains
-untouched pending those fixes and explicit release authorization.
+are integrated locally; unit/type/lint/build pass and document-language browser
+coverage passes. Fresh local SQL reset remains non-zero because historical
+migration contracts cannot safely upgrade pre-existing Plan03 schemas without
+wider authorization. Combined browser accessibility coverage also retains one
+Vietnamese product-detail navigation failure. Production remains untouched;
+there was no staging push pending these repairs and explicit release
+authorization.
