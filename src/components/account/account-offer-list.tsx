@@ -1,7 +1,11 @@
 import type { AccountOffer } from "@/lib/account/offers-port";
 import { useLocale, useTranslations } from "next-intl";
 
-function formatAmount(offer: AccountOffer, t: (key: string, params?: Record<string, unknown>) => string, locale: string): string {
+function formatAmount(
+  offer: AccountOffer,
+  t: (key: string, params?: Record<string, string | number | Date>) => string,
+  locale: string,
+): string {
   if (offer.minimumAmount === null) return t("offers.noMinimum");
   const formatted = new Intl.NumberFormat(locale, { style: "currency", currency: offer.minimumAmount.currency }).format(offer.minimumAmount.amount);
   return `${t("offers.minimumPrefix")} ${formatted}`;
