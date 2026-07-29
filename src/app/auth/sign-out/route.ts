@@ -1,10 +1,12 @@
-import { NextResponse, type NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
+import { NextResponse, type NextRequest } from "next/server";
 
+import { clearFirebaseSessionCookie } from "@/lib/auth/firebase-session.server";
+import { isSameOriginPost } from "@/lib/auth/same-origin.server";
 import { getSafeRedirectPath, getSupportedLocale } from "@/lib/auth/redirect";
-import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 
 export async function POST(request: NextRequest) {
+  if (!isSameOriginPost(request)) return new NextResponse(null, { status: 403 });
   const formData = await request.formData();
   const redirectValue = formData.get("redirectTo");
   const locale = getSupportedLocale(formData.get("locale")?.toString() ?? null);
@@ -12,10 +14,9 @@ export async function POST(request: NextRequest) {
     typeof redirectValue === "string" ? redirectValue : null,
     locale,
   );
-  const { supabase, applyCookies } = createRouteHandlerClient(request);
-
-  await supabase.auth.signOut();
 
   revalidatePath("/", "layout");
-  return applyCookies(NextResponse.redirect(new URL(redirectTo, request.url)));
+  return clearFirebaseSessionCookie(
+    NextResponse.redirect(new URL(redirectTo, request.url), 303),
+  );
 }

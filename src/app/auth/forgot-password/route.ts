@@ -1,37 +1,34 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { getFirebaseAuthRestClient } from "@/lib/auth/firebase-auth-rest-runtime.server";
+import { FirebaseAuthRestError } from "@/lib/auth/firebase-auth-rest.server";
+import { isSameOriginPost } from "@/lib/auth/same-origin.server";
 import { parseForgotPasswordForm } from "@/lib/auth/credentials";
 import { getSupportedLocale } from "@/lib/auth/redirect";
-import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 
 export async function POST(request: NextRequest) {
+  if (!isSameOriginPost(request)) return new NextResponse(null, { status: 403 });
   const formData = await request.formData();
   const locale = getSupportedLocale(formData.get("locale")?.toString() ?? null);
   const recovery = parseForgotPasswordForm(formData);
-
   if (!recovery.ok) {
-    return NextResponse.redirect(new URL(`/${locale}?auth=forgot_error`, request.url));
+    return NextResponse.redirect(new URL(`/${locale}?auth=forgot_error`, request.url), 303);
   }
 
-  const { supabase, applyCookies } = createRouteHandlerClient(request);
-  const { error } = await supabase.auth.resetPasswordForEmail(recovery.value.email, {
-    redirectTo: new URL(
-      `/auth/callback?next=${encodeURIComponent(recovery.value.redirectTo)}`,
-      request.url,
-    ).toString(),
-  });
-
-  if (error !== null) {
-    return applyCookies(
-      NextResponse.redirect(
+  try {
+    await getFirebaseAuthRestClient().sendPasswordReset(recovery.value.email, recovery.value.locale);
+  } catch (error) {
+    // Do not reveal whether an email exists.
+    if (!(error instanceof FirebaseAuthRestError && error.code === "EMAIL_NOT_FOUND")) {
+      return NextResponse.redirect(
         new URL(`/${recovery.value.locale}?auth=forgot_error`, request.url),
-      ),
-    );
+        303,
+      );
+    }
   }
 
-  return applyCookies(
-    NextResponse.redirect(
-      new URL(`/${recovery.value.locale}?auth=forgot_sent`, request.url),
-    ),
+  return NextResponse.redirect(
+    new URL(`/${recovery.value.locale}?auth=forgot_sent`, request.url),
+    303,
   );
 }

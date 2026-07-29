@@ -265,7 +265,9 @@ export async function getVariantProducts(options: VariantProductQueryOptions = {
     .from("variants")
     .select(VARIANT_PRODUCT_LIST_COLUMNS)
     .eq("validated", true)
-    .neq("filter_brand", "moooi");
+    // Postgres `neq` drops NULL rows. Keep variants whose denormalized brand
+    // has not been backfilled while still excluding Moooi.
+    .or("filter_brand.is.null,filter_brand.neq.moooi");
 
   if (hasValues(options.category)) {
     query = query.in("filter_category", options.category);
@@ -369,7 +371,7 @@ export async function getVariantProductCount(options: Omit<VariantProductQueryOp
     .from("variants")
     .select(options.status === "sale" ? "price, compare_at_price" : "id", options.status === "sale" ? undefined : { count: "exact", head: true })
     .eq("validated", true)
-    .neq("filter_brand", "moooi");
+    .or("filter_brand.is.null,filter_brand.neq.moooi");
 
   if (hasValues(options.category)) {
     query = query.in("filter_category", options.category);
@@ -454,7 +456,7 @@ export async function getVariantProductFacets(): Promise<readonly VariantProduct
       .from("variants")
       .select("filter_brand,filter_category,filter_room_vi,filter_sub_category")
       .eq("validated", true)
-      .neq("filter_brand", "moooi")
+      .or("filter_brand.is.null,filter_brand.neq.moooi")
       .order("id", { ascending: true })
       .range(from, from + FACET_PAGE_SIZE - 1);
 

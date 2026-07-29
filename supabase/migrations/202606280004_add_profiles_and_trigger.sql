@@ -77,3 +77,5 @@ for update
 to authenticated
 using (id = auth.uid())
 with check (id = auth.uid());
+
+grant all on table public.profiles to anon, authenticated, service_role;

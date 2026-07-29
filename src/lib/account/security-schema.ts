@@ -1,10 +1,10 @@
 import { z } from "zod";
 
-export const securityAuthActions = ["unlink_email", "unlink_google", "unlink_kakao", "unlink_phone"] as const;
+export const securityAuthActions = ["unlink_email", "unlink_google", "unlink_phone"] as const;
 
 const securityIdentitySchema = z.object({
   maskedIdentifier: z.string().min(1),
-  provider: z.enum(["email", "google", "kakao", "phone"]),
+  provider: z.enum(["email", "google", "phone"]),
   verified: z.literal(true),
 }).strict();
 

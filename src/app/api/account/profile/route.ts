@@ -1,5 +1,6 @@
 import { getAccountAuthPort, getAccountProfilePort } from "@/lib/account/account-ports.server";
 import { parseProfilePatch } from "@/lib/account/profile-schema";
+import { isSameOriginPost } from "@/lib/auth/same-origin.server";
 import { privateJson, withPrivateErrorBoundary } from "../private-response";
 
 async function getAuthenticatedAccount() {
@@ -17,6 +18,7 @@ export const GET = withPrivateErrorBoundary(async (): Promise<Response> => {
 });
 
 export const PATCH = withPrivateErrorBoundary(async (request: Request): Promise<Response> => {
+  if (!isSameOriginPost(request)) return privateJson({ error: "Forbidden" }, 403);
   const account = await getAuthenticatedAccount();
   if (account === null) {
     return privateJson({ error: "Authentication required" }, 401);

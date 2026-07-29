@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const BASE_ENV = {
   NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+  SUPABASE_PROJECT_REF: "example",
   SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
   CRON_SECRET: "cron-test",
+  AUTH_CSRF_SECRET: "dedicated-csrf-secret-with-32-bytes-minimum",
 };
 
 const MATRIX_KEYS = [
@@ -15,16 +17,19 @@ const MATRIX_KEYS = [
   "ROOM_ANALYSIS_ENABLED", "VISUAL_SIMILARITY_ENABLED", "VISION_RETENTION_DAYS",
   "VISION_EVALUATION_STORAGE_ENABLED", "SEPAY_ENV", "SEPAY_MERCHANT_ID", "SEPAY_MERCHANT_SECRET",
   "SEPAY_IPN_SECRET", "SEPAY_PAYMENT_METHOD", "SEPAY_SUCCESS_URL", "SEPAY_ERROR_URL", "SEPAY_CANCEL_URL",
-  "SEPAY_RECONCILIATION_ENABLED", "AMIS_API_BASE_URL", "AMIS_CLIENT_ID", "AMIS_CLIENT_SECRET",
-  "AMIS_SYNC_ENABLED", "AMIS_WRITES_ENABLED", "AMIS_PERSONALIZATION_ENABLED", "RECOMMENDATIONS_SHADOW_MODE",
+  "SEPAY_API_BASE_URL", "SEPAY_API_TOKEN", "SEPAY_WEBHOOK_HMAC_SECRET", "SEPAY_RECONCILIATION_ENABLED",
+  "AMIS_API_BASE_URL", "AMIS_CLIENT_ID", "AMIS_CLIENT_SECRET",
+  "AMIS_SYNC_ENABLED", "AMIS_WRITES_ENABLED", "AMIS_PERSONALIZATION_ENABLED", "AMIS_CUSTOMER_PILOT_ENABLED",
+  "AMIS_CUSTOMER_PILOT_AUDIT_PATH", "AMIS_CUSTOMER_PILOT_HMAC_SECRET", "RECOMMENDATIONS_SHADOW_MODE",
   "NEXT_PUBLIC_APP_ORIGIN", "NEXT_PUBLIC_FIREBASE_API_KEY", "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
   "NEXT_PUBLIC_FIREBASE_PROJECT_ID", "NEXT_PUBLIC_FIREBASE_APP_ID", "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
   "NEXT_PUBLIC_FIREBASE_APP_CHECK_SITE_KEY", "NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL",
   "NEXT_PUBLIC_FIREBASE_TENANT_ID", "ACCOUNT_CENTER_ENABLED", "AUTH_FIREBASE_ROLLOUT_PERCENT",
   "AUTH_LEGACY_LOGIN_ENABLED", "FIREBASE_ADMIN_PROJECT_ID", "FIREBASE_ADMIN_CLIENT_EMAIL",
   "FIREBASE_ADMIN_PRIVATE_KEY", "AUTH_SESSION_COOKIE_NAME", "AUTH_SESSION_TTL_SECONDS",
-  "FIREBASE_AUTH_EMULATOR_HOST", "AUTH_CSRF_SECRET", "KAKAO_APP_ID", "KAKAO_ADMIN_KEY",
+  "FIREBASE_AUTH_EMULATOR_HOST", "KAKAO_APP_ID", "KAKAO_ADMIN_KEY",
   "KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "GOOGLE_APPLICATION_CREDENTIALS",
+  "AUTH_PUBLIC_ORIGIN", "FIREBASE_SUPABASE_TRUST_ENABLED",
 ] as const;
 
 const CLEAN_MATRIX_ENV = Object.fromEntries(MATRIX_KEYS.map((key) => [key, undefined]));
@@ -47,22 +52,21 @@ const FIREBASE_PUBLIC = {
   AUTH_PROVIDER: "firebase",
   NEXT_PUBLIC_APP_ORIGIN: "https://app.example.com",
   NEXT_PUBLIC_FIREBASE_API_KEY: "firebase-test-api-key",
-  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "project-test.firebaseapp.com",
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "app.example.com",
   NEXT_PUBLIC_FIREBASE_PROJECT_ID: "project-test",
   NEXT_PUBLIC_FIREBASE_APP_ID: "1:123:web:test",
   FIREBASE_ADMIN_PROJECT_ID: "project-test",
+  GOOGLE_APPLICATION_CREDENTIALS: "/tmp/firebase-admin-test.json",
+  AUTH_SESSION_TTL_SECONDS: "432000",
 };
 
 const SEPAY_SANDBOX = {
   PAYMENT_MODE: "sepay_sandbox",
   SEPAY_ENV: "sandbox",
-  SEPAY_MERCHANT_ID: "merchant-test",
-  SEPAY_MERCHANT_SECRET: "merchant-secret-test",
-  SEPAY_IPN_SECRET: "ipn-secret-test",
+  SEPAY_API_BASE_URL: "https://userapi-sandbox.sepay.vn/v2",
+  SEPAY_API_TOKEN: "sandbox-api-token-test",
+  SEPAY_WEBHOOK_HMAC_SECRET: "webhook-secret-test",
   SEPAY_PAYMENT_METHOD: "BANK_TRANSFER",
-  SEPAY_SUCCESS_URL: "https://app.example.com/payment/success",
-  SEPAY_ERROR_URL: "https://app.example.com/payment/error",
-  SEPAY_CANCEL_URL: "https://app.example.com/payment/cancel",
 };
 
 describe("environment matrix", () => {
@@ -79,8 +83,8 @@ describe("environment matrix", () => {
       ADVISOR_INBOX_ENABLED: false, ADVISOR_NOTIFICATION_PROVIDER: "noop", VISION_PROVIDER: "off",
       VISION_UPLOAD_ENABLED: false, ROOM_ANALYSIS_ENABLED: false, VISUAL_SIMILARITY_ENABLED: false,
       VISION_EVALUATION_STORAGE_ENABLED: false, AMIS_SYNC_ENABLED: false, AMIS_WRITES_ENABLED: false,
-      AMIS_PERSONALIZATION_ENABLED: false, RECOMMENDATIONS_SHADOW_MODE: true, ACCOUNT_CENTER_ENABLED: false,
-      AUTH_FIREBASE_ROLLOUT_PERCENT: 0, AUTH_LEGACY_LOGIN_ENABLED: true,
+      AMIS_PERSONALIZATION_ENABLED: false, AMIS_CUSTOMER_PILOT_ENABLED: false,
+      RECOMMENDATIONS_SHADOW_MODE: true, ACCOUNT_CENTER_ENABLED: false,
     });
   });
 
@@ -94,12 +98,22 @@ describe("environment matrix", () => {
     expect(env.FIREBASE_ADMIN_CLIENT_EMAIL).toBeUndefined();
   });
 
+  it("rejects a cross-origin Firebase auth helper domain", async () => {
+    await expect(importEnvWith({
+      ...BASE_ENV,
+      ...CLEAN_MATRIX_ENV,
+      ...FIREBASE_PUBLIC,
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "project-test.firebaseapp.com",
+    })).rejects.toThrow(/same-origin auth helpers/);
+  });
+
   it("accepts Firebase explicit credential mode", async () => {
     // Given: matching Firebase projects and a complete explicit credential pair.
     // When: the environment is parsed.
     const { env } = await importEnvWith({
       ...BASE_ENV, ...CLEAN_MATRIX_ENV, ...FIREBASE_PUBLIC,
       FIREBASE_ADMIN_CLIENT_EMAIL: "firebase-admin@test.invalid", FIREBASE_ADMIN_PRIVATE_KEY: "private-key-test",
+      GOOGLE_APPLICATION_CREDENTIALS: undefined,
     });
 
     // Then: the explicit mode remains available.
@@ -128,6 +142,34 @@ describe("environment matrix", () => {
     await expect(importEnvWith(broken)).rejects.toThrow(/Firebase/);
   });
 
+  it("rejects Firebase when no Admin credential mode is configured", async () => {
+    await expect(importEnvWith({
+      ...BASE_ENV,
+      ...CLEAN_MATRIX_ENV,
+      ...FIREBASE_PUBLIC,
+      GOOGLE_APPLICATION_CREDENTIALS: undefined,
+    })).rejects.toThrow(/exactly one Firebase Admin credential mode/);
+  });
+
+  it("rejects CSRF secret reuse", async () => {
+    const reused = "same-secret-value-with-at-least-32-bytes";
+    await expect(importEnvWith({
+      ...BASE_ENV,
+      ...CLEAN_MATRIX_ENV,
+      ...FIREBASE_PUBLIC,
+      AUTH_CSRF_SECRET: reused,
+      SUPABASE_SERVICE_ROLE_KEY: reused,
+    })).rejects.toThrow(/dedicated secret/);
+  });
+
+  it("rejects a Supabase URL and project-ref mismatch", async () => {
+    await expect(importEnvWith({
+      ...BASE_ENV,
+      ...CLEAN_MATRIX_ENV,
+      SUPABASE_PROJECT_REF: "other",
+    })).rejects.toThrow(/SUPABASE_PROJECT_REF/);
+  });
+
   it("accepts complete SePay sandbox configuration", async () => {
     // Given: complete sandbox credentials and HTTPS callbacks.
     // When: the environment is parsed.
@@ -146,10 +188,19 @@ describe("environment matrix", () => {
 
   it("rejects active SePay with missing or inconsistent sandbox configuration", async () => {
     // Given: sandbox mode without its IPN secret and with the primary selector.
-    const broken = { ...BASE_ENV, ...CLEAN_MATRIX_ENV, ...SEPAY_SANDBOX, SEPAY_ENV: "primary", SEPAY_IPN_SECRET: undefined };
+    const broken = { ...BASE_ENV, ...CLEAN_MATRIX_ENV, ...SEPAY_SANDBOX, SEPAY_ENV: "primary", SEPAY_WEBHOOK_HMAC_SECRET: undefined };
 
     // When / Then: parsing rejects the incomplete active contract.
     await expect(importEnvWith(broken)).rejects.toThrow(/SePay/);
+  });
+
+  it("rejects a production SePay API host in sandbox mode", async () => {
+    await expect(importEnvWith({
+      ...BASE_ENV,
+      ...CLEAN_MATRIX_ENV,
+      ...SEPAY_SANDBOX,
+      SEPAY_API_BASE_URL: "https://userapi.sepay.vn/v2",
+    })).rejects.toThrow(/sandbox API host/);
   });
 
   it("requires credentials for active chat, notification, vision, and AMIS modes", async () => {
@@ -163,11 +214,53 @@ describe("environment matrix", () => {
     await expect(importEnvWith(broken)).rejects.toThrow(/configuration/);
   });
 
-  it("rejects out-of-range rollout, session, and retention values", async () => {
+  it("accepts the customer pilot only for temp-nanohome with read-only AMIS and external audit storage", async () => {
+    const { env } = await importEnvWith({
+      ...BASE_ENV,
+      ...CLEAN_MATRIX_ENV,
+      ...FIREBASE_PUBLIC,
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "app.example.com",
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: "temp-nanohome",
+      FIREBASE_ADMIN_PROJECT_ID: "temp-nanohome",
+      AMIS_API_BASE_URL: "https://crmconnect.misa.vn",
+      AMIS_CLIENT_ID: "nanohome",
+      AMIS_CLIENT_SECRET: "amis-secret",
+      AMIS_CUSTOMER_PILOT_ENABLED: "true",
+      AMIS_CUSTOMER_PILOT_AUDIT_PATH: "/secure/nanohome/pilot.json",
+      AMIS_CUSTOMER_PILOT_HMAC_SECRET: "fixture-only-pilot-audit-key-32-bytes-minimum",
+    });
+
+    expect(env.AMIS_CUSTOMER_PILOT_ENABLED).toBe(true);
+    expect(env.AMIS_WRITES_ENABLED).toBe(false);
+  });
+
+  it.each([
+    { NEXT_PUBLIC_FIREBASE_PROJECT_ID: "production", FIREBASE_ADMIN_PROJECT_ID: "production" },
+    { AMIS_WRITES_ENABLED: "true" },
+    { AMIS_CUSTOMER_PILOT_AUDIT_PATH: "inside-project.json" },
+    { AMIS_CUSTOMER_PILOT_HMAC_SECRET: "short" },
+  ])("rejects unsafe active customer pilot configuration", async (override) => {
+    await expect(importEnvWith({
+      ...BASE_ENV,
+      ...CLEAN_MATRIX_ENV,
+      ...FIREBASE_PUBLIC,
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "app.example.com",
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: "temp-nanohome",
+      FIREBASE_ADMIN_PROJECT_ID: "temp-nanohome",
+      AMIS_API_BASE_URL: "https://crmconnect.misa.vn",
+      AMIS_CLIENT_ID: "nanohome",
+      AMIS_CLIENT_SECRET: "amis-secret",
+      AMIS_CUSTOMER_PILOT_ENABLED: "true",
+      AMIS_CUSTOMER_PILOT_AUDIT_PATH: "/secure/nanohome/pilot.json",
+      AMIS_CUSTOMER_PILOT_HMAC_SECRET: "fixture-only-pilot-audit-key-32-bytes-minimum",
+      ...override,
+    })).rejects.toThrow(/customer pilot|Firebase/);
+  });
+
+  it("rejects out-of-range session and retention values", async () => {
     // Given: numeric controls outside their policy bounds.
     const broken = {
-      ...BASE_ENV, ...CLEAN_MATRIX_ENV, AUTH_FIREBASE_ROLLOUT_PERCENT: "101",
-      AUTH_SESSION_TTL_SECONDS: "299", VISION_RETENTION_DAYS: "0",
+      ...BASE_ENV, ...CLEAN_MATRIX_ENV, AUTH_SESSION_TTL_SECONDS: "299", VISION_RETENTION_DAYS: "0",
     };
 
     // When / Then: parsing rejects bounded controls.
@@ -183,4 +276,18 @@ describe("environment matrix", () => {
         .rejects.toThrow(/must remain server-only/);
     },
   );
+
+  it.each([
+    "AUTH_PUBLIC_ORIGIN",
+    "FIREBASE_SUPABASE_TRUST_ENABLED",
+    "AUTH_SESSION_COOKIE_NAME",
+    "AUTH_FIREBASE_ROLLOUT_PERCENT",
+    "AUTH_LEGACY_LOGIN_ENABLED",
+  ])("rejects obsolete runtime variable %s", async (obsoleteKey) => {
+    await expect(importEnvWith({
+      ...BASE_ENV,
+      ...CLEAN_MATRIX_ENV,
+      [obsoleteKey]: "true",
+    })).rejects.toThrow(/obsolete/);
+  });
 });

@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { createFakeAccountOrdersPort } from "./orders-port";
+import { createAccountOrdersPort, createFakeAccountOrdersPort } from "./orders-port";
 
 const owner = {
   accountId: "account_owner",
@@ -20,9 +20,12 @@ const seededOrders = [
   {
     accountId: owner.accountId,
     order: {
+      items: [],
       orderId: "order_01",
       orderNumber: "NH-1001",
+      paymentStatus: "paid",
       placedAt: "2026-07-01T10:00:00.000Z",
+      refundStatus: "none",
       status: "paid",
       total: { amount: 125000, currency: "VND" },
     },
@@ -30,9 +33,12 @@ const seededOrders = [
   {
     accountId: owner.accountId,
     order: {
+      items: [],
       orderId: "order_02",
       orderNumber: "NH-1002",
+      paymentStatus: "paid",
       placedAt: "2026-07-02T10:00:00.000Z",
+      refundStatus: "none",
       status: "fulfilled",
       total: { amount: 240000, currency: "VND" },
     },
@@ -40,9 +46,12 @@ const seededOrders = [
   {
     accountId: otherAccount.accountId,
     order: {
+      items: [],
       orderId: "order_other",
       orderNumber: "NH-2001",
+      paymentStatus: "paid",
       placedAt: "2026-07-03T10:00:00.000Z",
+      refundStatus: "none",
       status: "paid",
       total: { amount: 90000, currency: "VND" },
     },
@@ -112,5 +121,66 @@ describe("createFakeAccountOrdersPort", () => {
     expect(first).not.toBe(second);
     expect(first?.total).not.toBe(second?.total);
     expect(second).toMatchObject({ total: { amount: 125000, currency: "VND" } });
+  });
+});
+
+describe("createAccountOrdersPort", () => {
+  it("scopes reads to the account and signs account-bound pagination cursors", async () => {
+    const stored = (orderId: string) => ({
+      businessStatus: "created",
+      currency: "VND",
+      fulfillmentStatus: "unfulfilled",
+      grandTotal: 1000,
+      items: [],
+      orderId,
+      orderNumber: `WEB-${orderId}`,
+      paymentStatus: "unpaid",
+      placedAt: "2026-07-28T00:00:00.000Z",
+      refundStatus: "none",
+    });
+    const listOrders = vi.fn()
+      .mockResolvedValueOnce([stored("three"), stored("two")])
+      .mockResolvedValueOnce([stored("one")])
+      .mockResolvedValueOnce([stored("other")]);
+    const port = createAccountOrdersPort({
+      getOrder: vi.fn(async () => null),
+      listOrders,
+    }, "cursor-secret");
+
+    const first = await port.listOrders(owner, { limit: 1 });
+    const second = await port.listOrders(owner, { cursor: first.nextCursor, limit: 1 });
+    await port.listOrders(otherAccount, { cursor: first.nextCursor, limit: 1 });
+
+    expect(first.orders.map((order) => order.orderId)).toEqual(["three"]);
+    expect(first.nextCursor).toEqual(expect.any(String));
+    expect(second.orders.map((order) => order.orderId)).toEqual(["one"]);
+    expect(listOrders).toHaveBeenNthCalledWith(2, "account_owner", { limit: 2, offset: 1 });
+    expect(listOrders).toHaveBeenNthCalledWith(3, "account_other", { limit: 2, offset: 0 });
+  });
+
+  it("maps unpaid and refunded server truth without trusting a browser redirect", async () => {
+    const getOrder = vi.fn(async () => ({
+      businessStatus: "created",
+      currency: "VND",
+      fulfillmentStatus: "unfulfilled",
+      grandTotal: 1000,
+      items: [],
+      orderId: "order-owned",
+      orderNumber: "WEB-OWNED",
+      paymentStatus: "paid",
+      placedAt: "2026-07-28T00:00:00.000Z",
+      refundStatus: "refunded",
+    }));
+    const port = createAccountOrdersPort({
+      getOrder,
+      listOrders: vi.fn(async () => []),
+    }, "cursor-secret");
+
+    await expect(port.getOrder(owner, "order-owned")).resolves.toMatchObject({
+      paymentStatus: "paid",
+      refundStatus: "refunded",
+      status: "refunded",
+    });
+    expect(getOrder).toHaveBeenCalledWith("account_owner", "order-owned");
   });
 });

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sameOriginRequest } from "@/test/same-origin-request";
 
 const ports = vi.hoisted(() => ({
   getAuthenticatedAccount: vi.fn(),
@@ -64,7 +65,7 @@ describe("/api/account/preferences", () => {
     ports.updatePreferences.mockResolvedValue(preferences);
 
     // When: the browser disables browsing history.
-    const response = await PATCH(new Request("https://app.test/api/account/preferences", {
+    const response = await PATCH(sameOriginRequest("https://app.test/api/account/preferences", {
       body: JSON.stringify({ browsingHistoryEnabled: false }),
       headers: { "content-type": "application/json" },
       method: "PATCH",
@@ -81,7 +82,7 @@ describe("/api/account/preferences", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
 
     // When: the browser omits the JSON content type.
-    const response = await PATCH(new Request("https://app.test/api/account/preferences", { method: "PATCH" }));
+    const response = await PATCH(sameOriginRequest("https://app.test/api/account/preferences", { method: "PATCH" }));
 
     // Then: the API reports unsupported media without mutating preferences.
     expect(response.status).toBe(415);
@@ -93,7 +94,7 @@ describe("/api/account/preferences", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
 
     // When: malformed JSON is submitted.
-    const malformed = await PATCH(new Request("https://app.test/api/account/preferences", {
+    const malformed = await PATCH(sameOriginRequest("https://app.test/api/account/preferences", {
       body: "{",
       headers: { "content-type": "application/json" },
       method: "PATCH",
@@ -103,7 +104,7 @@ describe("/api/account/preferences", () => {
     expect(malformed.status).toBe(400);
 
     // When: the patch includes forbidden AMIS data.
-    const unsafe = await PATCH(new Request("https://app.test/api/account/preferences", {
+    const unsafe = await PATCH(sameOriginRequest("https://app.test/api/account/preferences", {
       body: JSON.stringify({ amisId: "forged", browsingHistoryEnabled: false }),
       headers: { "content-type": "application/json" },
       method: "PATCH",

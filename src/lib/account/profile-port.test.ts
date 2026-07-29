@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { createFakeAccountProfilePort } from "./profile-port";
+import { createAccountProfilePort, createFakeAccountProfilePort } from "./profile-port";
 
 const account = {
   accountId: "account_01",
@@ -8,13 +8,13 @@ const account = {
   locale: "vi",
   identities: [
     { provider: "phone", identifier: "+84901234567", verified: true },
-    { provider: "kakao", identifier: "customer@example.test", verified: false },
+    { provider: "google", identifier: "customer@example.test", verified: false },
   ],
 } as const;
 
 describe("createFakeAccountProfilePort", () => {
   it("presents verified contacts separately from provider metadata", async () => {
-    // Given: a phone-only account with unverified Kakao metadata.
+    // Given: a phone-only account with unverified Google metadata.
     const port = createFakeAccountProfilePort();
 
     // When: the profile is resolved.
@@ -24,7 +24,7 @@ describe("createFakeAccountProfilePort", () => {
     expect(profile.primaryEmail).toBeNull();
     expect(profile.primaryPhone).toBe("+84901234567");
     expect(profile.providerMetadata).toEqual([
-      { provider: "kakao", identifier: "customer@example.test" },
+      { provider: "google", identifier: "customer@example.test" },
     ]);
   });
 
@@ -39,5 +39,27 @@ describe("createFakeAccountProfilePort", () => {
     expect(updated.fullName).toBe("An Nguyễn");
     expect(updated.locale).toBe("vi");
     await expect(port.getProfile(account)).resolves.toEqual(updated);
+  });
+});
+
+describe("createAccountProfilePort", () => {
+  it("scopes durable profile reads to the server-resolved account and overlays verified contacts", async () => {
+    const getProfile = vi.fn(async () => ({
+      fullName: "An Nguyễn",
+      dateOfBirth: null,
+      nationality: "Việt Nam",
+      formOfAddress: null,
+      locale: "vi",
+    }));
+    const port = createAccountProfilePort({
+      getProfile,
+      patchProfile: vi.fn(),
+    });
+
+    await expect(port.getProfile(account)).resolves.toMatchObject({
+      fullName: "An Nguyễn",
+      primaryPhone: "+84901234567",
+    });
+    expect(getProfile).toHaveBeenCalledWith("account_01");
   });
 });

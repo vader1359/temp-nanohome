@@ -1,8 +1,10 @@
 import { getAccountAuthPort, getAccountPreferencesPort } from "@/lib/account/account-ports.server";
 import { isEmptyPreferencesActionBody } from "@/lib/account/preferences-schema";
+import { isSameOriginPost } from "@/lib/auth/same-origin.server";
 import { privateJson, withPrivateErrorBoundary } from "../../private-response";
 
 export const POST = withPrivateErrorBoundary(async (request: Request): Promise<Response> => {
+  if (!isSameOriginPost(request)) return privateJson({ error: "Forbidden" }, 403);
   const account = await getAccountAuthPort().getAuthenticatedAccount();
   if (account === null) return privateJson({ error: "Authentication required" }, 401);
   if (request.body !== null) {

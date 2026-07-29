@@ -120,7 +120,12 @@ select is(
 );
 
 select lives_ok(
-  $$ insert into public.carts (id) values ('00000000-0000-4000-8000-000000000073') $$,
+  $proof$
+    delete from public.carts
+    where id = '00000000-0000-4000-8000-000000000071';
+    insert into public.carts (id)
+    values ('00000000-0000-4000-8000-000000000073');
+  $proof$,
   'mapped non-UUID Firebase principal can create an account cart without a UUID cast'
 );
 
@@ -131,17 +136,25 @@ select is(
 );
 
 select lives_ok(
-  $$ insert into public.carts (id, account_id) values ('00000000-0000-4000-8000-000000000074', '00000000-0000-4000-8000-000000000061') $$,
+  $proof$
+    delete from public.carts
+    where id = '00000000-0000-4000-8000-000000000073';
+    insert into public.carts (id, account_id)
+    values (
+      '00000000-0000-4000-8000-000000000074',
+      '00000000-0000-4000-8000-000000000061'
+    );
+  $proof$,
   'cart assignment preserves a valid Firebase account input'
 );
 
 select lives_ok(
-  $$ insert into public.cart_items (id, cart_id, variant_id, quantity) values ('00000000-0000-4000-8000-000000000082', '00000000-0000-4000-8000-000000000073', '00000000-0000-4000-8000-000000000031', 1) $$,
+  $$ insert into public.cart_items (id, cart_id, variant_id, quantity) values ('00000000-0000-4000-8000-000000000082', '00000000-0000-4000-8000-000000000074', '00000000-0000-4000-8000-000000000031', 1) $$,
   'mapped non-UUID Firebase principal can create an item in its cart'
 );
 
 select lives_ok(
-  $$ update public.carts set merged_from_guest_id = 'foundation-merged' where id = '00000000-0000-4000-8000-000000000073' $$,
+  $$ update public.carts set merged_from_guest_id = 'foundation-merged' where id = '00000000-0000-4000-8000-000000000074' $$,
   'mapped non-UUID Firebase principal can update its cart'
 );
 
@@ -180,12 +193,12 @@ select lives_ok(
 );
 
 select lives_ok(
-  $$ delete from public.carts where id in ('00000000-0000-4000-8000-000000000073', '00000000-0000-4000-8000-000000000074') $$,
-  'mapped non-UUID Firebase principal can delete its account carts'
+  $$ delete from public.carts where id = '00000000-0000-4000-8000-000000000074' $$,
+  'mapped non-UUID Firebase principal can delete its account cart'
 );
 
 select is(
-  (select count(*) from public.carts where id in ('00000000-0000-4000-8000-000000000073', '00000000-0000-4000-8000-000000000074')),
+  (select count(*) from public.carts where id = '00000000-0000-4000-8000-000000000074'),
   0::bigint,
   'mapped Firebase cart deletes persist'
 );
@@ -294,6 +307,12 @@ select is(
 set local role postgres;
 
 select set_config('request.jwt.claims', '{}'::text, true);
+
+insert into public.carts (id, user_id)
+values (
+  '00000000-0000-4000-8000-000000000071',
+  '00000000-0000-4000-8000-000000000061'
+);
 
 insert into public.carts (id, guest_id)
 values ('00000000-0000-4000-8000-000000000076', 'foundation-guest-cart');

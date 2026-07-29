@@ -5,11 +5,15 @@ const ports = vi.hoisted(() => ({
   getAuthenticatedAccount: vi.fn(),
   getItems: vi.fn(),
 }));
+const redirect = vi.hoisted(() => vi.fn((target: string) => {
+  throw new Error(`NEXT_REDIRECT:${target}`);
+}));
 
 vi.mock("@/lib/account/account-ports.server", () => ({
   getAccountAuthPort: () => ({ getAuthenticatedAccount: ports.getAuthenticatedAccount }),
   getAccountWishlistPort: () => ({ getItems: ports.getItems }),
 }));
+vi.mock("next/navigation", () => ({ redirect }));
 
 import AccountWishlistPage from "./page";
 
@@ -26,15 +30,12 @@ describe("AccountWishlistPage", () => {
     ports.getItems.mockReset();
   });
 
-  it("renders a neutral unavailable state without reading saved items when anonymous", async () => {
+  it("redirects anonymous access without reading saved items", async () => {
     // Given: no authenticated Account identity.
     ports.getAuthenticatedAccount.mockResolvedValue(null);
 
-    // When: the wishlist page renders.
-    render(await AccountWishlistPage({ params: Promise.resolve({ locale: "vi" }) }));
-
-    // Then: it does not expose or access a wishlist.
-    expect(screen.getByText("Danh sách yêu thích hiện chưa khả dụng.")).toBeInTheDocument();
+    await expect(AccountWishlistPage({ params: Promise.resolve({ locale: "vi" }) }))
+      .rejects.toThrow("NEXT_REDIRECT:/vi/account/sign-in");
     expect(ports.getItems).not.toHaveBeenCalled();
   });
 

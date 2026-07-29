@@ -6,7 +6,7 @@ import { routing } from "./i18n/routing";
 
 const handleI18nRouting = createMiddleware(routing);
 
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   if (request.nextUrl.pathname === "/ca-performance" || request.nextUrl.pathname === "/ca-performance/") {
     const token = process.env.CA_PERFORMANCE_AUTH_TOKEN ?? "nanoCAp3rf";
     if (request.cookies.get("ca-performance-auth")?.value !== token) {
@@ -20,8 +20,9 @@ export default function middleware(request: NextRequest) {
 export const config = {
   // Match all pathnames except for:
   // - _next (internal files)
+  // - __/auth (same-origin Firebase auth helper rewrite)
   // - auth (handled by auth flow separately)
   // - api (API routes)
   // - static files (contain a dot in path)
-  matcher: ["/((?!_next|auth|api|.*\\..*).*)"],
+  matcher: ["/((?!_next|__/auth|auth|api|.*\\..*).*)"],
 };

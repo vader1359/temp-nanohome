@@ -147,7 +147,10 @@ trap 'exit 143' 15
 
 mkdir -p "$harness_dir/supabase/migrations" "$harness_dir/tests"
 cp "$repo_root/supabase/config.toml" "$harness_dir/supabase/config.toml"
-sed -i "s/^project_id = .*/project_id = \"$stack_project\"/" "$harness_dir/supabase/config.toml"
+config_tmp="$harness_dir/supabase/config.toml.tmp"
+sed "s/^project_id = .*/project_id = \"$stack_project\"/" \
+  "$harness_dir/supabase/config.toml" >"$config_tmp"
+mv "$config_tmp" "$harness_dir/supabase/config.toml"
 cp "$repo_root"/supabase/migrations/*.sql "$harness_dir/supabase/migrations/"
 cp "$repo_root/supabase/plan00-local/00000000000000_catalog_baseline.sql" \
   "$harness_dir/supabase/migrations/00000000000000_catalog_baseline.sql"
@@ -171,7 +174,7 @@ while IFS= read -r source_test; do
 done <"$test_manifest"
 
 pre_start_containers=$("$docker_bin" ps -aq)
-if "$supabase_bin" start --workdir "$harness_dir"; then
+if "$supabase_bin" start --workdir "$harness_dir" >/dev/null; then
   :
 else
   status=$?

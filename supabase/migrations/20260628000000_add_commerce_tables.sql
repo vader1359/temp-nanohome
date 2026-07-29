@@ -127,3 +127,7 @@ create policy "Guests can select items by order number setting" on public.order_
 
 drop policy if exists "Users can select own order status history" on public.order_status_history;
 create policy "Users can select own order status history" on public.order_status_history for select using (exists (select 1 from public.orders where orders.id = order_status_history.order_id and orders.user_id = auth.uid()));
+
+grant all on table public.carts, public.cart_items, public.orders,
+  public.order_items, public.order_status_history
+to anon, authenticated, service_role;

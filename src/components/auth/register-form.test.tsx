@@ -34,11 +34,9 @@ describe("RegisterForm", () => {
   });
 
   it("shows localized pending feedback after a valid native submission", () => {
-    // Given: the user has completed every required registration field.
+    // Given: the user has completed every verified registration field.
     render(<RegisterForm onSwitchView={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText("fields.fullName"), { target: { value: "Ada Lovelace" } });
     fireEvent.change(screen.getByLabelText("fields.email"), { target: { value: "ada@example.com" } });
-    fireEvent.change(screen.getByLabelText("fields.phone"), { target: { value: "+84901234567" } });
     fireEvent.change(screen.getByLabelText("fields.password"), { target: { value: "password123" } });
     fireEvent.change(screen.getByLabelText("fields.confirmPassword"), { target: { value: "password123" } });
     fireEvent.click(screen.getByRole("checkbox", { name: "fields.agreeTerms" }));

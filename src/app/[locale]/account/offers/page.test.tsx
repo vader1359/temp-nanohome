@@ -13,20 +13,20 @@ function renderPage(page: ReactNode): void {
 }
 
 const ports = vi.hoisted(() => ({ getAuthenticatedAccount: vi.fn(), listOffers: vi.fn() }));
+const redirect = vi.hoisted(() => vi.fn((target: string) => { throw new Error(`NEXT_REDIRECT:${target}`); }));
 vi.mock("@/lib/account/account-ports.server", () => ({ getAccountAuthPort: () => ({ getAuthenticatedAccount: ports.getAuthenticatedAccount }), getAccountOffersPort: () => ({ listOffers: ports.listOffers }) }));
+vi.mock("next/navigation", () => ({ redirect }));
 import AccountOffersPage from "./page";
 
 const account = { accountId: "account_01", firebaseUid: "firebase_01", locale: "vi", identities: [] } as const;
 
 describe("AccountOffersPage", () => {
   beforeEach(() => { ports.getAuthenticatedAccount.mockReset(); ports.listOffers.mockReset(); });
-  it("does not access offers for anonymous access", async () => {
+  it("redirects anonymous access without reading offers", async () => {
     // Given: no authenticated account.
     ports.getAuthenticatedAccount.mockResolvedValue(null);
-    // When: the offers page renders.
-    renderPage(await AccountOffersPage({ params: Promise.resolve({ locale: "vi" }) }));
-    // Then: it stays neutral and avoids the private port.
-    expect(screen.getByText("Ưu đãi hiện chưa khả dụng.")).toBeInTheDocument();
+    await expect(AccountOffersPage({ params: Promise.resolve({ locale: "vi" }) }))
+      .rejects.toThrow("NEXT_REDIRECT:/vi/account/sign-in");
     expect(ports.listOffers).not.toHaveBeenCalled();
   });
   it("renders account-owned offers", async () => {

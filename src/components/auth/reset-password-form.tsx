@@ -7,14 +7,16 @@ import { DarkCTAButton } from "@/components/shared/dark-cta-button";
 export type ResetPasswordStatus = "error" | "invalid" | "success" | "validation" | undefined;
 
 interface ResetPasswordFormProps {
+  readonly oobCode?: string;
   readonly status?: ResetPasswordStatus;
 }
 
-export function ResetPasswordForm({ status }: ResetPasswordFormProps) {
+export function ResetPasswordForm({ oobCode, status }: ResetPasswordFormProps) {
   const locale = useLocale();
   const t = useTranslations("Auth");
+  const effectiveStatus = status ?? (oobCode ? undefined : "invalid");
 
-  if (status === "success") {
+  if (effectiveStatus === "success") {
     return (
       <main className="mx-auto w-full max-w-md px-6 py-20 sm:py-28">
         <section aria-labelledby="reset-password-title">
@@ -33,7 +35,7 @@ export function ResetPasswordForm({ status }: ResetPasswordFormProps) {
     );
   }
 
-  if (status === "invalid") {
+  if (effectiveStatus === "invalid") {
     return (
       <main className="mx-auto w-full max-w-md px-6 py-20 sm:py-28">
         <section aria-labelledby="reset-password-title">
@@ -52,7 +54,7 @@ export function ResetPasswordForm({ status }: ResetPasswordFormProps) {
     );
   }
 
-  const message = status === "validation" || status === "error" ? t("errors.resetError") : null;
+  const message = effectiveStatus === "validation" || effectiveStatus === "error" ? t("errors.resetError") : null;
 
   return (
     <main className="mx-auto w-full max-w-md px-6 py-20 sm:py-28">
@@ -65,6 +67,7 @@ export function ResetPasswordForm({ status }: ResetPasswordFormProps) {
 
         <form action="/auth/reset-password" method="POST" className="mt-8 flex flex-col gap-6" aria-label={t("reset.title")}>
           <input type="hidden" name="locale" value={locale} />
+          <input type="hidden" name="oobCode" value={oobCode} />
           <div className="flex flex-col gap-2">
             <label htmlFor="reset-password" className="sr-only">{t("fields.newPassword")}</label>
             <input

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sameOriginRequest } from "@/test/same-origin-request";
 
 const ports = vi.hoisted(() => ({ getAuthenticatedAccount: vi.fn(), logoutCurrentSession: vi.fn() }));
 vi.mock("@/lib/account/account-ports.server", () => ({
@@ -20,7 +21,7 @@ describe("/api/account/security/logout-current", () => {
     ports.logoutCurrentSession.mockResolvedValue(result);
 
     // When: the bodyless logout action is requested.
-    const response = await POST(new Request("https://app.test/api/account/security/logout-current", { method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/security/logout-current", { method: "POST" }));
 
     // Then: the account-scoped port result is private and canonical.
     expect(response.status).toBe(200);
@@ -35,7 +36,7 @@ describe("/api/account/security/logout-current", () => {
     ports.logoutCurrentSession.mockRejectedValue(new Error("session revocation failure"));
 
     // When: the bodyless logout action is requested.
-    const response = await POST(new Request("https://app.test/api/account/security/logout-current", { method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/security/logout-current", { method: "POST" }));
 
     // Then: the rejection remains private and generic.
     expect(response.status).toBe(500);

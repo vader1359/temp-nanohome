@@ -111,7 +111,8 @@ const AMIS_ALLOWED_REQUESTS = new Map<string, ReadonlySet<string>>([
 
 export function assertAmisRequestAllowed(url: URL, method: string): void {
   const normalizedMethod = method.toUpperCase();
-  const allowedMethods = AMIS_ALLOWED_REQUESTS.get(normalizeAmisPathname(url.pathname));
+  const pathname = normalizeAmisPathname(url.pathname);
+  const allowedMethods = AMIS_ALLOWED_REQUESTS.get(pathname);
 
   if (
     url.origin !== AMIS_CRM_ORIGIN
@@ -119,6 +120,9 @@ export function assertAmisRequestAllowed(url: URL, method: string): void {
     || url.password.length > 0
     || allowedMethods?.has(normalizedMethod) !== true
   ) {
+    throw new RemoteWriteBlockedError("AMIS", normalizedMethod, url.toString());
+  }
+  if ((pathname === "/api/v2/Customers" || pathname === "/api/v2/Contacts") && !hasSafeAmisPagingQuery(url)) {
     throw new RemoteWriteBlockedError("AMIS", normalizedMethod, url.toString());
   }
 }
@@ -150,6 +154,21 @@ function normalizeAmisPathname(pathname: string): string {
     return pathname.slice(0, -1);
   }
   return pathname;
+}
+
+function hasSafeAmisPagingQuery(url: URL): boolean {
+  const allowedKeys = new Set(["page", "pageSize", "orderBy", "isDescending"]);
+  for (const key of url.searchParams.keys()) {
+    if (!allowedKeys.has(key) || url.searchParams.getAll(key).length !== 1) return false;
+  }
+  const page = url.searchParams.get("page");
+  const pageSize = url.searchParams.get("pageSize");
+  const orderBy = url.searchParams.get("orderBy");
+  const isDescending = url.searchParams.get("isDescending");
+  return (page === null || /^(0|[1-9]\d*)$/.test(page))
+    && (pageSize === null || (/^(?:[1-9]|[1-9]\d|100)$/.test(pageSize)))
+    && (orderBy === null || orderBy === "modified_date")
+    && (isDescending === null || isDescending === "true");
 }
 
 function assertReadOnlyMethod(system: "Supabase", method: string, url: string): void {

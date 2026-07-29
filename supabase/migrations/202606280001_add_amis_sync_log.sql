@@ -26,3 +26,5 @@ create policy "amis_sync_log_authenticated_block_all"
   to authenticated
   using (false)
   with check (false);
+
+grant all on table public.amis_sync_log to anon, authenticated, service_role;

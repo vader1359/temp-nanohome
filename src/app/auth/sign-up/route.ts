@@ -1,50 +1,36 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { revalidatePath } from "next/cache";
 
+import { getFirebaseAuthRestClient } from "@/lib/auth/firebase-auth-rest-runtime.server";
+import { isSameOriginPost } from "@/lib/auth/same-origin.server";
 import { parseSignUpForm } from "@/lib/auth/credentials";
 import { getSupportedLocale } from "@/lib/auth/redirect";
-import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 
 export async function POST(request: NextRequest) {
+  if (!isSameOriginPost(request)) return new NextResponse(null, { status: 403 });
   const formData = await request.formData();
   const locale = getSupportedLocale(formData.get("locale")?.toString() ?? null);
   const credentials = parseSignUpForm(formData);
-
   if (!credentials.ok) {
     const error = credentials.error === "password_mismatch" || credentials.error === "terms_required"
       ? credentials.error
       : "sign_up_error";
-    return NextResponse.redirect(new URL(`/${locale}?auth=${error}`, request.url));
+    return NextResponse.redirect(new URL(`/${locale}?auth=${error}`, request.url), 303);
   }
 
-  const { supabase, applyCookies } = createRouteHandlerClient(request);
-  const { error } = await supabase.auth.signUp({
-    email: credentials.value.email,
-    password: credentials.value.password,
-    options: {
-      emailRedirectTo: new URL(
-        `/auth/callback?next=${encodeURIComponent(credentials.value.redirectTo)}`,
-        request.url,
-      ).toString(),
-      data: {
-        full_name: credentials.value.fullName,
-        phone: credentials.value.phone,
-      },
-    },
-  });
-
-  if (error !== null) {
-    return applyCookies(
-      NextResponse.redirect(
-        new URL(`/${credentials.value.locale}?auth=sign_up_error`, request.url),
-      ),
+  try {
+    await getFirebaseAuthRestClient().signUpAndSendVerification(
+      credentials.value.email,
+      credentials.value.password,
+      credentials.value.locale,
+    );
+    return NextResponse.redirect(
+      new URL(`/${credentials.value.locale}/check-email?signup=success`, request.url),
+      303,
+    );
+  } catch {
+    return NextResponse.redirect(
+      new URL(`/${credentials.value.locale}?auth=sign_up_error`, request.url),
+      303,
     );
   }
-
-  revalidatePath("/", "layout");
-  return applyCookies(
-    NextResponse.redirect(
-      new URL(`/${credentials.value.locale}/check-email?signup=success`, request.url),
-    ),
-  );
 }

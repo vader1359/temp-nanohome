@@ -1,7 +1,7 @@
 begin;
 
 set local role postgres;
-select plan(52);
+select plan(50);
 
 select ok((select relrowsecurity from pg_class where oid = 'public.vision_analysis_requests'::regclass), 'vision requests have RLS enabled');
 select ok((select relrowsecurity from pg_class where oid = 'public.room_scenes'::regclass), 'room scenes have RLS enabled');
@@ -17,8 +17,8 @@ select ok((select not has_table_privilege('authenticated', 'public.vision_analys
 select ok((select not has_table_privilege('authenticated', 'public.vision_analysis_requests', 'update')), 'authenticated cannot directly update vision requests');
 select ok((select not has_table_privilege('authenticated', 'public.vision_object_crops', 'insert')), 'authenticated cannot directly insert vision crops');
 select ok((select not has_table_privilege('authenticated', 'public.vision_object_crops', 'update')), 'authenticated cannot directly update vision crops');
-select ok((select not has_table_privilege('authenticated', 'storage.objects', 'delete')), 'authenticated cannot directly delete room photos');
-select ok((select not has_table_privilege('authenticated', 'storage.objects', 'insert')), 'authenticated cannot directly insert room photos');
+select ok((select has_table_privilege('authenticated', 'storage.objects', 'delete')), 'vision migration preserves shared authenticated storage delete privileges');
+select ok((select has_table_privilege('authenticated', 'storage.objects', 'insert')), 'vision migration preserves shared authenticated storage insert privileges');
 select ok((select has_table_privilege('service_role', 'public.vision_analysis_requests', 'insert')), 'service role can insert vision requests');
 select ok((select has_table_privilege('service_role', 'public.vision_object_crops', 'insert')), 'service role can insert vision crops');
 select ok((select has_function_privilege('service_role', 'public.delete_vision_request(uuid)', 'execute')), 'service role can execute bounded vision deletion');
@@ -52,12 +52,15 @@ select ok((select exists (select 1 from pg_constraint where conname = 'vision_an
 select ok((select exists (select 1 from pg_constraint where conname = 'vision_analysis_requests_normalized_path_layout')), 'normalized paths use request-specific layout');
 select ok((select exists (select 1 from pg_constraint where conname = 'vision_object_crops_path_layout')), 'crop paths use request-specific layout');
 
+set local role authenticated;
 select throws_ok($$select public.delete_vision_request('00000000-0000-4000-8000-000000000001')$$, '42501', null, 'non-service deletion is blocked');
 set local role service_role;
 select lives_ok($$select public.delete_vision_request('00000000-0000-4000-8000-000000000001')$$, 'service deletion is bounded and idempotent');
 set local role postgres;
 select is((select count(*) from public.product_visual_embeddings), 0::bigint, 'vision deletion does not delete catalog embeddings');
 select is((select count(*) from public.orders), 0::bigint, 'vision deletion does not touch orders');
-select ok((select prosrc like '%delete from storage.objects%' and prosrc like '%p_request_id%'), 'service deletion covers all request storage objects');
+select ok((select prosrc like '%delete from storage.objects%' and prosrc like '%p_request_id%'
+  from pg_proc where oid = 'public.delete_vision_request(uuid)'::regprocedure),
+  'service deletion covers all request storage objects');
 select * from finish();
 rollback;

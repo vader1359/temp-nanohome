@@ -81,7 +81,8 @@ select is(
   'absent price infers contact mode'
 );
 select ok(
-  'price_missing' = any((select reason_codes from public.catalog_eligibility where variant_id = :'variant_id_7')),
+  (select reason_codes @> array['price_missing']::text[]
+   from public.catalog_eligibility where variant_id = :'variant_id_7'),
   'absent price exposes price_missing reason code'
 );
 

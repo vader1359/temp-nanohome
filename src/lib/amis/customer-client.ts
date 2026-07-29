@@ -8,7 +8,9 @@ const AMIS_CUSTOMER_PAGE_SIZE = 100;
 
 export type AmisCustomerRecord = {
   readonly id: string;
+  readonly code: string;
   readonly customerType: string | null;
+  readonly inactive: boolean | null;
   readonly modifiedDate: string;
 };
 
@@ -58,12 +60,23 @@ async function fetchCustomerPage(config: AmisClientConfig, token: string, page: 
   if (!parsed.data.success || parsed.data.code !== 200) {
     return { kind: "http_error", status: parsed.data.code, message: "AMIS rejected the Customer read request" };
   }
-  return { kind: "success", records: parsed.data.data.map((record) => ({ id: record.id, customerType: record.customer_type ?? null, modifiedDate: record.modified_date })) };
+  return {
+    kind: "success",
+    records: parsed.data.data.map((record) => ({
+      id: record.id,
+      code: record.account_number,
+      customerType: record.account_type ?? null,
+      inactive: record.inactive ?? null,
+      modifiedDate: record.modified_date,
+    })),
+  };
 }
 
 const customerSchema = z.object({
-  id: z.string().min(1),
-  customer_type: z.string().nullable().optional(),
+  id: z.union([z.string().min(1), z.number().int().safe()]).transform(String),
+  account_number: z.string().min(1),
+  account_type: z.string().nullable().optional(),
+  inactive: z.boolean().nullable().optional(),
   modified_date: z.string().datetime({ offset: true }),
 }).strip();
 

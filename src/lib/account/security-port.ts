@@ -46,7 +46,6 @@ function actionProvider(action: SecurityAuthAction): AccountIdentityProvider {
   switch (action) {
     case "unlink_email": return "email";
     case "unlink_google": return "google";
-    case "unlink_kakao": return "kakao";
     case "unlink_phone": return "phone";
   }
 }

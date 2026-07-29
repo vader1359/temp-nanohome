@@ -231,8 +231,8 @@ select is(
     where confrelid = 'public.customer_accounts'::regclass
       and contype = 'f'
   ),
-  19::bigint,
-  'shared contract incorporates all 19 customer_accounts foreign keys, including Todo 13'
+  23::bigint,
+  'shared contract incorporates all 23 customer_accounts foreign keys'
 );
 
 select is(
@@ -243,8 +243,8 @@ select is(
       and contype = 'f'
       and confdeltype = 'r'
   ),
-  17::bigint,
-  'shared contract incorporates all 17 RESTRICT account ownership actions'
+  21::bigint,
+  'shared contract incorporates all 21 RESTRICT account ownership actions'
 );
 
 select * from finish();

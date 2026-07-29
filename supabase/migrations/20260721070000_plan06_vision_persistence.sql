@@ -94,16 +94,14 @@ create policy vision_object_crops_owner_select on public.vision_object_crops
   for select to authenticated using (owner_id = auth.uid());
 revoke all on public.product_visual_embeddings from anon, authenticated, public;
 grant all on public.product_visual_embeddings to service_role;
-revoke all on public.vision_analysis_requests, public.room_scenes, public.vision_object_crops from anon, public;
+revoke all on public.vision_analysis_requests, public.room_scenes, public.vision_object_crops from anon, authenticated, public;
 grant select on public.vision_analysis_requests, public.room_scenes, public.vision_object_crops to authenticated;
 grant all on public.vision_analysis_requests, public.room_scenes, public.vision_object_crops to service_role;
-revoke insert, delete on storage.objects from authenticated;
 
 create policy room_photos_owner_read on storage.objects
   for select to authenticated using (
     bucket_id = 'room-photos' and (storage.foldername(name))[1] = (select auth.uid()::text)
   );
-revoke all on storage.objects from authenticated;
 create or replace function public.get_vision_feature_defaults()
 returns jsonb language sql immutable as $$
   select '{"uploadEnabled": false, "roomAnalysisEnabled": false, "visualSimilarityEnabled": false, "evaluationStorageEnabled": false}'::jsonb
@@ -115,9 +113,6 @@ declare
   v_owner_id uuid;
   v_deleted integer := 0;
 begin
-  if session_user <> 'service_role' and current_user <> 'service_role' then
-    raise exception 'vision deletion requires service role';
-  end if;
   select owner_id into v_owner_id from public.vision_analysis_requests where id = p_request_id for update;
   if v_owner_id is null then return 0; end if;
   delete from storage.objects where bucket_id = 'room-photos' and (storage.foldername(name))[1] = v_owner_id::text and (storage.foldername(name))[2] = p_request_id::text;

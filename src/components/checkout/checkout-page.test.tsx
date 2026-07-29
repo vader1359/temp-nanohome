@@ -4,12 +4,15 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const mockRemoveItem = vi.fn();
 const mockUpdateQuantity = vi.fn();
 const clearCart = vi.fn();
+const emptyAccountCart = { items: [], total: { amount: 0, currency: "VND" }, version: 0 } as const;
+const chairId = "00000000-0000-4000-8000-000000000001";
+const tableId = "00000000-0000-4000-8000-000000000002";
 const cartItems = [
   {
     badge: "In stock",
     badgeTone: "stock" as const,
     category: "Chair",
-    id: "chair-1",
+    id: chairId,
     image: "/chair.webp",
     name: "Korean Chair",
     price: "10.000.000 ₫",
@@ -21,7 +24,7 @@ const cartItems = [
     badge: "In stock",
     badgeTone: "stock" as const,
     category: "Table",
-    id: "table-1",
+    id: tableId,
     image: "/table.webp",
     name: "Wood Table",
     price: "20.000.000 ₫",
@@ -53,10 +56,10 @@ describe("CheckoutPage", () => {
     vi.clearAllMocks();
   });
 
-  it("keeps cart state and entered form values when the legacy submission fails", async () => {
-    // Given: a hydrated cart and an unavailable legacy submission endpoint.
+  it("keeps cart state and entered form values when durable merge fails", async () => {
+    // Given: a hydrated cart and an unavailable account-cart merge.
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ json: async () => ({ error: "Unavailable" }), ok: false }));
-    render(<CheckoutPage />);
+    render(<CheckoutPage initialAccountCart={emptyAccountCart} />);
 
     // Step 1 -> 2
     const contBtns1 = screen.getAllByRole("button").filter(btn => btn.textContent === "continue");
@@ -68,6 +71,7 @@ describe("CheckoutPage", () => {
     fireEvent.change(screen.getByPlaceholderText("name"), { target: { value: "Nguyen Van A" } });
     fireEvent.change(screen.getByPlaceholderText("phone"), { target: { value: "+84901234567" } });
     fireEvent.change(screen.getByPlaceholderText("email"), { target: { value: "a@example.com" } });
+    fireEvent.change(screen.getByPlaceholderText("address"), { target: { value: "1 Test Street" } });
 
     // Step 2 -> 3
     const contBtns2 = screen.getAllByRole("button").filter(btn => btn.textContent === "continue");
@@ -87,26 +91,41 @@ describe("CheckoutPage", () => {
     expect(screen.getByDisplayValue("Nguyen Van A")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("couponPlaceholder")).toBeInTheDocument();
     expect(screen.getByText("couponUnavailable")).toBeInTheDocument();
-    expect(screen.getByText("paymentUnavailable")).toBeInTheDocument();
+    expect(screen.getByText("sepayTestPending")).toBeInTheDocument();
     expect(clearCart).not.toHaveBeenCalled();
     expect(mockRemoveItem).not.toHaveBeenCalled();
   });
 
   it("updates cart quantity", () => {
-    render(<CheckoutPage />);
+    render(<CheckoutPage initialAccountCart={emptyAccountCart} />);
 
     const increaseButtons = screen.getAllByRole("button", { name: "increaseQuantity" });
     fireEvent.click(increaseButtons[0]);
 
-    expect(mockUpdateQuantity).toHaveBeenCalledWith("chair-1", 2);
+    expect(mockUpdateQuantity).toHaveBeenCalledWith(chairId, 2);
     expect(mockRemoveItem).not.toHaveBeenCalled();
   });
 
   it("submits the correct payload and removes only selected items on success", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ json: async () => ({ ok: true }), ok: true });
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ cart: emptyAccountCart }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        orderId: "00000000-0000-4000-8000-000000000101",
+        orderNumber: "ORD-TEST001",
+        replayed: false,
+      }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        payment: {
+          amount: 10000000,
+          currency: "VND",
+          environment: "sandbox",
+          merchantReference: "WEB-TEST001",
+          paymentState: "pending",
+        },
+      }), { status: 201 }));
     vi.stubGlobal("fetch", mockFetch);
 
-    render(<CheckoutPage />);
+    render(<CheckoutPage initialAccountCart={emptyAccountCart} />);
 
     // Step 1: Unselect second item, then click continue
     const itemCheckboxes = screen.getAllByRole("checkbox").filter(
@@ -122,6 +141,7 @@ describe("CheckoutPage", () => {
     fireEvent.change(screen.getByPlaceholderText("name"), { target: { value: "Nguyen Van A" } });
     fireEvent.change(screen.getByPlaceholderText("phone"), { target: { value: "+84901234567" } });
     fireEvent.change(screen.getByPlaceholderText("email"), { target: { value: "a@example.com" } });
+    fireEvent.change(screen.getByPlaceholderText("address"), { target: { value: "1 Test Street" } });
     fireEvent.click(screen.getByLabelText("Issue VAT Invoice (Optional)"));
     const contBtns2 = screen.getAllByRole("button").filter(btn => btn.textContent === "continue");
     if (contBtns2.length > 0) {
@@ -133,33 +153,63 @@ describe("CheckoutPage", () => {
     fireEvent.click(submitBtns[0]);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith("/api/cart/submit", expect.objectContaining({
+      expect(mockFetch).toHaveBeenCalledWith("/api/account/cart/merge-guest", expect.objectContaining({
         method: "POST"
       }));
     });
-    
-    const calledBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(calledBody.vatRequested).toBe(true);
-    expect(calledBody.cartItems).toHaveLength(1);
-    expect(calledBody.cartItems[0].id).toBe("chair-1");
-    expect(calledBody.cartItems[0].lineTotal).toBe(10000000);
-    expect(calledBody.zaloPayRequested).toBe(false);
-    expect(calledBody.vnPayRequested).toBe(false);
 
-    // Expected total for selected items only
-    expect(calledBody.total).toBe(10000000);
+    const mergeBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(mergeBody.items).toEqual([{ quantity: 1, variantId: chairId }]);
+    expect(mergeBody.idempotencyKey).toEqual(expect.any(String));
+
+    const checkoutBody = JSON.parse(mockFetch.mock.calls[1][1].body);
+    expect(checkoutBody).toMatchObject({
+      address: "1 Test Street",
+      email: "a@example.com",
+      fullName: "Nguyen Van A",
+      idempotencyKey: expect.any(String),
+      phone: "+84901234567",
+    });
+    expect(checkoutBody).not.toHaveProperty("cartItems");
+    expect(checkoutBody).not.toHaveProperty("total");
+    expect(mockFetch.mock.calls[2][0]).toBe(
+      "/api/orders/00000000-0000-4000-8000-000000000101/payments/sepay",
+    );
 
     // Verify it only removed the selected item
     expect(mockRemoveItem).toHaveBeenCalledTimes(1);
-    expect(mockRemoveItem).toHaveBeenCalledWith("chair-1");
+    expect(mockRemoveItem).toHaveBeenCalledWith(chairId);
     expect(clearCart).not.toHaveBeenCalled();
+    expect(await screen.findByText("WEB-TEST001")).toBeInTheDocument();
+    expect(screen.getByText("pendingVerification")).toBeInTheDocument();
+  });
+
+  it("uses an existing account cart without merging or trusting local presentation", async () => {
+    const accountCart = {
+      items: [{
+        available: true,
+        href: "/vi/products/account-chair",
+        lineTotal: { amount: 250000, currency: "VND" },
+        quantity: 1,
+        title: "Account chair",
+        unitPrice: { amount: 250000, currency: "VND" },
+        variantId: chairId,
+      }],
+      total: { amount: 250000, currency: "VND" },
+      version: 3,
+    } as const;
+    render(<CheckoutPage initialAccountCart={accountCart} />);
+
+    expect(screen.getByText("Account chair")).toBeInTheDocument();
+    expect(screen.getByLabelText("selectAll")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "increaseQuantity" })).toBeDisabled();
   });
 
   it("shows validation error if no items are selected", async () => {
     // Set a wide viewport for desktop so that the single submit button actually triggers submission
     vi.stubGlobal("innerWidth", 1024);
     
-    render(<CheckoutPage />);
+    render(<CheckoutPage initialAccountCart={emptyAccountCart} />);
 
     // Uncheck select all
     const selectAllCheckbox = screen.getByLabelText("selectAll");

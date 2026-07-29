@@ -1,4 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+vi.mock("@/lib/auth/firebase-session.server", () => ({
+  getCurrentFirebaseSessionClaims: async () => null,
+}));
+vi.mock("@/lib/env", () => ({
+  env: {
+    ACCOUNT_CENTER_ENABLED: false,
+    AUTH_CSRF_SECRET: "fixture-only-account-csrf-secret-32-bytes",
+    NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_PROJECT_REF: "example",
+    SUPABASE_SERVICE_ROLE_KEY: "fixture-only-service-role",
+  },
+}));
 
 import {
   getAccountAuthPort,
@@ -11,15 +25,14 @@ import {
   getAccountWishlistPort,
 } from "./account-ports.server";
 
-describe("Account development ports", () => {
-  it("keeps the default auth fixture anonymous", async () => {
-    // Given: Account-lane development port accessors.
+describe("Account runtime ports", () => {
+  it("fails closed when there is no verified Firebase session", async () => {
     const authPort = getAccountAuthPort();
 
     // When: the current identity is resolved.
     const account = await authPort.getAuthenticatedAccount();
 
-    // Then: no user is fabricated outside explicit test fixtures.
+    // Then: no account is fabricated.
     expect(account).toBeNull();
   });
 
@@ -34,38 +47,18 @@ describe("Account development ports", () => {
     expect(profilePort.patchProfile).toBeTypeOf("function");
   });
 
-  it("exposes an empty local orders repository", async () => {
-    // Given: Account-lane development port accessors.
+  it("exposes the durable order contract", () => {
     const ordersPort = getAccountOrdersPort();
-    const account = {
-      accountId: "account_01",
-      firebaseUid: "firebase_01",
-      locale: "vi",
-      identities: [],
-    } as const;
 
-    // When: the account reads its initial order history.
-    const page = await ordersPort.listOrders(account, { limit: 10 });
-
-    // Then: the default fake does not invent an order history.
-    expect(page).toEqual({ orders: [], nextCursor: null });
+    expect(ordersPort.getOrder).toBeTypeOf("function");
+    expect(ordersPort.listOrders).toBeTypeOf("function");
   });
 
-  it("exposes an empty durable wishlist port", async () => {
-    // Given: Account-lane development port accessors.
+  it("exposes the durable wishlist contract", () => {
     const wishlistPort = getAccountWishlistPort();
-    const account = {
-      accountId: "account_01",
-      firebaseUid: "firebase_01",
-      locale: "vi",
-      identities: [],
-    } as const;
 
-    // When: the account reads its initial wishlist.
-    const items = await wishlistPort.getItems(account);
-
-    // Then: the default fake does not invent saved items.
-    expect(items).toEqual([]);
+    expect(wishlistPort.getItems).toBeTypeOf("function");
+    expect(wishlistPort.removeItem).toBeTypeOf("function");
   });
 
   it("returns the same account-scoped fake cart port", () => {

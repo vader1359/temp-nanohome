@@ -2,6 +2,7 @@ import "server-only";
 
 import type { AccountIdentityProvider, AuthenticatedAccount } from "./auth-port";
 import type { ProfilePatch } from "./profile-schema";
+import type { StoredAccountProfile } from "./account-data-repository.server";
 
 export type AccountProviderMetadata = Readonly<{
   readonly provider: AccountIdentityProvider;
@@ -40,6 +41,34 @@ function createProfile(account: AuthenticatedAccount): AccountProfile {
     primaryEmail: verifiedEmail?.identifier ?? null,
     primaryPhone: verifiedPhone?.identifier ?? null,
     providerMetadata,
+  };
+}
+
+export function createAccountProfilePort(repository: Readonly<{
+  readonly getProfile: (accountId: string) => Promise<StoredAccountProfile | null>;
+  readonly patchProfile: (accountId: string, patch: ProfilePatch) => Promise<StoredAccountProfile>;
+}>): AccountProfilePort {
+  const present = (
+    account: AuthenticatedAccount,
+    stored: StoredAccountProfile | null,
+  ): AccountProfile => {
+    const identityProfile = createProfile(account);
+    return {
+      ...identityProfile,
+      ...(stored ?? {}),
+      locale: stored?.locale ?? account.locale,
+    };
+  };
+
+  return {
+    getProfile: async (account) => present(
+      account,
+      await repository.getProfile(account.accountId),
+    ),
+    patchProfile: async (account, patch) => present(
+      account,
+      await repository.patchProfile(account.accountId, patch),
+    ),
   };
 }
 

@@ -16,16 +16,20 @@ const ports = vi.hoisted(() => ({
   getAuthenticatedAccount: vi.fn(),
   listOrders: vi.fn(),
 }));
+const redirect = vi.hoisted(() => vi.fn((target: string) => {
+  throw new Error(`NEXT_REDIRECT:${target}`);
+}));
 
 vi.mock("@/lib/account/account-ports.server", () => ({
   getAccountAuthPort: () => ({ getAuthenticatedAccount: ports.getAuthenticatedAccount }),
   getAccountOrdersPort: () => ({ listOrders: ports.listOrders }),
 }));
+vi.mock("next/navigation", () => ({ redirect }));
 
 import AccountOrdersPage from "./page";
 
 const account = { accountId: "account_01", firebaseUid: "firebase_01", locale: "vi", identities: [] } as const;
-const order = { orderId: "order_01", orderNumber: "1001", placedAt: "2026-01-01T00:00:00.000Z", status: "paid", total: { amount: 120000, currency: "VND" } } as const;
+const order = { items: [], orderId: "order_01", orderNumber: "1001", paymentStatus: "paid", placedAt: "2026-01-01T00:00:00.000Z", refundStatus: "none", status: "paid", total: { amount: 120000, currency: "VND" } } as const;
 
 describe("AccountOrdersPage", () => {
   beforeEach(() => {
@@ -33,13 +37,13 @@ describe("AccountOrdersPage", () => {
     ports.listOrders.mockReset();
   });
 
-  it("renders neutral unavailable state without looking up orders when anonymous", async () => {
+  it("redirects anonymous access without looking up orders", async () => {
     // Given: no authenticated Account identity.
     ports.getAuthenticatedAccount.mockResolvedValue(null);
-    // When: the order list page renders.
-    renderPage(await AccountOrdersPage({ params: Promise.resolve({ locale: "vi" }), searchParams: Promise.resolve({}) }));
-    // Then: it stays neutral and does not access the orders port.
-    expect(screen.getByText("Đơn hàng hiện chưa khả dụng.")).toBeInTheDocument();
+    await expect(AccountOrdersPage({
+      params: Promise.resolve({ locale: "vi" }),
+      searchParams: Promise.resolve({}),
+    })).rejects.toThrow("NEXT_REDIRECT:/vi/account/sign-in");
     expect(ports.listOrders).not.toHaveBeenCalled();
   });
 

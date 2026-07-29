@@ -5,6 +5,9 @@ const ports = vi.hoisted(() => ({
   getAuthenticatedAccount: vi.fn(),
   getProfile: vi.fn(),
 }));
+const redirect = vi.hoisted(() => vi.fn((target: string) => {
+  throw new Error(`NEXT_REDIRECT:${target}`);
+}));
 
 vi.mock("@/lib/account/account-ports.server", () => ({
   getAccountAuthPort: () => ({ getAuthenticatedAccount: ports.getAuthenticatedAccount }),
@@ -14,6 +17,7 @@ vi.mock("@/lib/account/account-ports.server", () => ({
 vi.mock("@/components/account/account-profile-form", () => ({
   AccountProfileForm: () => <div>Profile form</div>,
 }));
+vi.mock("next/navigation", () => ({ redirect }));
 
 import AccountProfilePage from "./page";
 
@@ -41,15 +45,13 @@ describe("AccountProfilePage", () => {
     ports.getProfile.mockReset();
   });
 
-  it("renders a neutral unavailable state for anonymous access", async () => {
+  it("redirects anonymous access to the localized account entry", async () => {
     // Given: no verified account session.
     ports.getAuthenticatedAccount.mockResolvedValue(null);
 
-    // When: the profile page renders.
-    render(await AccountProfilePage());
-
-    // Then: it does not reveal provider details.
-    expect(screen.getByText("Thông tin hồ sơ hiện chưa khả dụng.")).toBeInTheDocument();
+    await expect(AccountProfilePage({
+      params: Promise.resolve({ locale: "vi" }),
+    })).rejects.toThrow("NEXT_REDIRECT:/vi/account/sign-in?returnTo=%2Fvi%2Faccount");
     expect(ports.getProfile).not.toHaveBeenCalled();
   });
 
@@ -59,10 +61,11 @@ describe("AccountProfilePage", () => {
     ports.getProfile.mockResolvedValue(profile);
 
     // When: the profile page renders.
-    render(await AccountProfilePage());
+    render(await AccountProfilePage({ params: Promise.resolve({ locale: "vi" }) }));
 
     // Then: it presents the editable profile surface.
     expect(screen.getByText("Profile form")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Đăng xuất" })).toBeInTheDocument();
     expect(ports.getProfile).toHaveBeenCalledWith(account);
   });
 });

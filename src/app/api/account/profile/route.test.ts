@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sameOriginRequest } from "@/test/same-origin-request";
 
 const ports = vi.hoisted(() => ({
   getAuthenticatedAccount: vi.fn(),
@@ -75,7 +76,7 @@ describe("/api/account/profile", () => {
     ports.patchProfile.mockResolvedValue(profile);
 
     // When: the browser submits a changed editable field.
-    const response = await PATCH(new Request("https://app.test/api/account/profile", {
+    const response = await PATCH(sameOriginRequest("https://app.test/api/account/profile", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ fullName: "  An Nguyễn  " }),
@@ -92,7 +93,7 @@ describe("/api/account/profile", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
 
     // When: the browser attempts to patch its verified phone.
-    const response = await PATCH(new Request("https://app.test/api/account/profile", {
+    const response = await PATCH(sameOriginRequest("https://app.test/api/account/profile", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ primaryPhone: "+84909999999" }),

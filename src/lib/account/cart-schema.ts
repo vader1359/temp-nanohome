@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const variantId = z.string().trim().min(1).max(80);
+const variantId = z.string().trim().uuid();
 const quantity = z.number().int().min(1).max(10);
 const expectedVersion = z.number().int().min(0);
 

@@ -18,8 +18,6 @@ const signUpSchema = z.object({
   agreeTerms: z.literal("on"),
   redirectTo: z.string().nullable(),
   locale: z.string().nullable(),
-  fullName: z.string().min(1),
-  phone: z.string().min(1),
 }).refine((value) => value.password === value.confirmPassword);
 
 const forgotPasswordSchema = z.object({
@@ -31,6 +29,7 @@ const resetPasswordSchema = z.object({
   password: z.string().min(1),
   confirmPassword: z.string().min(1),
   locale: z.string().nullable(),
+  oobCode: z.string().min(1).max(2048),
 }).refine((value) => value.password === value.confirmPassword);
 
 type AuthCredentials = {
@@ -40,10 +39,7 @@ type AuthCredentials = {
   readonly locale: Locale;
 };
 
-type SignUpCredentials = AuthCredentials & {
-  readonly fullName: string;
-  readonly phone: string;
-};
+type SignUpCredentials = AuthCredentials;
 
 type ForgotPasswordCredentials = {
   readonly email: string;
@@ -54,6 +50,7 @@ type ForgotPasswordCredentials = {
 type ResetPasswordCredentials = {
   readonly password: string;
   readonly locale: Locale;
+  readonly oobCode: string;
   readonly redirectTo: string;
 };
 
@@ -115,8 +112,6 @@ export function parseSignUpForm(formData: FormData): ParseSignUpFormResult {
     password: formData.get("password"),
     redirectTo: formData.get("redirectTo"),
     locale: formData.get("locale"),
-    fullName: formData.get("fullName"),
-    phone: formData.get("phone"),
     confirmPassword: formData.get("confirmPassword"),
     agreeTerms: formData.get("agreeTerms"),
   });
@@ -134,8 +129,6 @@ export function parseSignUpForm(formData: FormData): ParseSignUpFormResult {
       password: parsed.data.password,
       redirectTo: getSafeRedirectPath(parsed.data.redirectTo, locale),
       locale,
-      fullName: parsed.data.fullName,
-      phone: parsed.data.phone,
     },
   };
 }
@@ -167,6 +160,7 @@ export function parseResetPasswordForm(formData: FormData): ParseResetPasswordFo
     password: formData.get("password"),
     confirmPassword: formData.get("confirmPassword"),
     locale: formData.get("locale"),
+    oobCode: formData.get("oobCode"),
   });
 
   if (!parsed.success) {
@@ -180,6 +174,7 @@ export function parseResetPasswordForm(formData: FormData): ParseResetPasswordFo
     value: {
       password: parsed.data.password,
       locale,
+      oobCode: parsed.data.oobCode,
       redirectTo: `/${locale}/reset-password?status=success`,
     },
   };

@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { createFakeAccountWishlistPort } from "./wishlist-port";
+import { createAccountWishlistPort, createFakeAccountWishlistPort } from "./wishlist-port";
 
 const account = {
   accountId: "account_01",
@@ -83,5 +83,38 @@ describe("createFakeAccountWishlistPort", () => {
         variantId: "unavailable-variant",
       },
     ]);
+  });
+});
+
+describe("createAccountWishlistPort", () => {
+  it("uses only the server-resolved account ID and catalog-safe presentation", async () => {
+    const listWishlistItems = vi.fn(async () => [{
+      available: true,
+      productSlug: "chair",
+      title: "Ghế",
+      variantId: "00000000-0000-4000-8000-000000000001",
+    }]);
+    const removeWishlistItem = vi.fn(async () => undefined);
+    const port = createAccountWishlistPort({
+      addWishlistItem: vi.fn(async () => undefined),
+      listWishlistItems,
+      mergeWishlistItems: vi.fn(async () => undefined),
+      removeWishlistItem,
+    });
+
+    await expect(port.removeItem(
+      account,
+      "00000000-0000-4000-8000-000000000001",
+    )).resolves.toEqual([{
+      availability: "available",
+      href: "/vi/products/chair",
+      title: "Ghế",
+      variantId: "00000000-0000-4000-8000-000000000001",
+    }]);
+    expect(removeWishlistItem).toHaveBeenCalledWith(
+      "account_01",
+      "00000000-0000-4000-8000-000000000001",
+    );
+    expect(listWishlistItems).toHaveBeenCalledWith("account_01");
   });
 });

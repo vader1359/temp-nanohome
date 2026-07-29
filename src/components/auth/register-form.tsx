@@ -46,20 +46,6 @@ export function RegisterForm({ onSwitchView, redirectTo, authError }: AuthFormPr
           <input type="hidden" name="redirectTo" value={redirectTo ?? `/${locale}`} />
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="register-fullname" className="text-xs uppercase tracking-wider text-nh-ink sr-only">
-              {t("fields.fullName")}
-            </label>
-            <input
-              id="register-fullname"
-              name="fullName"
-              type="text"
-              required
-              placeholder={t("fields.fullName")}
-              className="w-full border-b border-nh-border bg-transparent pb-2 text-base text-nh-ink placeholder:text-nh-muted focus:border-nh-ink focus:outline-none transition-colors"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
             <label htmlFor="register-email" className="text-xs uppercase tracking-wider text-nh-ink sr-only">
               {t("fields.email")}
             </label>
@@ -69,20 +55,6 @@ export function RegisterForm({ onSwitchView, redirectTo, authError }: AuthFormPr
               type="email"
               required
               placeholder={t("fields.email")}
-              className="w-full border-b border-nh-border bg-transparent pb-2 text-base text-nh-ink placeholder:text-nh-muted focus:border-nh-ink focus:outline-none transition-colors"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label htmlFor="register-phone" className="text-xs uppercase tracking-wider text-nh-ink sr-only">
-              {t("fields.phone")}
-            </label>
-            <input
-              id="register-phone"
-              name="phone"
-              type="tel"
-              required
-              placeholder={t("fields.phone")}
               className="w-full border-b border-nh-border bg-transparent pb-2 text-base text-nh-ink placeholder:text-nh-muted focus:border-nh-ink focus:outline-none transition-colors"
             />
           </div>

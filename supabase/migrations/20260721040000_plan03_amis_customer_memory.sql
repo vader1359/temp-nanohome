@@ -78,8 +78,12 @@ create policy "sync cursors deny browser" on public.amis_sync_cursors
   for all to anon, authenticated using (false) with check (false);
 
 revoke all on public.customer_amis_links, public.amis_customer_snapshots,
-  public.amis_sale_order_summaries, public.amis_sync_cursors from anon, authenticated;
+  public.amis_sale_order_summaries, public.customer_memory_projections,
+  public.amis_sync_cursors from anon, authenticated, public;
 grant select on public.customer_memory_projections to authenticated;
+grant all on public.customer_amis_links, public.amis_customer_snapshots,
+  public.amis_sale_order_summaries, public.customer_memory_projections,
+  public.amis_sync_cursors to service_role;
 
 comment on table public.customer_memory_projections is 'Plan 03 safe CustomerMemory only; no raw AMIS payloads or notes.';
 comment on table public.customer_amis_links is 'Plan 03 staff-controlled verified AMIS links; evidence secrets are never stored.';

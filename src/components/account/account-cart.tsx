@@ -14,7 +14,10 @@ function isCartResponse(value: unknown): value is Readonly<{ readonly cart: Cart
   );
 }
 
-export function AccountCart({ initialCart }: Readonly<{ initialCart: Cart }>) {
+export function AccountCart({
+  checkoutHref,
+  initialCart,
+}: Readonly<{ checkoutHref: string; initialCart: Cart }>) {
   const [cart, setCart] = useState(initialCart);
   const [message, setMessage] = useState("");
   const { clearCart, items } = useCart();
@@ -42,11 +45,13 @@ export function AccountCart({ initialCart }: Readonly<{ initialCart: Cart }>) {
         ),
       });
       const body: unknown = await response.json();
-      if ((response.ok || response.status === 409) && isCartResponse(body)) {
+      if ((response.ok || response.status === 409 || response.status === 422) && isCartResponse(body)) {
         setCart(body.cart);
         setMessage(
           response.status === 409
             ? "Giỏ hàng đã thay đổi. Vui lòng thử lại thao tác."
+            : response.status === 422
+              ? "Sản phẩm không còn đủ điều kiện hoặc số lượng tồn kho đã thay đổi."
             : "Đã cập nhật giỏ hàng.",
         );
         return;
@@ -76,7 +81,12 @@ export function AccountCart({ initialCart }: Readonly<{ initialCart: Cart }>) {
         setCart(body.cart);
         clearCart();
         mergeIdempotencyKeyRef.current = null;
-        setMessage("Đã nhập giỏ hàng khách.");
+        const summary = body.cart.mergeSummary;
+        setMessage(
+          summary === undefined
+            ? "Đã nhập giỏ hàng khách."
+            : `Đã nhập giỏ hàng khách: ${summary.changedLines} dòng thay đổi, ${summary.removedLines} dòng không còn khả dụng.`,
+        );
         return;
       }
     } catch {
@@ -93,12 +103,19 @@ export function AccountCart({ initialCart }: Readonly<{ initialCart: Cart }>) {
       <ul className="mt-4 divide-y divide-[var(--nh-border)]">
         {cart.items.map((item) => (
           <li className="flex items-center justify-between gap-4 py-4" key={item.variantId}>
-            <span className="text-sm text-[var(--nh-ink)]">{item.title}</span>
+            <span className="text-sm text-[var(--nh-ink)]">
+              {item.title}
+              {!item.available ? (
+                <span className="ml-2 text-xs text-[var(--nh-red)]">Không còn khả dụng</span>
+              ) : null}
+            </span>
             <label className="text-sm text-[var(--nh-muted)]">
               Số lượng
               <input
                 aria-label={`Số lượng ${item.title}`}
                 className="ml-2 min-h-11 w-16 border border-[var(--nh-border)] text-center"
+                disabled={!item.available}
+                max="10"
                 min="1"
                 onChange={(event) => mutate("PATCH", item.variantId, Number(event.target.value))}
                 type="number"
@@ -118,8 +135,16 @@ export function AccountCart({ initialCart }: Readonly<{ initialCart: Cart }>) {
       <p className="mt-4 text-sm font-medium text-[var(--nh-ink)]">
         Tổng cộng: {cart.total.amount.toLocaleString("vi-VN")} {cart.total.currency}
       </p>
+      {cart.items.some((item) => item.available) ? (
+        <a
+          className="mt-4 inline-flex min-h-11 items-center bg-[var(--nh-ink)] px-5 text-sm text-white"
+          href={checkoutHref}
+        >
+          Tiếp tục thanh toán
+        </a>
+      ) : null}
       <button
-        className="mt-4 min-h-11 border border-[var(--nh-border)] px-4 text-sm text-[var(--nh-ink)]"
+        className="ml-3 mt-4 min-h-11 border border-[var(--nh-border)] px-4 text-sm text-[var(--nh-ink)]"
         onClick={mergeGuest}
         type="button"
       >

@@ -16,8 +16,8 @@ import { ResetPasswordForm } from "./reset-password-form";
 
 describe("ResetPasswordForm", () => {
   it("submits matching passwords to the recovery endpoint", () => {
-    // Given: a valid recovery session reaches the localized reset page.
-    render(<ResetPasswordForm />);
+    // Given: a valid Firebase email-action code reaches the localized reset page.
+    render(<ResetPasswordForm oobCode="bounded-firebase-oob-code" />);
 
     // When: the user enters matching replacement passwords.
     fireEvent.change(screen.getByLabelText("fields.newPassword"), { target: { value: "new-password" } });
@@ -26,11 +26,12 @@ describe("ResetPasswordForm", () => {
     // Then: the native form targets the protected reset endpoint with its locale.
     expect(screen.getByRole("form")).toHaveAttribute("action", "/auth/reset-password");
     expect(screen.getByDisplayValue("vi")).toHaveAttribute("name", "locale");
+    expect(screen.getByDisplayValue("bounded-firebase-oob-code")).toHaveAttribute("name", "oobCode");
   });
 
   it("keeps the form available when the password submission is invalid", () => {
     // Given: the reset route rejects a password submission.
-    render(<ResetPasswordForm status="validation" />);
+    render(<ResetPasswordForm oobCode="bounded-firebase-oob-code" status="validation" />);
 
     // When: the page renders its invalid-submission state.
     const form = screen.getByRole("form");

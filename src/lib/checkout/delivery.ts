@@ -12,3 +12,9 @@ export const checkoutDeliverySchema = z.object({
 }).strict();
 
 export type CheckoutDelivery = z.infer<typeof checkoutDeliverySchema>;
+
+export const accountCheckoutSchema = checkoutDeliverySchema.extend({
+  idempotencyKey: z.string().uuid(),
+}).strict();
+
+export type AccountCheckoutInput = z.infer<typeof accountCheckoutSchema>;

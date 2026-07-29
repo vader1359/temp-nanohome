@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sameOriginRequest } from "@/test/same-origin-request";
 
 const ports = vi.hoisted(() => ({ getAuthenticatedAccount: vi.fn(), requestAuthAction: vi.fn() }));
 vi.mock("@/lib/account/account-ports.server", () => ({
@@ -18,7 +19,7 @@ describe("/api/account/security/auth-actions", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(null);
 
     // When: an auth action is requested.
-    const response = await POST(new Request("https://app.test/api/account/security/auth-actions", { body: JSON.stringify({ action: "unlink_email" }), headers: { "content-type": "application/json" }, method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/security/auth-actions", { body: JSON.stringify({ action: "unlink_email" }), headers: { "content-type": "application/json" }, method: "POST" }));
 
     // Then: it fails closed without reaching the security port.
     expect(response.status).toBe(401);
@@ -32,7 +33,7 @@ describe("/api/account/security/auth-actions", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
 
     // When: the browser submits an undeclared auth action.
-    const response = await POST(new Request("https://app.test/api/account/security/auth-actions", { body: JSON.stringify({ action: "link_passkey" }), headers: { "content-type": "application/json" }, method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/security/auth-actions", { body: JSON.stringify({ action: "link_passkey" }), headers: { "content-type": "application/json" }, method: "POST" }));
 
     // Then: strict parsing rejects it before the port receives input.
     expect(response.status).toBe(422);
@@ -45,7 +46,7 @@ describe("/api/account/security/auth-actions", () => {
     ports.requestAuthAction.mockRejectedValue(new Error("identity action failure"));
 
     // When: a declared auth action is requested.
-    const response = await POST(new Request("https://app.test/api/account/security/auth-actions", { body: JSON.stringify({ action: "unlink_email" }), headers: { "content-type": "application/json" }, method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/security/auth-actions", { body: JSON.stringify({ action: "unlink_email" }), headers: { "content-type": "application/json" }, method: "POST" }));
 
     // Then: the rejection remains private and generic.
     expect(response.status).toBe(500);

@@ -17,17 +17,18 @@ const ports = vi.hoisted(() => ({
   getOrder: vi.fn(),
 }));
 const notFound = vi.hoisted(() => vi.fn(() => { throw new Error("NEXT_NOT_FOUND"); }));
+const redirect = vi.hoisted(() => vi.fn((target: string) => { throw new Error(`NEXT_REDIRECT:${target}`); }));
 
 vi.mock("@/lib/account/account-ports.server", () => ({
   getAccountAuthPort: () => ({ getAuthenticatedAccount: ports.getAuthenticatedAccount }),
   getAccountOrdersPort: () => ({ getOrder: ports.getOrder }),
 }));
-vi.mock("next/navigation", () => ({ notFound }));
+vi.mock("next/navigation", () => ({ notFound, redirect }));
 
 import AccountOrderPage from "./page";
 
 const account = { accountId: "account_01", firebaseUid: "firebase_01", locale: "vi", identities: [] } as const;
-const order = { orderId: "order_01", orderNumber: "1001", placedAt: "2026-01-01T00:00:00.000Z", status: "paid", total: { amount: 120000, currency: "VND" } } as const;
+const order = { items: [], orderId: "order_01", orderNumber: "1001", paymentStatus: "paid", placedAt: "2026-01-01T00:00:00.000Z", refundStatus: "none", status: "paid", total: { amount: 120000, currency: "VND" } } as const;
 
 describe("AccountOrderPage", () => {
   beforeEach(() => {
@@ -36,13 +37,12 @@ describe("AccountOrderPage", () => {
     notFound.mockClear();
   });
 
-  it("renders neutral unavailable state without looking up an order when anonymous", async () => {
+  it("redirects anonymous access without looking up an order", async () => {
     // Given: no authenticated Account identity.
     ports.getAuthenticatedAccount.mockResolvedValue(null);
-    // When: the order detail page renders.
-    renderPage(await AccountOrderPage({ params: Promise.resolve({ orderId: "order_01" }) }));
-    // Then: it stays neutral and does not access the orders port.
-    expect(screen.getByText("Đơn hàng hiện chưa khả dụng.")).toBeInTheDocument();
+    await expect(AccountOrderPage({
+      params: Promise.resolve({ locale: "vi", orderId: "order_01" }),
+    })).rejects.toThrow("NEXT_REDIRECT:/vi/account/sign-in");
     expect(ports.getOrder).not.toHaveBeenCalled();
   });
 
@@ -51,7 +51,7 @@ describe("AccountOrderPage", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
     ports.getOrder.mockResolvedValue(null);
     // When: the detail page renders.
-    await expect(AccountOrderPage({ params: Promise.resolve({ orderId: kind }) })).rejects.toThrow("NEXT_NOT_FOUND");
+    await expect(AccountOrderPage({ params: Promise.resolve({ locale: "vi", orderId: kind }) })).rejects.toThrow("NEXT_NOT_FOUND");
     // Then: the identical notFound path is used without presenting detail data.
     expect(ports.getOrder).toHaveBeenCalledWith(account, kind);
     expect(notFound).toHaveBeenCalledOnce();
@@ -62,7 +62,7 @@ describe("AccountOrderPage", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
     ports.getOrder.mockResolvedValue(order);
     // When: the detail page renders.
-    renderPage(await AccountOrderPage({ params: Promise.resolve({ orderId: "order_01" }) }));
+    renderPage(await AccountOrderPage({ params: Promise.resolve({ locale: "vi", orderId: "order_01" }) }));
     // Then: the historical detail is presented.
     expect(screen.getByRole("heading", { name: "Đơn 1001" })).toBeInTheDocument();
   });

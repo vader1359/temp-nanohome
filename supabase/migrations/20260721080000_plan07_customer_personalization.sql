@@ -43,9 +43,12 @@ create table public.customer_recent_entities (
   check (interaction_count between 1 and 100),
   check (last_interacted_at >= first_interacted_at),
   check (expires_at >= last_interacted_at),
-  check (deleted_at is null or deleted_at >= first_interacted_at),
-  unique (visitor_id, entity_type, entity_id)
+  check (deleted_at is null or deleted_at >= first_interacted_at)
 );
+
+create unique index customer_recent_entities_active_unique
+  on public.customer_recent_entities(visitor_id, entity_type, entity_id)
+  where deleted_at is null;
 
 create index customer_recent_entities_active_visitor_idx
   on public.customer_recent_entities(visitor_id, last_interacted_at desc)

@@ -172,7 +172,8 @@ begin
     or not exists (
       select 1
       from public.variants v
-      where v.id = new.variant_id and v.product_id = new.product_id
+      where v.id::text = new.variant_id
+        and v.product_id::text = new.product_id
     ) then
     return new;
   end if;
@@ -181,9 +182,9 @@ begin
     visitor_id, entity_type, entity_id, interaction_count,
     first_interacted_at, last_interacted_at, expires_at, deleted_at
   ) values
-    (new.visitor_id, 'product', new.product_id, 1, v_interacted_at, v_interacted_at, v_interacted_at + interval '30 days', null),
-    (new.visitor_id, 'variant', new.variant_id, 1, v_interacted_at, v_interacted_at, v_interacted_at + interval '30 days', null)
-  on conflict (visitor_id, entity_type, entity_id) do update set
+    (new.visitor_id, 'product', new.product_id::uuid, 1, v_interacted_at, v_interacted_at, v_interacted_at + interval '30 days', null),
+    (new.visitor_id, 'variant', new.variant_id::uuid, 1, v_interacted_at, v_interacted_at, v_interacted_at + interval '30 days', null)
+  on conflict (visitor_id, entity_type, entity_id) where deleted_at is null do update set
     interaction_count = least(100, public.customer_recent_entities.interaction_count + 1),
     last_interacted_at = greatest(public.customer_recent_entities.last_interacted_at, excluded.last_interacted_at),
     expires_at = greatest(public.customer_recent_entities.last_interacted_at, excluded.last_interacted_at) + interval '30 days',

@@ -7,6 +7,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 // or CRON_SECRET (or invalid NEXT_PUBLIC_SUPABASE_URL) aborts the build with a
 // zod error before any code runs.
 import "./src/lib/env";
+import { firebaseAuthHelperRewrites } from "./src/lib/auth/firebase-auth-helper-rewrite";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const publicMediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL?.replace(/\/+$/, "");
@@ -22,6 +23,9 @@ function ignoredEntries(ignored: WatchIgnored | undefined): string[] {
 }
 
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return firebaseAuthHelperRewrites(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+  },
   reactCompiler: true,
   experimental: {
     webpackMemoryOptimizations: true,

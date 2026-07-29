@@ -1,8 +1,10 @@
 import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Header } from "./header";
+
+const authState = vi.hoisted(() => ({ isAuthenticated: false }));
 
 const headerMessages = new Map<string, string>([
   ["search", "Tìm kiếm"],
@@ -31,7 +33,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
-  useAuthContext: () => ({ isAuthenticated: false, openAuth: vi.fn() }),
+  useAuthContext: () => ({ isAuthenticated: authState.isAuthenticated, openAuth: vi.fn() }),
 }));
 
 vi.mock("@/components/cart/cart-context", () => ({
@@ -64,6 +66,10 @@ vi.mock("@/components/wishlist/wishlist-context", () => ({
 }));
 
 describe("Header", () => {
+  beforeEach(() => {
+    authState.isAuthenticated = false;
+  });
+
   it("links every translated search affordance to the locale aggregate search page", () => {
     render(<Header />);
 
@@ -131,5 +137,15 @@ describe("Header", () => {
       "href",
       "/account/sign-in?returnTo=%2Fvi%2Fproducts",
     );
+  });
+
+  it("routes authenticated account icons to My Account instead of signing out", () => {
+    authState.isAuthenticated = true;
+    render(<Header />);
+
+    const accountLinks = screen.getAllByRole("link", { name: "account" });
+    expect(accountLinks.length).toBeGreaterThanOrEqual(2);
+    accountLinks.forEach((link) => expect(link).toHaveAttribute("href", "/account"));
+    expect(document.querySelector('form[action="/auth/sign-out"]')).toBeNull();
   });
 });

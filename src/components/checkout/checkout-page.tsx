@@ -1,24 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useCart, type CartItem } from "@/components/cart/cart-context";
+import type { AccountCart } from "@/lib/account/cart-port";
 import { ShoppingCart } from "lucide-react";
 
 type CheckoutStatus = "idle" | "submitting" | "success" | "error";
 
 type CheckoutForm = {
+  address: string;
   name: string;
   phone: string;
   email: string;
 };
 
-const initialForm: CheckoutForm = { email: "", name: "", phone: "" };
+type CheckoutCompletion = Readonly<{
+  readonly amount: number;
+  readonly currency: "VND";
+  readonly merchantReference: string;
+  readonly orderNumber: string;
+  readonly paymentState: "paid" | "pending";
+}>;
 
-export function CheckoutPage() {
+const initialForm: CheckoutForm = { address: "", email: "", name: "", phone: "" };
+
+export function CheckoutPage({
+  initialAccountCart,
+}: Readonly<{ initialAccountCart: AccountCart }>) {
   const t = useTranslations("Checkout");
-  const { items, removeItem, updateQuantity } = useCart();
+  const { items: guestItems, removeItem, updateQuantity } = useCart();
   const [form, setForm] = useState<CheckoutForm>(initialForm);
   const [vatRequested, setVatRequested] = useState(false);
   const [vatCompanyName, setVatCompanyName] = useState("");
@@ -27,6 +39,21 @@ export function CheckoutPage() {
   const [status, setStatus] = useState<CheckoutStatus>("idle");
   const [error, setError] = useState("");
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [completion, setCompletion] = useState<CheckoutCompletion | null>(null);
+  const checkoutIdempotencyKey = useRef<string | null>(null);
+  const mergeIdempotencyKey = useRef<string | null>(null);
+  const accountCartItems: CartItem[] = initialAccountCart.items.map((item) => ({
+    badge: item.available ? "In stock" : "Unavailable",
+    badgeTone: "stock",
+    category: "nanoHome",
+    id: item.variantId,
+    image: "/images/p_lc2.png",
+    name: item.title,
+    price: String(item.unitPrice.amount),
+    quantity: item.quantity,
+  }));
+  const usingAccountCart = accountCartItems.length > 0;
+  const items = usingAccountCart ? accountCartItems : guestItems;
 
   // Selection state is tracking unselected items (inverse). Default all selected.
   const [unselectedIds, setUnselectedIds] = useState<Set<string>>(new Set());
@@ -36,6 +63,7 @@ export function CheckoutPage() {
   const isAllSelected = selectedItems.length === items.length && items.length > 0;
 
   const toggleSelectAll = () => {
+    if (usingAccountCart) return;
     if (isAllSelected) {
       setUnselectedIds(new Set(items.map((i) => i.id)));
     } else {
@@ -44,6 +72,7 @@ export function CheckoutPage() {
   };
 
   const toggleItem = (id: string) => {
+    if (usingAccountCart) return;
     const next = new Set(unselectedIds);
     if (next.has(id)) next.delete(id);
     else next.add(id);
@@ -64,7 +93,7 @@ export function CheckoutPage() {
       return;
     }
 
-    if (step === 2 && (!form.name.trim() || !form.phone.trim() || !form.email.trim())) {
+    if (step === 2 && (!form.name.trim() || !form.phone.trim() || !form.email.trim() || !form.address.trim())) {
       setError(t("validationRequired"));
       setStatus("error");
       return;
@@ -77,39 +106,67 @@ export function CheckoutPage() {
       return;
     }
 
-    const submittedCartItems = selectedItems.map((item) => ({
-      ...item,
-      lineTotal: parseCartPrice(item.price) * item.quantity,
-    }));
-    const submittedIds = submittedCartItems.map((item) => item.id);
-    const submittedTotal = submittedCartItems.reduce((sum, item) => sum + item.lineTotal, 0);
+    const submittedIds = selectedItems.map((item) => item.id);
+    checkoutIdempotencyKey.current ??= crypto.randomUUID();
+    mergeIdempotencyKey.current ??= crypto.randomUUID();
 
     setStatus("submitting");
     setError("");
 
     try {
-      const response = await fetch("/api/cart/submit", {
+      if (!usingAccountCart) {
+        const mergeResponse = await fetch("/api/account/cart/merge-guest", {
+          body: JSON.stringify({
+            idempotencyKey: mergeIdempotencyKey.current,
+            items: selectedItems.map((item) => ({ quantity: item.quantity, variantId: item.id })),
+          }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        if (!mergeResponse.ok) {
+          if (mergeResponse.status === 401) throw new Error(t("authenticationRequired"));
+          throw new Error(t("serverError"));
+        }
+      }
+
+      const checkoutResponse = await fetch("/api/checkout", {
         body: JSON.stringify({
-          cartItems: submittedCartItems,
+          address: form.address.trim(),
           email: form.email.trim(),
-          name: form.name.trim(),
-          pageUrl: window.location.href,
+          fullName: form.name.trim(),
+          idempotencyKey: checkoutIdempotencyKey.current,
+          note: vatRequested
+            ? `VAT: ${vatCompanyName.trim()} | ${vatTaxCode.trim()} | ${vatInvoiceAddress.trim()}`
+            : undefined,
           phone: form.phone.trim(),
-          source: "nanohome-checkout",
-          total: submittedTotal,
-          vatRequested,
-          vatCompanyName, vatTaxCode, vatInvoiceAddress,
-          zaloPayRequested: false,
-          vnPayRequested: false,
         }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });
-      const data: unknown = await response.json();
-      if (!response.ok || !isSuccessfulResponse(data)) {
+      const checkoutData: unknown = await checkoutResponse.json();
+      if (!checkoutResponse.ok || !isOrderResponse(checkoutData)) {
         throw new Error(t("serverError"));
       }
-      submittedIds.forEach((id) => removeItem(id));
+
+      const paymentResponse = await fetch(
+        `/api/orders/${checkoutData.orderId}/payments/sepay`,
+        { method: "POST" },
+      );
+      const paymentData: unknown = await paymentResponse.json();
+      if (!paymentResponse.ok || !isPaymentResponse(paymentData)) {
+        throw new Error(t("paymentError"));
+      }
+
+      if (!usingAccountCart) submittedIds.forEach((id) => removeItem(id));
+      setCompletion({
+        amount: paymentData.payment.amount,
+        currency: paymentData.payment.currency,
+        merchantReference: paymentData.payment.merchantReference,
+        orderNumber: checkoutData.orderNumber,
+        paymentState: paymentData.payment.paymentState,
+      });
+      checkoutIdempotencyKey.current = null;
+      mergeIdempotencyKey.current = null;
       setStatus("success");
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : t("serverError"));
@@ -137,6 +194,24 @@ export function CheckoutPage() {
             <h1 className="text-3xl font-normal text-[#1A1A1A]">{t("successTitle")}</h1>
             <section className="mt-8 border border-[#E5E5E5] bg-white p-8 sm:p-12" aria-live="polite">
               <p className="text-base text-[#666666]">{t("successDescription")}</p>
+              {completion !== null ? (
+                <dl className="mt-6 grid gap-3 text-left text-sm">
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[#666666]">{t("orderNumber")}</dt>
+                    <dd className="font-medium text-[#1A1A1A]">{completion.orderNumber}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[#666666]">{t("paymentReference")}</dt>
+                    <dd className="font-medium text-[#1A1A1A]">{completion.merchantReference}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[#666666]">{t("paymentStatus")}</dt>
+                    <dd className="font-medium text-[#1A1A1A]">
+                      {completion.paymentState === "paid" ? t("paid") : t("pendingVerification")}
+                    </dd>
+                  </div>
+                </dl>
+              ) : null}
             </section>
           </div>
         ) : (
@@ -146,7 +221,7 @@ export function CheckoutPage() {
               <div className={`border border-[#E5E5E5] bg-white p-6 sm:p-8 ${step !== 2 && step !== 3 ? 'hidden lg:block' : ''}`}>
                 <h2 className="text-xl text-[#1A1A1A] mb-6">{t("details")}</h2>
                 <form id="checkout-form" data-testid="checkout-form" onSubmit={submit} className="flex flex-col gap-6">
-                  {(["name", "phone", "email"] as const).map((field) => (
+                  {(["name", "phone", "email", "address"] as const).map((field) => (
                     <div key={field} className="relative">
                       <input
                         id={`checkout-${field}`}
@@ -194,7 +269,7 @@ export function CheckoutPage() {
               {/* Payment Card (Step 3 on mobile, always on desktop) */}
               <div className={`border border-[#E5E5E5] bg-white p-6 sm:p-8 ${step !== 3 ? 'hidden lg:block' : ''}`}>
                 <h2 className="text-xl text-[#1A1A1A] mb-6">{t("payment")}</h2>
-                <p className="text-sm text-[#666666]">{t("paymentUnavailable")}</p>
+                <p className="text-sm text-[#666666]">{t("sepayTestPending")}</p>
               </div>
             </div>
 
@@ -211,7 +286,7 @@ export function CheckoutPage() {
                           aria-label="selectAll"
                           checked={isAllSelected}
                           onChange={toggleSelectAll}
-                          disabled={status === "submitting"}
+                          disabled={status === "submitting" || usingAccountCart}
                           className="peer h-4 w-4 appearance-none rounded-[2px] border border-[#CCCCCC] bg-white checked:border-[#1A1A1A] checked:bg-[#1A1A1A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A1A1A] disabled:opacity-50 cursor-pointer"
                         />
                         <svg className="pointer-events-none absolute h-3 w-3 text-white opacity-0 peer-checked:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -230,7 +305,7 @@ export function CheckoutPage() {
                       selected={!unselectedIds.has(item.id)}
                       onToggle={() => toggleItem(item.id)}
                       onUpdateQuantity={updateQuantity}
-                      disabled={status === "submitting"}
+                      disabled={status === "submitting" || usingAccountCart}
                       isLast={index === items.length - 1}
                     />
                   ))}
@@ -418,6 +493,36 @@ function formatVnd(value: number): string {
   return new Intl.NumberFormat("vi-VN", { currency: "VND", maximumFractionDigits: 0, style: "currency" }).format(value);
 }
 
-function isSuccessfulResponse(value: unknown): value is { ok: true } {
-  return typeof value === "object" && value !== null && "ok" in value && value.ok === true;
+function isOrderResponse(value: unknown): value is Readonly<{
+  readonly orderId: string;
+  readonly orderNumber: string;
+}> {
+  return typeof value === "object"
+    && value !== null
+    && "orderId" in value
+    && typeof value.orderId === "string"
+    && "orderNumber" in value
+    && typeof value.orderNumber === "string";
+}
+
+function isPaymentResponse(value: unknown): value is Readonly<{
+  readonly payment: Readonly<{
+    readonly amount: number;
+    readonly currency: "VND";
+    readonly merchantReference: string;
+    readonly paymentState: "paid" | "pending";
+  }>;
+}> {
+  if (typeof value !== "object" || value === null || !("payment" in value)) return false;
+  const payment = value.payment;
+  return typeof payment === "object"
+    && payment !== null
+    && "amount" in payment
+    && typeof payment.amount === "number"
+    && "currency" in payment
+    && payment.currency === "VND"
+    && "merchantReference" in payment
+    && typeof payment.merchantReference === "string"
+    && "paymentState" in payment
+    && (payment.paymentState === "paid" || payment.paymentState === "pending");
 }

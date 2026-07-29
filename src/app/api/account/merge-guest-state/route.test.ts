@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sameOriginRequest } from "@/test/same-origin-request";
 
 const ports = vi.hoisted(() => ({
   getAuthenticatedAccount: vi.fn(),
@@ -32,7 +33,7 @@ describe("/api/account/merge-guest-state", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(null);
 
     // When: a guest merge is requested.
-    const response = await POST(new Request("https://app.test/api/account/merge-guest-state", {
+    const response = await POST(sameOriginRequest("https://app.test/api/account/merge-guest-state", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ idempotencyKey: "merge-01", variantIds: ["variant-01"] }),
@@ -50,7 +51,7 @@ describe("/api/account/merge-guest-state", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
 
     // When: the browser submits an account id alongside guest state.
-    const response = await POST(new Request("https://app.test/api/account/merge-guest-state", {
+    const response = await POST(sameOriginRequest("https://app.test/api/account/merge-guest-state", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ accountId: "account_other", idempotencyKey: "merge-01", variantIds: ["variant-01"] }),
@@ -66,7 +67,7 @@ describe("/api/account/merge-guest-state", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
 
     // When: more than fifty canonical variant ids are submitted.
-    const response = await POST(new Request("https://app.test/api/account/merge-guest-state", {
+    const response = await POST(sameOriginRequest("https://app.test/api/account/merge-guest-state", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ idempotencyKey: "merge-01", variantIds: Array.from({ length: 51 }, (_, index) => `variant-${index}`) }),
@@ -83,7 +84,7 @@ describe("/api/account/merge-guest-state", () => {
     ports.mergeGuestItems.mockRejectedValue(new Error("guest state storage failure"));
 
     // When: valid guest variant ids are submitted.
-    const response = await POST(new Request("https://app.test/api/account/merge-guest-state", {
+    const response = await POST(sameOriginRequest("https://app.test/api/account/merge-guest-state", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ idempotencyKey: "merge-01", variantIds: ["variant-01"] }),
@@ -100,7 +101,7 @@ describe("/api/account/merge-guest-state", () => {
     ports.mergeGuestItems.mockResolvedValue(items);
 
     // When: guest variant ids are submitted.
-    const response = await POST(new Request("https://app.test/api/account/merge-guest-state", {
+    const response = await POST(sameOriginRequest("https://app.test/api/account/merge-guest-state", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ idempotencyKey: "merge-01", variantIds: ["variant-01"] }),

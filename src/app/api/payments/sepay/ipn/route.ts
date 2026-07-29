@@ -1,71 +1,84 @@
-import { verifySePayIpn, maximumSePayIpnBodyBytes } from "@/lib/payments/sepay/ipn";
+import { env } from "@/lib/env";
+import {
+  authenticateSePayIpn,
+  matchSePayIpnToExpectedPayment,
+  maximumSePayIpnBodyBytes,
+  type SePayIpnRejectionReason,
+} from "@/lib/payments/sepay/ipn";
+import { SePayTestRepositoryError } from "@/lib/payments/sepay/repository.server";
+import {
+  getSePayTestRepository,
+  isSePaySandboxRuntimeEnabled,
+} from "@/lib/payments/sepay/runtime.server";
 
-/**
- * SePay IPN endpoint.
- * 
- * Foundation prerequisites:
- * - Typed env validation with PAYMENT_MODE, SEPAY_ENV, SEPAY_IPN_SECRET
- * - Transactional payment repository with event deduplication, conflict quarantine,
- *   monotonic state transitions, and ledger/outbox commit before HTTP 200
- * - Payment attempt lookup by merchant reference
- * 
- * This route rejects all requests until Foundation delivers the prerequisites.
- */
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function rejected(reason: SePayIpnRejectionReason): Response {
+  const status = reason === "configuration_missing"
+    ? 503
+    : reason === "body_too_large"
+      ? 413
+      : reason === "invalid_payload" || reason === "payment_mismatch"
+        ? 400
+        : 401;
+  return Response.json({ error: reason, success: false }, { status });
+}
+
 export async function POST(request: Request): Promise<Response> {
-  // Foundation prerequisite: typed env with PAYMENT_MODE check
-  const paymentMode = process.env.PAYMENT_MODE ?? "off";
-  if (paymentMode === "off") {
-    return Response.json(
-      { error: "payment_disabled", message: "Payment processing is not enabled" },
-      { status: 503 }
-    );
+  if (!isSePaySandboxRuntimeEnabled()) {
+    return Response.json({ error: "payment_disabled", success: false }, { status: 503 });
   }
-
-  // Foundation prerequisite: SEPAY_IPN_SECRET validation
-  const ipnSecret = process.env.SEPAY_IPN_SECRET;
-  if (!ipnSecret) {
-    console.error("SEPAY_IPN_SECRET not configured");
-    return Response.json({ error: "configuration_error" }, { status: 500 });
-  }
-
-  const suppliedSecret = request.headers.get("x-secret-key");
-  const receivedAt = new Date();
 
   let rawBody: string;
   try {
-    const buffer = await request.arrayBuffer();
-    if (buffer.byteLength > maximumSePayIpnBodyBytes) {
-      return Response.json({ error: "body_too_large" }, { status: 413 });
+    const body = await request.arrayBuffer();
+    if (body.byteLength > maximumSePayIpnBodyBytes) {
+      return rejected("body_too_large");
     }
-    rawBody = new TextDecoder("utf-8").decode(buffer);
+    rawBody = new TextDecoder("utf-8", { fatal: true }).decode(body);
   } catch {
-    return Response.json({ error: "invalid_body" }, { status: 400 });
+    return rejected("invalid_payload");
   }
 
-  // Foundation prerequisite: payment repository to resolve expected payment
-  // const expectedPayment = await paymentRepository.getExpectedPaymentByInvoice(merchantReference);
-  // 
-  // For now, this route rejects all IPNs until Foundation provides the repository
-  return Response.json(
-    { 
-      error: "not_implemented", 
-      message: "IPN processing requires Foundation payment repository" 
-    },
-    { status: 501 }
-  );
+  const authenticated = authenticateSePayIpn({
+    nowSeconds: Math.floor(Date.now() / 1000),
+    rawBody,
+    secret: env.SEPAY_WEBHOOK_HMAC_SECRET,
+    signature: request.headers.get("x-sepay-signature"),
+    timestamp: request.headers.get("x-sepay-timestamp"),
+  });
+  if (authenticated.kind === "rejected") return rejected(authenticated.reason);
 
-  // Complete flow after Foundation delivery:
-  // 1. Parse IPN to extract merchant reference
-  // 2. Load expected payment from repository
-  // 3. Verify IPN with verifySePayIpn(...)
-  // 4. If verified, apply event in transaction:
-  //    - Dedupe by providerEventId
-  //    - Lock payment attempt and order
-  //    - Apply monotonic state transition
-  //    - Append payment ledger event
-  //    - Mark order paid
-  //    - Commit fulfillment/AMIS export outbox
-  //    - Commit transaction
-  // 5. Return HTTP 200 JSON only after commit
-  // 6. If conflict, quarantine and alert
+  try {
+    const repository = getSePayTestRepository();
+    const expected = await repository.getExpectedPayment(
+      authenticated.transfer.merchantReference,
+    );
+    if (expected === null) return rejected("payment_mismatch");
+
+    const verified = matchSePayIpnToExpectedPayment(authenticated.transfer, expected);
+    if (verified.kind === "rejected") return rejected(verified.reason);
+
+    const result = await repository.applyVerifiedIpn({
+      amount: verified.evidence.amount,
+      merchantReference: verified.evidence.merchantReference,
+      payloadDigest: verified.payloadDigest,
+      providerEventId: verified.providerEventId,
+      providerTransactionId: verified.providerTransactionId,
+      receivedAt: new Date(),
+    });
+    if (result === "applied") {
+      return Response.json({ success: true }, { status: 201 });
+    }
+    if (result === "duplicate") {
+      return Response.json({ success: true }, { status: 200 });
+    }
+    return Response.json({ error: "payment_conflict", success: false }, { status: 409 });
+  } catch (error) {
+    if (error instanceof SePayTestRepositoryError && error.code === "mutation_disabled") {
+      return Response.json({ error: "payment_disabled", success: false }, { status: 503 });
+    }
+    return Response.json({ error: "payment_unavailable", success: false }, { status: 503 });
+  }
 }

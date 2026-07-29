@@ -10,7 +10,7 @@ import { PublicChatWidget } from "@/components/chat/public-chat-widget";
 import { Providers } from "../providers";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentFirebaseSessionClaims } from "@/lib/auth/firebase-session.server";
 import { getLocalizedMetadata } from "@/lib/site-metadata";
 
 export function generateStaticParams() {
@@ -42,14 +42,7 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
   setRequestLocale(locale);
 
   const messages = await getMessages();
-  const supabase = await createClient();
-  let isAuthenticated = false;
-  try {
-    const { data } = await supabase.auth.getSession();
-    isAuthenticated = data?.session != null;
-  } catch (error) {
-    console.error("Supabase layout session error:", error);
-  }
+  const isAuthenticated = await getCurrentFirebaseSessionClaims() !== null;
 
   return (
     <NextIntlClientProvider messages={messages} locale={locale}>

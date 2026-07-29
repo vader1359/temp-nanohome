@@ -113,6 +113,64 @@ on conflict (id) do update set
   approved                       = excluded.approved,
   validated                      = excluded.validated;
 
+-- Keep local catalog fixtures aligned with the production query contract.
+-- The public grid consumes these denormalized filter fields directly; stock is
+-- the AMIS-backed availability truth and `in_stock` remains a derived legacy
+-- compatibility flag.
+update public.variants as variant
+set
+  filter_brand = brand.slug,
+  filter_category = category.slug,
+  filter_room = case variant.id
+    when '00000000-0000-4000-8000-000000000031' then array['living-room']
+    when '00000000-0000-4000-8000-000000000032' then array['bedroom']
+    when '00000000-0000-4000-8000-000000000033' then array['living-room']
+    when '00000000-0000-4000-8000-000000000034' then array['office']
+    when '00000000-0000-4000-8000-000000000035' then array['dining-room']
+    when '00000000-0000-4000-8000-000000000036' then array['dining-room']
+    when '00000000-0000-4000-8000-000000000037' then array['living-room']
+    when '00000000-0000-4000-8000-000000000038' then array['living-room']
+  end,
+  filter_room_vi = case variant.id
+    when '00000000-0000-4000-8000-000000000031' then array['Phòng khách']
+    when '00000000-0000-4000-8000-000000000032' then array['Phòng ngủ']
+    when '00000000-0000-4000-8000-000000000033' then array['Phòng khách']
+    when '00000000-0000-4000-8000-000000000034' then array['Văn phòng']
+    when '00000000-0000-4000-8000-000000000035' then array['Phòng ăn']
+    when '00000000-0000-4000-8000-000000000036' then array['Phòng ăn']
+    when '00000000-0000-4000-8000-000000000037' then array['Phòng khách']
+    when '00000000-0000-4000-8000-000000000038' then array['Phòng khách']
+  end,
+  stock = case variant.id
+    when '00000000-0000-4000-8000-000000000031' then 10
+    when '00000000-0000-4000-8000-000000000032' then 0
+    when '00000000-0000-4000-8000-000000000033' then 8
+    when '00000000-0000-4000-8000-000000000034' then 0
+    when '00000000-0000-4000-8000-000000000035' then 4
+    when '00000000-0000-4000-8000-000000000036' then 0
+    when '00000000-0000-4000-8000-000000000037' then 2
+    when '00000000-0000-4000-8000-000000000038' then 3
+  end,
+  in_stock = case variant.id
+    when '00000000-0000-4000-8000-000000000032' then false
+    when '00000000-0000-4000-8000-000000000034' then false
+    when '00000000-0000-4000-8000-000000000036' then false
+    else true
+  end
+from public.brands as brand, public.categories as category
+where variant.id in (
+    '00000000-0000-4000-8000-000000000031',
+    '00000000-0000-4000-8000-000000000032',
+    '00000000-0000-4000-8000-000000000033',
+    '00000000-0000-4000-8000-000000000034',
+    '00000000-0000-4000-8000-000000000035',
+    '00000000-0000-4000-8000-000000000036',
+    '00000000-0000-4000-8000-000000000037',
+    '00000000-0000-4000-8000-000000000038'
+  )
+  and brand.id = variant.brand_id
+  and category.id = variant.category_id;
+
 -- News (2): both approved + validated.
 insert into public.news (id, title, title_ko, slug, approved, validated)
 values

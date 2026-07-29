@@ -1,116 +1,118 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const checkoutMocks = vi.hoisted(() => ({
-  captureOrderFromCart: vi.fn(),
-  createCheckoutClient: vi.fn(),
+vi.mock("server-only", () => ({}));
+
+const mocks = vi.hoisted(() => ({
+  captureOrder: vi.fn(),
+  getAuthenticatedAccount: vi.fn(),
+}));
+vi.mock("@/lib/account/account-ports.server", () => ({
+  getAccountAuthPort: () => ({ getAuthenticatedAccount: mocks.getAuthenticatedAccount }),
+}));
+vi.mock("@/lib/checkout/account-checkout-runtime.server", () => ({
+  getAccountCheckoutRepository: () => ({ captureOrder: mocks.captureOrder }),
 }));
 
-vi.mock("@/lib/checkout/capture-order", () => ({
-  captureOrderFromCart: checkoutMocks.captureOrderFromCart,
-}));
+import { AccountCheckoutRepositoryError } from "@/lib/checkout/account-checkout-repository.server";
+import { POST } from "./route";
 
-vi.mock("@/lib/supabase/checkout", () => ({
-  createCheckoutClient: checkoutMocks.createCheckoutClient,
-}));
+const account = {
+  accountId: "account-owned",
+  firebaseUid: "firebase-owned",
+  identities: [],
+  locale: "vi",
+} as const;
+const idempotencyKey = "00000000-0000-4000-8000-000000000201";
+const validBody = {
+  address: "1 Test Street",
+  email: "customer@example.test",
+  fullName: "Test Customer",
+  idempotencyKey,
+  phone: "0900000000",
+};
 
-afterEach(() => {
-  checkoutMocks.captureOrderFromCart.mockReset();
-  checkoutMocks.createCheckoutClient.mockReset();
-});
+function request(body: unknown, origin = "https://staging.nanohome.vn"): Request {
+  return new Request("https://staging.nanohome.vn/api/checkout", {
+    body: JSON.stringify(body),
+    headers: { "content-type": "application/json", origin },
+    method: "POST",
+  });
+}
 
 describe("POST /api/checkout", () => {
-  it("returns the server-created order reference for an authenticated delivery request", async () => {
-    // Given: an authenticated session and a successful persisted-cart capture.
-    checkoutMocks.createCheckoutClient.mockResolvedValue({
-      auth: { getUser: vi.fn(async () => ({ data: { user: { id: "user-1" } }, error: null })) },
-      rpc: vi.fn(),
-    });
-    checkoutMocks.captureOrderFromCart.mockResolvedValue({
-      kind: "success",
-      orderId: "order-1",
-      orderNumber: "ORD-opaque",
-    });
-    const { POST } = await import("./route");
+  beforeEach(() => {
+    mocks.captureOrder.mockReset();
+    mocks.getAuthenticatedAccount.mockReset();
+  });
+  afterEach(() => vi.clearAllMocks());
 
-    // When: the client sends only contact and delivery details.
-    const response = await POST(new Request("https://example.test/api/checkout", {
-      method: "POST",
-      body: JSON.stringify({
-        fullName: "Nguyen Van A",
-        email: "customer@example.com",
-        phone: "0900000000",
-        address: "1 Nguyen Hue",
-        city: "Ho Chi Minh City",
-        note: "Call before delivery",
-      }),
-    }));
+  it("rejects cross-origin and anonymous requests before order capture", async () => {
+    const forbidden = await POST(request(validBody, "https://attacker.test"));
+    expect(forbidden.status).toBe(403);
+    expect(mocks.getAuthenticatedAccount).not.toHaveBeenCalled();
 
-    // Then: the RPC receives no user, cart, price, status, or order fields from the client.
+    mocks.getAuthenticatedAccount.mockResolvedValue(null);
+    const unauthorized = await POST(request(validBody));
+    expect(unauthorized.status).toBe(401);
+    expect(mocks.captureOrder).not.toHaveBeenCalled();
+  });
+
+  it("captures only validated delivery data for the server-resolved Firebase account", async () => {
+    mocks.getAuthenticatedAccount.mockResolvedValue(account);
+    mocks.captureOrder.mockResolvedValue({
+      amount: 125000,
+      currency: "VND",
+      merchantReference: "WEB-TEST001",
+      orderId: "00000000-0000-4000-8000-000000000301",
+      orderNumber: "ORD-TEST001",
+      replayed: false,
+    });
+
+    const response = await POST(request(validBody));
+
     expect(response.status).toBe(201);
-    await expect(response.json()).resolves.toEqual({ orderId: "order-1", orderNumber: "ORD-opaque" });
-    expect(checkoutMocks.captureOrderFromCart).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        fullName: "Nguyen Van A",
-        email: "customer@example.com",
-        phone: "0900000000",
-        address: "1 Nguyen Hue",
-        city: "Ho Chi Minh City",
-        note: "Call before delivery",
-      },
-    );
-  });
-
-  it("rejects malformed JSON and unrecognized checkout fields", async () => {
-    // Given: a route with no need to reach authentication for malformed payloads.
-    const { POST } = await import("./route");
-
-    // When: malformed JSON or a client-controlled cart field is submitted.
-    const malformedResponse = await POST(new Request("https://example.test/api/checkout", { method: "POST", body: "{" }));
-    const extraFieldResponse = await POST(new Request("https://example.test/api/checkout", {
-      method: "POST",
-      body: JSON.stringify({
-        fullName: "Nguyen Van A",
-        email: "customer@example.com",
-        phone: "0900000000",
-        address: "1 Nguyen Hue",
-        cartId: "attacker-cart",
-      }),
-    }));
-
-    // Then: both requests are rejected before the checkout RPC can run.
-    expect(malformedResponse.status).toBe(400);
-    expect(extraFieldResponse.status).toBe(400);
-    expect(checkoutMocks.createCheckoutClient).not.toHaveBeenCalled();
-    expect(checkoutMocks.captureOrderFromCart).not.toHaveBeenCalled();
-  });
-
-  it("rejects missing authentication and database-declared cart failures", async () => {
-    // Given: one unauthenticated session followed by an authenticated invalid-cart result.
-    checkoutMocks.createCheckoutClient
-      .mockResolvedValueOnce({ auth: { getUser: vi.fn(async () => ({ data: { user: null }, error: null })) }, rpc: vi.fn() })
-      .mockResolvedValueOnce({
-        auth: { getUser: vi.fn(async () => ({ data: { user: { id: "user-1" } }, error: null })) },
-        rpc: vi.fn(),
-      });
-    checkoutMocks.captureOrderFromCart.mockResolvedValue({ kind: "invalid_cart" });
-    const { POST } = await import("./route");
-    const request = () => new Request("https://example.test/api/checkout", {
-      method: "POST",
-      body: JSON.stringify({
-        fullName: "Nguyen Van A",
-        email: "customer@example.com",
-        phone: "0900000000",
-        address: "1 Nguyen Hue",
-      }),
+    await expect(response.json()).resolves.toEqual({
+      orderId: "00000000-0000-4000-8000-000000000301",
+      orderNumber: "ORD-TEST001",
+      replayed: false,
     });
+    expect(mocks.captureOrder).toHaveBeenCalledWith(account.accountId, validBody);
+  });
 
-    // When: each session attempts checkout.
-    const unauthorizedResponse = await POST(request());
-    const invalidCartResponse = await POST(request());
+  it("rejects browser cart, price, state, and owner fields at the boundary", async () => {
+    mocks.getAuthenticatedAccount.mockResolvedValue(account);
+    const response = await POST(request({
+      ...validBody,
+      accountId: "account-other",
+      paymentStatus: "paid",
+      total: 1,
+    }));
+    expect(response.status).toBe(400);
+    expect(mocks.captureOrder).not.toHaveBeenCalled();
+  });
 
-    // Then: authentication and database-declared failures have deterministic HTTP responses.
-    expect(unauthorizedResponse.status).toBe(401);
-    expect(invalidCartResponse.status).toBe(409);
+  it("returns stable replay and invalid-cart outcomes", async () => {
+    mocks.getAuthenticatedAccount.mockResolvedValue(account);
+    mocks.captureOrder
+      .mockResolvedValueOnce({
+        amount: 125000,
+        currency: "VND",
+        merchantReference: "WEB-TEST001",
+        orderId: "00000000-0000-4000-8000-000000000301",
+        orderNumber: "ORD-TEST001",
+        replayed: true,
+      })
+      .mockRejectedValueOnce(new AccountCheckoutRepositoryError("checkout_invalid_cart"));
+
+    expect((await POST(request(validBody))).status).toBe(200);
+    expect((await POST(request(validBody))).status).toBe(409);
+  });
+
+  it("fails closed when local/staging account mutations are disabled", async () => {
+    mocks.getAuthenticatedAccount.mockResolvedValue(account);
+    mocks.captureOrder.mockRejectedValue(new AccountCheckoutRepositoryError("mutation_disabled"));
+    const response = await POST(request(validBody));
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "checkout_disabled" });
   });
 });

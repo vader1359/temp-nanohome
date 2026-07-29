@@ -93,3 +93,22 @@ create table public.news_variants (
   variant_id uuid not null references public.variants(id) on delete cascade,
   primary key (news_id, variant_id)
 );
+
+-- Mirror the current cloud catalog ACL/RLS baseline without copying cloud data.
+alter table public.brands enable row level security;
+alter table public.catalogs enable row level security;
+alter table public.categories enable row level security;
+alter table public.news enable row level security;
+alter table public.products enable row level security;
+alter table public.variants enable row level security;
+
+create policy "brands are publicly readable" on public.brands for select using (true);
+create policy "catalogs are publicly readable" on public.catalogs for select using (true);
+create policy "categories are publicly readable" on public.categories for select using (true);
+create policy "news are publicly readable" on public.news for select using (true);
+create policy "products are publicly readable" on public.products for select using (true);
+create policy "variants are publicly readable" on public.variants for select using (true);
+
+grant all on table public.brands, public.catalogs, public.categories,
+  public.news, public.products, public.variants
+to anon, authenticated, service_role;

@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { AuthenticatedAccount } from "./auth-port";
+import type { StoredWishlistItem } from "./account-data-repository.server";
 import { createFakeAccountWishlistRepository, type AccountWishlistRepository } from "./wishlist-repository.server";
 
 export type AccountWishlistAvailability = "available" | "unavailable";
@@ -40,6 +41,47 @@ function presentItem(account: AuthenticatedAccount, variantId: string): AccountW
 
 function presentItems(account: AuthenticatedAccount, variantIds: readonly string[]): readonly AccountWishlistItem[] {
   return variantIds.map((variantId) => presentItem(account, variantId));
+}
+
+export function createAccountWishlistPort(repository: Readonly<{
+  readonly addWishlistItem: (accountId: string, variantId: string) => Promise<void>;
+  readonly listWishlistItems: (accountId: string) => Promise<readonly StoredWishlistItem[]>;
+  readonly mergeWishlistItems: (
+    accountId: string,
+    idempotencyKey: string,
+    variantIds: readonly string[],
+  ) => Promise<void>;
+  readonly removeWishlistItem: (accountId: string, variantId: string) => Promise<void>;
+}>): AccountWishlistPort {
+  const list = async (account: AuthenticatedAccount): Promise<readonly AccountWishlistItem[]> =>
+    (await repository.listWishlistItems(account.accountId)).map((item) => ({
+      availability: item.available ? "available" : "unavailable",
+      href: item.productSlug === null
+        ? `/${account.locale}/products`
+        : `/${account.locale}/products/${encodeURIComponent(item.productSlug)}`,
+      title: item.title,
+      variantId: item.variantId,
+    }));
+
+  return {
+    getItems: list,
+    async addItem(account, variantId) {
+      await repository.addWishlistItem(account.accountId, variantId);
+      return list(account);
+    },
+    async removeItem(account, variantId) {
+      await repository.removeWishlistItem(account.accountId, variantId);
+      return list(account);
+    },
+    async mergeGuestItems(account, input) {
+      await repository.mergeWishlistItems(
+        account.accountId,
+        input.idempotencyKey,
+        canonicalize(input.variantIds),
+      );
+      return list(account);
+    },
+  };
 }
 
 export function createFakeAccountWishlistPort(repository: AccountWishlistRepository = createFakeAccountWishlistRepository()): AccountWishlistPort {

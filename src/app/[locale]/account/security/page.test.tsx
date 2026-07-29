@@ -5,6 +5,9 @@ const ports = vi.hoisted(() => ({
   getAuthenticatedAccount: vi.fn(),
   getSecurity: vi.fn(),
 }));
+const redirect = vi.hoisted(() => vi.fn((target: string) => {
+  throw new Error(`NEXT_REDIRECT:${target}`);
+}));
 
 vi.mock("@/lib/account/account-ports.server", () => ({
   getAccountAuthPort: () => ({ getAuthenticatedAccount: ports.getAuthenticatedAccount }),
@@ -14,6 +17,7 @@ vi.mock("@/lib/account/account-ports.server", () => ({
 vi.mock("@/components/account/account-security-form", () => ({
   AccountSecurityForm: () => <div>Account security form</div>,
 }));
+vi.mock("next/navigation", () => ({ redirect }));
 
 import AccountSecurityPage, { dynamic } from "./page";
 
@@ -39,16 +43,13 @@ describe("AccountSecurityPage", () => {
     ports.getSecurity.mockReset();
   });
 
-  it("renders a neutral unavailable state for anonymous access", async () => {
+  it("redirects anonymous access without reading security state", async () => {
     // Given: no authenticated account session.
     ports.getAuthenticatedAccount.mockResolvedValue(null);
 
-    // When: the security page renders.
-    render(await AccountSecurityPage());
-
-    // Then: dynamic mode is forced, neutral unavailable copy is rendered, and security port is not called.
+    await expect(AccountSecurityPage({ params: Promise.resolve({ locale: "vi" }) }))
+      .rejects.toThrow("NEXT_REDIRECT:/vi/account/sign-in");
     expect(dynamic).toBe("force-dynamic");
-    expect(screen.getByText("Bảo mật tài khoản hiện chưa khả dụng.")).toBeInTheDocument();
     expect(ports.getSecurity).not.toHaveBeenCalled();
   });
 
@@ -58,7 +59,7 @@ describe("AccountSecurityPage", () => {
     ports.getSecurity.mockResolvedValue(security);
 
     // When: the security page renders.
-    render(await AccountSecurityPage());
+    render(await AccountSecurityPage({ params: Promise.resolve({ locale: "vi" }) }));
 
     // Then: it fetches security overview for account and presents the safe form surface.
     expect(screen.getByText("Account security form")).toBeInTheDocument();

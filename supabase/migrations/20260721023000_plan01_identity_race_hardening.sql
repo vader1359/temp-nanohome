@@ -77,22 +77,26 @@ end; $$;
 
 create or replace function public.process_customer_subject_deletion(p_queue_id bigint, p_batch_size integer default 100)
 returns integer language plpgsql security definer set search_path = public as $$
-declare q record; v_deleted integer := 0;
+declare v_queue record; v_deleted integer := 0;
 begin
   if p_batch_size not between 1 and 1000 then raise exception 'p_batch_size must be between 1 and 1000'; end if;
-  select q.id, q.visitor_id, q.session_id, q.visitor_created_at into q from public.customer_subject_deletion_queue q where q.id = p_queue_id and q.processed_at is null for update;
-  if q.id is null then return 0; end if;
-  if q.session_id is null or q.visitor_created_at is null or not exists (select 1 from public.customer_visitors v join public.customer_sessions s on s.visitor_id = v.id where v.id = q.visitor_id and v.created_at = q.visitor_created_at and s.id = q.session_id and v.revoked_at is not null and s.revoked_at is not null) then
-    delete from public.customer_subject_deletion_queue where id = q.id;
+  select queue_row.id, queue_row.visitor_id, queue_row.session_id, queue_row.visitor_created_at
+  into v_queue
+  from public.customer_subject_deletion_queue as queue_row
+  where queue_row.id = p_queue_id and queue_row.processed_at is null
+  for update;
+  if v_queue.id is null then return 0; end if;
+  if v_queue.session_id is null or v_queue.visitor_created_at is null or not exists (select 1 from public.customer_visitors v join public.customer_sessions s on s.visitor_id = v.id where v.id = v_queue.visitor_id and v.created_at = v_queue.visitor_created_at and s.id = v_queue.session_id and v.revoked_at is not null and s.revoked_at is not null) then
+    delete from public.customer_subject_deletion_queue where id = v_queue.id;
     return 0;
   end if;
   perform set_config('customer_data.deletion', 'on', true);
-  delete from public.customer_events where visitor_id = q.visitor_id; get diagnostics v_deleted = row_count;
-  delete from public.customer_consent_current where visitor_id = q.visitor_id;
-  delete from public.customer_identity_ledger where visitor_id = q.visitor_id;
-  delete from public.customer_consent_ledger where visitor_id = q.visitor_id;
-  delete from public.customer_subject_deletion_queue where id = q.id;
-  delete from public.customer_visitors where id = q.visitor_id and created_at = q.visitor_created_at;
+  delete from public.customer_events where visitor_id = v_queue.visitor_id; get diagnostics v_deleted = row_count;
+  delete from public.customer_consent_current where visitor_id = v_queue.visitor_id;
+  delete from public.customer_identity_ledger where visitor_id = v_queue.visitor_id;
+  delete from public.customer_consent_ledger where visitor_id = v_queue.visitor_id;
+  delete from public.customer_subject_deletion_queue where id = v_queue.id;
+  delete from public.customer_visitors where id = v_queue.visitor_id and created_at = v_queue.visitor_created_at;
   return v_deleted;
 end; $$;
 

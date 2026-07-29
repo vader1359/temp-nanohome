@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sameOriginRequest } from "@/test/same-origin-request";
 
 const ports = vi.hoisted(() => ({ getAuthenticatedAccount: vi.fn(), revokeAllSessions: vi.fn() }));
 vi.mock("@/lib/account/account-ports.server", () => ({
@@ -19,7 +20,7 @@ describe("/api/account/security/revoke-all", () => {
     ports.revokeAllSessions.mockResolvedValue({ kind: "recent_authentication_required" });
 
     // When: all sessions are revoked.
-    const response = await POST(new Request("https://app.test/api/account/security/revoke-all", { method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/security/revoke-all", { method: "POST" }));
 
     // Then: the API preserves the protected action result and private headers.
     expect(response.status).toBe(409);
@@ -33,7 +34,7 @@ describe("/api/account/security/revoke-all", () => {
     ports.revokeAllSessions.mockRejectedValue(new Error("session revocation failure"));
 
     // When: all sessions are revoked.
-    const response = await POST(new Request("https://app.test/api/account/security/revoke-all", { method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/security/revoke-all", { method: "POST" }));
 
     // Then: the rejection remains private and generic.
     expect(response.status).toBe(500);

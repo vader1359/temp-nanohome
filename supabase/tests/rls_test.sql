@@ -10,6 +10,19 @@ values
   (:'authenticated_user_id', 'authenticated', 'authenticated', 'rls-owner@example.test', '', now()),
   (:'other_user_id', 'authenticated', 'authenticated', 'rls-other@example.test', '', now());
 
+insert into public.customer_identity_providers (provider, issuer, audience)
+values ('firebase', 'https://securetoken.google.com/rls-test', 'rls-test');
+
+insert into public.customer_firebase_principals (account_id, firebase_uid, status)
+select account.id,
+  case account.legacy_supabase_user_id
+    when :'authenticated_user_id'::uuid then 'rls-firebase-owner'
+    else 'rls-firebase-other'
+  end,
+  'active'
+from public.customer_accounts account
+where account.legacy_supabase_user_id in (:'authenticated_user_id'::uuid, :'other_user_id'::uuid);
+
 insert into public.carts (id, user_id)
 values
   (:'cart_id_1', :'authenticated_user_id'),
@@ -60,8 +73,8 @@ select is((select count(*) from deleted), 0::bigint, 'anon cannot delete carts')
 SELECT throws_ok($$ insert into public.cart_items (cart_id, variant_id, quantity) values ('00000000-0000-4000-8000-000000000071', '00000000-0000-4000-8000-000000000032', 1) $$, '42501', NULL, 'anon cannot insert cart items');
 
 SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claims', json_build_object('sub', :'authenticated_user_id', 'role', 'authenticated')::text, true);
-SELECT set_config('request.jwt.claim.sub', :'authenticated_user_id', true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'rls-firebase-owner', 'role', 'authenticated', 'iss', 'https://securetoken.google.com/rls-test', 'aud', 'rls-test')::text, true);
+SELECT set_config('request.jwt.claim.sub', 'rls-firebase-owner', true);
 SELECT is((SELECT count(*) FROM public.carts where id = :'cart_id_1'), 1::bigint, 'user reads own cart');
 SELECT is((SELECT count(*) FROM public.carts where id = :'cart_id_2'), 0::bigint, 'user cannot read another cart');
 SELECT lives_ok($$ update public.carts set guest_id = null where id = '00000000-0000-4000-8000-000000000071' $$, 'user updates own cart');
@@ -75,46 +88,46 @@ SET LOCAL ROLE anon;
 SELECT set_config('request.jwt.claims', '{"role":"anon"}', true);
 SELECT set_config('request.jwt.claim.sub', '', true);
 SELECT set_config('app.order_number', '', true);
-SELECT is((SELECT count(*) FROM public.orders), 0::bigint, 'anon cannot read orders without an order number');
+SELECT throws_ok($$ select count(*) from public.orders $$, '42501', NULL, 'anon cannot read orders directly');
 
 SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claims', json_build_object('sub', :'authenticated_user_id', 'role', 'authenticated')::text, true);
-SELECT set_config('request.jwt.claim.sub', :'authenticated_user_id', true);
-SELECT is((SELECT count(*) FROM public.orders where id = :'order_id_1'), 1::bigint, 'user reads own order');
-SELECT is((SELECT count(*) FROM public.orders where id = :'order_id_2'), 0::bigint, 'user cannot read another users order');
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'rls-firebase-owner', 'role', 'authenticated', 'iss', 'https://securetoken.google.com/rls-test', 'aud', 'rls-test')::text, true);
+SELECT set_config('request.jwt.claim.sub', 'rls-firebase-owner', true);
+SELECT ok(not has_table_privilege('authenticated', 'public.orders', 'select'), 'authenticated has no direct order read privilege');
+SELECT throws_ok($$ select count(*) from public.orders where id = '00000000-0000-4000-8000-000000000091' $$, '42501', NULL, 'authenticated cannot read orders directly');
 SELECT throws_ok($$ insert into public.orders (order_number, user_id, email, full_name, phone, address) values ('FORGED-AUTH-ORDER', '00000000-0000-4000-8000-000000000061', 'forged@example.test', 'Forged', '400', 'Forged address') $$, '42501', NULL, 'authenticated users cannot insert orders directly');
 
 SET LOCAL ROLE anon;
 SELECT set_config('request.jwt.claims', '{"role":"anon"}', true);
 SELECT set_config('request.jwt.claim.sub', '', true);
 SELECT set_config('app.order_number', 'RLS-GUEST-ORDER', true);
-SELECT is((SELECT count(*) FROM public.orders where id = :'guest_order_id'), 0::bigint, 'an order number alone no longer authorizes a guest order read');
+SELECT throws_ok($$ select count(*) from public.orders where id = '00000000-0000-4000-8000-000000000093' $$, '42501', NULL, 'an order number alone cannot authorize a guest order read');
 SELECT throws_ok($$ insert into public.orders (order_number, email, full_name, phone, address) values ('FORGED-GUEST-ORDER', 'forged@example.test', 'Forged', '500', 'Forged address') $$, '42501', NULL, 'anon cannot insert orders directly');
 
 SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claims', json_build_object('sub', :'authenticated_user_id', 'role', 'authenticated')::text, true);
-SELECT set_config('request.jwt.claim.sub', :'authenticated_user_id', true);
-SELECT is((SELECT count(*) FROM public.order_items where order_id = :'order_id_1'), 1::bigint, 'user reads items in own order');
-SELECT is((SELECT count(*) FROM public.order_items where order_id = :'order_id_2'), 0::bigint, 'user cannot read items in another users order');
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'rls-firebase-owner', 'role', 'authenticated', 'iss', 'https://securetoken.google.com/rls-test', 'aud', 'rls-test')::text, true);
+SELECT set_config('request.jwt.claim.sub', 'rls-firebase-owner', true);
+SELECT ok(not has_table_privilege('authenticated', 'public.order_items', 'select'), 'authenticated has no direct order item read privilege');
+SELECT throws_ok($$ select count(*) from public.order_items where order_id = '00000000-0000-4000-8000-000000000091' $$, '42501', NULL, 'authenticated cannot read order items directly');
 SELECT throws_ok($$ insert into public.order_items (order_id, quantity) values ('00000000-0000-4000-8000-000000000091', 1) $$, '42501', NULL, 'user cannot insert order items directly');
-SELECT is((SELECT count(*) FROM public.order_status_history where order_id = :'order_id_1'), 1::bigint, 'user reads own order history');
-SELECT is((SELECT count(*) FROM public.order_status_history where order_id = :'order_id_2'), 0::bigint, 'user cannot read another users order history');
+SELECT ok(not has_table_privilege('authenticated', 'public.order_status_history', 'select'), 'authenticated has no direct order history read privilege');
+SELECT throws_ok($$ select count(*) from public.order_status_history where order_id = '00000000-0000-4000-8000-000000000091' $$, '42501', NULL, 'authenticated cannot read order history directly');
 SELECT throws_ok($$ insert into public.order_status_history (order_id, status) values ('00000000-0000-4000-8000-000000000091', 'confirmed') $$, '42501', NULL, 'user cannot insert order history directly');
 
 SET LOCAL ROLE anon;
 SELECT set_config('request.jwt.claims', '{"role":"anon"}', true);
 SELECT set_config('request.jwt.claim.sub', '', true);
 SELECT set_config('app.order_number', '', true);
-SELECT is((SELECT count(*) FROM public.order_items), 0::bigint, 'anon cannot read order items without an order number');
-SELECT is((SELECT count(*) FROM public.order_status_history), 0::bigint, 'anon cannot read order history');
+SELECT throws_ok($$ select count(*) from public.order_items $$, '42501', NULL, 'anon cannot read order items directly');
+SELECT throws_ok($$ select count(*) from public.order_status_history $$, '42501', NULL, 'anon cannot read order history directly');
 SELECT throws_ok($$ insert into public.order_items (order_id, quantity) values ('00000000-0000-4000-8000-000000000093', 1) $$, '42501', NULL, 'anon cannot insert order items');
 SELECT throws_ok($$ insert into public.order_status_history (order_id, status) values ('00000000-0000-4000-8000-000000000093', 'confirmed') $$, '42501', NULL, 'anon cannot insert order history');
 SELECT set_config('app.order_number', 'RLS-GUEST-ORDER', true);
-SELECT is((SELECT count(*) FROM public.order_items where order_id = :'guest_order_id'), 0::bigint, 'an order number alone no longer authorizes a guest order item read');
+SELECT throws_ok($$ select count(*) from public.order_items where order_id = '00000000-0000-4000-8000-000000000093' $$, '42501', NULL, 'an order number alone cannot authorize a guest order item read');
 
 SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claims', json_build_object('sub', :'authenticated_user_id', 'role', 'authenticated')::text, true);
-SELECT set_config('request.jwt.claim.sub', :'authenticated_user_id', true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'rls-firebase-owner', 'role', 'authenticated', 'iss', 'https://securetoken.google.com/rls-test', 'aud', 'rls-test')::text, true);
+SELECT set_config('request.jwt.claim.sub', 'rls-firebase-owner', true);
 SELECT is((SELECT count(*) FROM public.profiles where id = :'authenticated_user_id'), 1::bigint, 'user reads own profile');
 SELECT is((SELECT count(*) FROM public.profiles where id = :'other_user_id'), 0::bigint, 'user cannot read another users profile');
 SELECT lives_ok($$ update public.profiles set full_name = 'Updated Owner' where id = '00000000-0000-4000-8000-000000000061' $$, 'user updates own profile');
@@ -133,14 +146,16 @@ SELECT throws_ok($$ insert into public.amis_sync_log (status) values ('running')
 SELECT ok(not has_function_privilege('public.capture_order_from_cart(text, text, text, text, text, text, text, text)', 'execute'), 'anon lacks checkout RPC execute privilege');
 
 SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claims', json_build_object('sub', :'authenticated_user_id', 'role', 'authenticated')::text, true);
-SELECT set_config('request.jwt.claim.sub', :'authenticated_user_id', true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'rls-firebase-owner', 'role', 'authenticated', 'iss', 'https://securetoken.google.com/rls-test', 'aud', 'rls-test')::text, true);
+SELECT set_config('request.jwt.claim.sub', 'rls-firebase-owner', true);
 SELECT ok(has_function_privilege('public.capture_order_from_cart(text, text, text, text, text, text, text, text)', 'execute'), 'authenticated users have checkout RPC execute privilege');
 SELECT is((SELECT count(*) FROM public.capture_order_from_cart('Checkout Owner', 'checkout-owner@example.test', '600', 'Checkout address')), 1::bigint, 'authenticated user captures their cart through the RPC');
+SELECT is((SELECT count(*) FROM public.cart_items WHERE cart_id = :'cart_id_1'), 0::bigint, 'checkout RPC clears only the captured cart');
+
+SET LOCAL ROLE service_role;
 SELECT is((SELECT subtotal FROM public.orders WHERE order_number LIKE 'ORD-%'), 30::numeric, 'checkout RPC calculates subtotal from persisted variants');
 SELECT is((SELECT count(*) FROM public.order_items WHERE order_id = (SELECT id FROM public.orders WHERE order_number LIKE 'ORD-%')), 2::bigint, 'checkout RPC snapshots every cart item');
 SELECT is((SELECT count(*) FROM public.order_status_history WHERE order_id = (SELECT id FROM public.orders WHERE order_number LIKE 'ORD-%')), 1::bigint, 'checkout RPC writes initial order history');
-SELECT is((SELECT count(*) FROM public.cart_items WHERE cart_id = :'cart_id_1'), 0::bigint, 'checkout RPC clears only the captured cart');
 
 -- Instagram pipeline security & validation tests
 SET LOCAL ROLE anon;
@@ -149,7 +164,7 @@ SELECT ok(not has_function_privilege('public.publish_instagram_snapshot(jsonb, t
 SELECT throws_ok($$ select public.publish_instagram_snapshot('[]'::jsonb, ARRAY[]::text[], 'v1') $$, '42501', NULL, 'anon execution of publish_instagram_snapshot is blocked');
 
 SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claims', json_build_object('sub', :'authenticated_user_id', 'role', 'authenticated')::text, true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'rls-firebase-owner', 'role', 'authenticated', 'iss', 'https://securetoken.google.com/rls-test', 'aud', 'rls-test')::text, true);
 SELECT ok(not has_function_privilege('public.publish_instagram_snapshot(jsonb, text[], text)', 'execute'), 'authenticated user lacks publish_instagram_snapshot RPC execute privilege');
 SELECT throws_ok($$ select public.publish_instagram_snapshot('[]'::jsonb, ARRAY[]::text[], 'v1') $$, '42501', NULL, 'authenticated execution of publish_instagram_snapshot is blocked');
 
@@ -401,7 +416,7 @@ SELECT throws_ok(
         NULL
     ) $$,
     'P0001',
-    'No matching video item for post stage-post-4 and fingerprint 1111111111111111111111111111111111111111111111111111111111111111 in stage %',
+    NULL,
     'update_instagram_stage_wistia_status rejects non-video posts'
 );
 

@@ -1,5 +1,6 @@
 import { getAccountAuthPort, getAccountSecurityPort } from "@/lib/account/account-ports.server";
 import { parseSecurityAuthAction } from "@/lib/account/security-schema";
+import { isSameOriginPost } from "@/lib/auth/same-origin.server";
 import { privateJson, withPrivateErrorBoundary } from "../../private-response";
 
 async function parseJson(request: Request): Promise<unknown | null> {
@@ -8,6 +9,7 @@ async function parseJson(request: Request): Promise<unknown | null> {
 }
 
 export const POST = withPrivateErrorBoundary(async (request: Request): Promise<Response> => {
+  if (!isSameOriginPost(request)) return privateJson({ error: "Forbidden" }, 403);
   const account = await getAccountAuthPort().getAuthenticatedAccount();
   if (account === null) return privateJson({ error: "Authentication required" }, 401);
   const input = parseSecurityAuthAction(await parseJson(request));

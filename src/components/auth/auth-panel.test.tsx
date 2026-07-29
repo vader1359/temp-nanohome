@@ -10,6 +10,7 @@ const authContext = vi.hoisted(() => ({
 }));
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "vi",
   useTranslations: () => (key: string) => key,
 }));
 
@@ -17,8 +18,8 @@ vi.mock("./auth-provider", () => ({
   useAuthContext: () => authContext,
 }));
 
-vi.mock("./login-form", () => ({
-  LoginForm: () => <button type="button">login action</button>,
+vi.mock("@/components/account/account-auth-flow", () => ({
+  AccountAuthFlow: () => <button type="button">login action</button>,
 }));
 
 vi.mock("./register-form", () => ({

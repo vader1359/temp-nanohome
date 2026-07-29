@@ -1,5 +1,8 @@
 begin;
 
+\ir fixtures.sql
+\ir ../seed.sql
+
 set local role postgres;
 
 select plan(33);

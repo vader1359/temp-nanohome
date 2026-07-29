@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sameOriginRequest } from "@/test/same-origin-request";
 
 const ports = vi.hoisted(() => ({ beginDeletion: vi.fn(), confirmDeletion: vi.fn(), getAuthenticatedAccount: vi.fn() }));
 vi.mock("@/lib/account/account-ports.server", () => ({
@@ -19,7 +20,7 @@ describe("/api/account/security/deletion", () => {
     ports.beginDeletion.mockResolvedValue({ kind: "recent_authentication_required" });
 
     // When: the browser begins deletion.
-    const response = await POST(new Request("https://app.test/api/account/security/deletion", { body: JSON.stringify({ action: "begin" }), headers: { "content-type": "application/json" }, method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/security/deletion", { body: JSON.stringify({ action: "begin" }), headers: { "content-type": "application/json" }, method: "POST" }));
 
     // Then: the flow requires recent authentication and no client identity is accepted.
     expect(response.status).toBe(409);
@@ -31,7 +32,7 @@ describe("/api/account/security/deletion", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
 
     // When: the browser supplies a lowercase confirmation.
-    const response = await POST(new Request("https://app.test/api/account/security/deletion", { body: JSON.stringify({ confirmation: "delete" }), headers: { "content-type": "application/json" }, method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/security/deletion", { body: JSON.stringify({ confirmation: "delete" }), headers: { "content-type": "application/json" }, method: "POST" }));
 
     // Then: strict parsing rejects it before deletion confirmation reaches the port.
     expect(response.status).toBe(422);
@@ -44,7 +45,7 @@ describe("/api/account/security/deletion", () => {
     ports.beginDeletion.mockRejectedValue(new Error("deletion workflow failure"));
 
     // When: deletion begins.
-    const response = await POST(new Request("https://app.test/api/account/security/deletion", { body: JSON.stringify({ action: "begin" }), headers: { "content-type": "application/json" }, method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/security/deletion", { body: JSON.stringify({ action: "begin" }), headers: { "content-type": "application/json" }, method: "POST" }));
 
     // Then: the rejection remains private and generic.
     expect(response.status).toBe(500);

@@ -13,7 +13,7 @@ function renderOrderDetail() {
   );
 }
 
-const order = { orderId: "o1", orderNumber: "1001", placedAt: "2026-01-01T00:00:00.000Z", status: "fulfilled", total: { amount: 120000, currency: "VND" } } as const;
+const order = { items: [], orderId: "o1", orderNumber: "1001", paymentStatus: "paid", placedAt: "2026-01-01T00:00:00.000Z", refundStatus: "none", status: "fulfilled", total: { amount: 120000, currency: "VND" } } as const;
 
 describe("AccountOrderDetail", () => {
   it("renders historical order fields without operational data", () => {

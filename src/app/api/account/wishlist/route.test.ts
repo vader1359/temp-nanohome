@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sameOriginRequest } from "@/test/same-origin-request";
 
 const ports = vi.hoisted(() => ({
   addItem: vi.fn(),
@@ -69,7 +70,7 @@ describe("/api/account/wishlist", () => {
     ports.addItem.mockResolvedValue(items);
 
     // When: a browser submits an id with an extraneous account id and presentation fields.
-    const response = await POST(new Request("https://app.test/api/account/wishlist", {
+    const response = await POST(sameOriginRequest("https://app.test/api/account/wishlist", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ accountId: "account_other", price: 1, stock: 0, variantId: "  variant-01  " }),
@@ -86,7 +87,7 @@ describe("/api/account/wishlist", () => {
     ports.addItem.mockResolvedValue(items);
 
     // When: the browser submits a canonical variant identifier.
-    const response = await POST(new Request("https://app.test/api/account/wishlist", {
+    const response = await POST(sameOriginRequest("https://app.test/api/account/wishlist", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ variantId: "  variant-01  " }),
@@ -104,7 +105,7 @@ describe("/api/account/wishlist", () => {
     ports.removeItem.mockResolvedValue([]);
 
     // When: the browser removes a canonical variant id.
-    const response = await DELETE(new Request("https://app.test/api/account/wishlist", {
+    const response = await DELETE(sameOriginRequest("https://app.test/api/account/wishlist", {
       method: "DELETE",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ variantId: "variant-01" }),

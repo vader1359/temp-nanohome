@@ -25,8 +25,10 @@ describe("fetchAmisContacts", () => {
         success: true,
         code: 200,
         data: [{
-          id: "contact-1",
-          customer_id: "customer-1",
+          id: 201,
+          contact_code: "CT-201",
+          account_code: "C-101",
+          inactive: false,
           modified_date: "2026-07-10T03:00:00.000Z",
           full_name: "Sensitive contact name",
           email: "sensitive@example.test",
@@ -41,7 +43,13 @@ describe("fetchAmisContacts", () => {
     expect(requestedPages).toEqual(["0"]);
     expect(result).toEqual({
       kind: "success",
-      records: [{ id: "contact-1", customerId: "customer-1", modifiedDate: "2026-07-10T03:00:00.000Z" }],
+      records: [{
+        id: "201",
+        code: "CT-201",
+        customerCode: "C-101",
+        inactive: false,
+        modifiedDate: "2026-07-10T03:00:00.000Z",
+      }],
     });
   });
 

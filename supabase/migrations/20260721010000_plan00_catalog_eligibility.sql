@@ -56,11 +56,11 @@ with source_rows as (
       when raw_price_mode in ('fixed', 'contact', 'deposit', 'unavailable') then raw_price_mode
       else 'unavailable'
     end as price_mode,
-    image_url ~* '^https?://' as has_supported_media,
+    coalesce(image_url ~* '^https?://', false) as has_supported_media,
     amis_sku_present
       and amis_completed_at >= now() - interval '24 hours'
       and (source_updated_at is null or amis_completed_at >= source_updated_at)
-       and stock > 0 as has_fresh_stock,
+      and coalesce(stock, 0) > 0 as has_fresh_stock,
     lower(coalesce(brand_slug, '')) = 'moooi'
       or lower(coalesce(brand_name, '')) = 'moooi'
       or lower(coalesce(sku, '')) like 'moooi%' as hidden_brand_sku

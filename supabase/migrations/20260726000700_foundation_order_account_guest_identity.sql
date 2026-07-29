@@ -411,7 +411,7 @@ drop policy if exists "Guests can select order by order number setting" on publi
 drop policy if exists "Guests can select items by order number setting" on public.order_items;
 drop policy if exists "Users and guests can insert orders" on public.orders;
 
-revoke insert, update, delete on public.orders, public.order_items, public.order_status_history
+revoke all on public.orders, public.order_items, public.order_status_history
   from public, anon, authenticated;
 grant all on public.orders, public.order_items, public.order_status_history to service_role;
 

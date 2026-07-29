@@ -110,6 +110,19 @@ describe("getVariantProducts", () => {
     expect(state.createClient).toHaveBeenCalledOnce();
   });
 
+  it("keeps NULL denormalized brands visible while excluding Moooi", async () => {
+    // Given: older visible variants may not have filter_brand backfilled yet.
+    // When: the product list and count queries are built.
+    await getVariantProducts({ page: 1 });
+    await getVariantProductCount();
+
+    // Then: both use SQL `IS DISTINCT FROM 'moooi'` semantics.
+    expect(state.orCalls).toEqual([
+      "filter_brand.is.null,filter_brand.neq.moooi",
+      "filter_brand.is.null,filter_brand.neq.moooi",
+    ]);
+  });
+
   it("selects explicit fields instead of the full variant row", async () => {
     // Given: the product grid only needs a bounded set of variant columns.
     // When: variants are fetched for the listing page.
@@ -176,7 +189,7 @@ describe("getVariantProducts", () => {
     // Then: availability never depends on the legacy in_stock flag.
     expect(state.chain.gt).toHaveBeenCalledTimes(2);
     expect(state.chain.gt).toHaveBeenCalledWith("stock", 0);
-    expect(state.orCalls).toEqual([
+    expect(state.orCalls.filter((filter) => filter === "stock.lte.0,stock.is.null")).toEqual([
       "stock.lte.0,stock.is.null",
     ]);
   });
@@ -186,6 +199,7 @@ describe("getVariantProductFacets", () => {
   it("paginates the complete validated facet dataset", async () => {
     await getVariantProductFacets();
 
+    expect(state.orCalls).toContain("filter_brand.is.null,filter_brand.neq.moooi");
     expect(state.chain.order).toHaveBeenCalledWith("id", { ascending: true });
     expect(state.chain.range).toHaveBeenCalledWith(0, 999);
   });

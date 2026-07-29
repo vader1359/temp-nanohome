@@ -1,8 +1,10 @@
 import { getAccountAuthPort, getAccountWishlistPort } from "@/lib/account/account-ports.server";
 import { parseGuestWishlistMerge } from "@/lib/account/wishlist-schema";
+import { isSameOriginPost } from "@/lib/auth/same-origin.server";
 import { privateJson, withPrivateErrorBoundary } from "../private-response";
 
 export const POST = withPrivateErrorBoundary(async (request: Request): Promise<Response> => {
+  if (!isSameOriginPost(request)) return privateJson({ error: "Forbidden" }, 403);
   const account = await getAccountAuthPort().getAuthenticatedAccount();
   if (account === null) return privateJson({ error: "Authentication required" }, 401);
   if (!request.headers.get("content-type")?.includes("application/json")) {

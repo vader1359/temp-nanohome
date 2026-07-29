@@ -69,7 +69,7 @@ describe("parseEmailPasswordForm", () => {
 });
 
 describe("parseSignUpForm", () => {
-  it("returns trigger metadata when signup fields are valid", () => {
+  it("returns only verified-identity inputs when signup fields are valid", () => {
     // Given: a complete sign-up form submission.
     const formData = new FormData();
     formData.set("email", "ian@example.com");
@@ -84,22 +84,20 @@ describe("parseSignUpForm", () => {
     // When: the form is parsed at the route boundary.
     const result = parseSignUpForm(formData);
 
-    // Then: metadata matches the database auth.users trigger contract.
+    // Then: unverified profile and phone fields never enter the identity contract.
     expect(result).toEqual({
       ok: true,
       value: {
         email: "ian@example.com",
         password: "correct-password",
-        fullName: "Ian Nguyen",
-        phone: "0900000000",
         locale: "en",
         redirectTo: "/en/products",
       },
     });
   });
 
-  it("returns invalid when required profile metadata is missing", () => {
-    // Given: a sign-up form without profile fields.
+  it("does not require unverified profile metadata", () => {
+    // Given: a sign-up form with only Firebase email-auth fields.
     const formData = new FormData();
     formData.set("email", "ian@example.com");
     formData.set("password", "correct-password");
@@ -109,8 +107,16 @@ describe("parseSignUpForm", () => {
     // When: the form is parsed at the route boundary.
     const result = parseSignUpForm(formData);
 
-    // Then: validation fails before Supabase is called.
-    expect(result).toEqual({ ok: false, error: "invalid" });
+    // Then: the identity can be created without trusting profile claims.
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        email: "ian@example.com",
+        password: "correct-password",
+        locale: "vi",
+        redirectTo: "/vi",
+      },
+    });
   });
 
   it("returns invalid when the signup password confirmation differs", () => {
@@ -126,7 +132,7 @@ describe("parseSignUpForm", () => {
     // When: the form is parsed at the route boundary.
     const result = parseSignUpForm(formData);
 
-    // Then: Supabase cannot receive the inconsistent registration.
+    // Then: Firebase cannot receive the inconsistent registration.
     expect(result).toEqual({ ok: false, error: "password_mismatch" });
   });
 
@@ -142,7 +148,7 @@ describe("parseSignUpForm", () => {
     // When: the form is parsed at the route boundary.
     const result = parseSignUpForm(formData);
 
-    // Then: Supabase cannot receive an unaccepted terms agreement.
+    // Then: Firebase cannot receive an unaccepted terms agreement.
     expect(result).toEqual({ ok: false, error: "terms_required" });
   });
 });
@@ -176,6 +182,7 @@ describe("parseResetPasswordForm", () => {
     formData.set("password", "new-password");
     formData.set("confirmPassword", "new-password");
     formData.set("locale", "en");
+    formData.set("oobCode", "bounded-firebase-oob-code");
 
     // When: the form is parsed at the route boundary.
     const result = parseResetPasswordForm(formData);
@@ -186,6 +193,7 @@ describe("parseResetPasswordForm", () => {
       value: {
         password: "new-password",
         locale: "en",
+        oobCode: "bounded-firebase-oob-code",
         redirectTo: "/en/reset-password?status=success",
       },
     });
@@ -196,11 +204,20 @@ describe("parseResetPasswordForm", () => {
     const formData = new FormData();
     formData.set("password", "new-password");
     formData.set("confirmPassword", "different-password");
+    formData.set("oobCode", "bounded-firebase-oob-code");
 
     // When: the form is parsed at the route boundary.
     const result = parseResetPasswordForm(formData);
 
-    // Then: validation fails before Supabase is called.
+    // Then: validation fails before Firebase is called.
     expect(result).toEqual({ ok: false });
+  });
+
+  it("rejects a reset submission without a Firebase OOB code", () => {
+    const formData = new FormData();
+    formData.set("password", "new-password");
+    formData.set("confirmPassword", "new-password");
+
+    expect(parseResetPasswordForm(formData)).toEqual({ ok: false });
   });
 });

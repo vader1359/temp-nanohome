@@ -202,8 +202,14 @@ case "$full_test" in
     ;;
 esac
 docker_run=$(grep '^docker run ' "$log")
+case "$docker_run" in
+  *' -v '*'/nanohome-plan00.'*':ro '*) ;;
+  *)
+    printf '%s\n' 'Instagram runner is missing its read-only disposable workdir mount.' >&2
+    exit 1
+    ;;
+esac
 for required in \
-  '-v /tmp/nanohome-plan00.' \
   ':ro' \
   '-w ' \
   '/tests' \
@@ -353,26 +359,28 @@ if [ "$instagram_source_before" != "$(cksum "$repo_root/supabase/tests/instagram
   exit 1
 fi
 
-: >"$log"
-setsid env HARNESS_LOG="$log" FAKE_TEST_WAIT=1 SUPABASE_BIN="$fake_bin" DOCKER_BIN="$fake_docker" \
-  "$repo_root/supabase/plan00-local/run-clean-reset.sh" --full &
-harness_pid=$!
-while ! grep '^test db ' "$log" >/dev/null 2>&1; do
-  sleep 1
-done
-start_line=$(grep '^start --workdir ' "$log")
-set -- $start_line
-harness_workdir=$3
-kill -TERM "-$harness_pid"
-if wait "$harness_pid"; then
-  printf '%s\n' 'TERM did not interrupt the harness' >&2
-  exit 1
-fi
-if ! grep '^stop --no-backup --workdir ' "$log" >/dev/null; then
-  printf '%s\n' 'TERM did not stop the disposable stack' >&2
-  exit 1
-fi
-if [ -e "$harness_workdir" ]; then
-  printf '%s\n' 'TERM did not remove the disposable workdir' >&2
-  exit 1
+if command -v setsid >/dev/null 2>&1; then
+  : >"$log"
+  setsid env HARNESS_LOG="$log" FAKE_TEST_WAIT=1 SUPABASE_BIN="$fake_bin" DOCKER_BIN="$fake_docker" \
+    "$repo_root/supabase/plan00-local/run-clean-reset.sh" --full &
+  harness_pid=$!
+  while ! grep '^test db ' "$log" >/dev/null 2>&1; do
+    sleep 1
+  done
+  start_line=$(grep '^start --workdir ' "$log")
+  set -- $start_line
+  harness_workdir=$3
+  kill -TERM "-$harness_pid"
+  if wait "$harness_pid"; then
+    printf '%s\n' 'TERM did not interrupt the harness' >&2
+    exit 1
+  fi
+  if ! grep '^stop --no-backup --workdir ' "$log" >/dev/null; then
+    printf '%s\n' 'TERM did not stop the disposable stack' >&2
+    exit 1
+  fi
+  if [ -e "$harness_workdir" ]; then
+    printf '%s\n' 'TERM did not remove the disposable workdir' >&2
+    exit 1
+  fi
 fi

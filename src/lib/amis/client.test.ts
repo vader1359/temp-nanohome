@@ -69,8 +69,10 @@ function amisEnvFor(baseUrl: string): Env {
   return {
     NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+    SUPABASE_PROJECT_REF: "example",
     SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
     CRON_SECRET: "cron-test",
+    AUTH_CSRF_SECRET: "fixture-only-csrf-secret-with-32-bytes",
     AUTH_PROVIDER: "supabase",
     PAYMENT_MODE: "off",
     CHAT_ENABLED: false,

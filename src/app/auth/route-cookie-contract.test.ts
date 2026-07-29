@@ -1,42 +1,47 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AuthApiError } from "@supabase/supabase-js";
 import { NextRequest, type NextResponse } from "next/server";
-import { type CookieOptions } from "@supabase/ssr";
 
-type AuthState = {
-  readonly signInWithPassword: ReturnType<typeof vi.fn>;
-  readonly signOut: ReturnType<typeof vi.fn>;
-};
+import { FirebaseSessionExchangeError } from "@/lib/auth/firebase-session-exchange.server";
 
-const authState = vi.hoisted<AuthState>(() => ({
-  signInWithPassword: vi.fn(async () => ({ error: null })),
-  signOut: vi.fn(async () => ({ error: null })),
+const restState = vi.hoisted(() => ({
+  signInWithPassword: vi.fn(async () => "firebase-id-token"),
 }));
 
-type CookieState = {
-  value: string | undefined;
-  options: CookieOptions | undefined;
-};
-
-const cookieState = vi.hoisted<CookieState>(
-  () => ({ value: undefined, options: undefined }),
-);
+const sessionState = vi.hoisted(() => ({
+  issue: vi.fn(async () => ({ value: "firebase-session", maxAge: 432_000 })),
+}));
 
 vi.mock("server-only", () => ({}));
 
-vi.mock("@/lib/supabase/route-handler", () => ({
-  createRouteHandlerClient: vi.fn(() => ({
-    supabase: { auth: authState },
-    applyCookies: <T extends NextResponse>(response: T) => {
-      if (cookieState.value !== undefined) {
-        response.cookies.set("sb-access-token", cookieState.value, {
-          path: "/",
-          ...cookieState.options,
-        });
-      }
-      return response;
-    },
-  })),
+vi.mock("@/lib/auth/firebase-auth-rest-runtime.server", () => ({
+  getFirebaseAuthRestClient: () => restState,
+}));
+
+vi.mock("@/lib/auth/firebase-session.server", () => ({
+  issueFirebaseSessionCookie: sessionState.issue,
+  applyFirebaseSessionCookie: <T extends NextResponse>(
+    response: T,
+    session: Readonly<{ value: string; maxAge: number }>,
+  ) => {
+    response.cookies.set("__Host-nanohome-session", session.value, {
+      httpOnly: true,
+      maxAge: session.maxAge,
+      path: "/",
+      sameSite: "lax",
+      secure: true,
+    });
+    return response;
+  },
+  clearFirebaseSessionCookie: <T extends NextResponse>(response: T) => {
+    response.cookies.set("__Host-nanohome-session", "", {
+      httpOnly: true,
+      maxAge: 0,
+      path: "/",
+      sameSite: "lax",
+      secure: true,
+    });
+    return response;
+  },
 }));
 
 vi.mock("next/cache", () => ({
@@ -44,19 +49,14 @@ vi.mock("next/cache", () => ({
 }));
 
 afterEach(() => {
-  vi.resetModules();
-  authState.signInWithPassword.mockReset();
-  authState.signInWithPassword.mockResolvedValue({ error: null });
-  authState.signOut.mockReset();
-  authState.signOut.mockResolvedValue({ error: null });
-  cookieState.value = undefined;
-  cookieState.options = undefined;
+  restState.signInWithPassword.mockReset();
+  restState.signInWithPassword.mockResolvedValue("firebase-id-token");
+  sessionState.issue.mockReset();
+  sessionState.issue.mockResolvedValue({ value: "firebase-session", maxAge: 432_000 });
 });
 
-describe("auth route cookie contracts", () => {
-  it("returns the session cookie on a successful password sign-in redirect", async () => {
-    cookieState.value = "session-token";
-    cookieState.options = { path: "/", httpOnly: true };
+describe("Firebase auth route cookie contract", () => {
+  it("sets one hardened host-only session cookie after password sign-in", async () => {
     const { POST } = await import("./sign-in/route");
 
     const response = await POST(formRequest("/auth/sign-in", {
@@ -66,14 +66,18 @@ describe("auth route cookie contracts", () => {
       redirectTo: "/en/products",
     }));
 
+    const setCookie = response.headers.get("set-cookie");
     expect(response.headers.get("location")).toBe("https://app.test/en/products");
-    expect(response.cookies.get("sb-access-token")?.value).toBe("session-token");
+    expect(response.cookies.get("__Host-nanohome-session")?.value).toBe("firebase-session");
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).toContain("SameSite=lax");
+    expect(setCookie).toContain("Path=/");
+    expect(setCookie).not.toContain("sb-access-token");
   });
 
-  it("does not return a session cookie for an unconfirmed email", async () => {
-    authState.signInWithPassword.mockResolvedValue({
-      error: new AuthApiError("Email not confirmed", 400, "email_not_confirmed"),
-    });
+  it("does not set a session cookie for an unverified password identity", async () => {
+    sessionState.issue.mockRejectedValue(new FirebaseSessionExchangeError("unverified_email"));
     const { POST } = await import("./sign-in/route");
 
     const response = await POST(formRequest("/auth/sign-in", {
@@ -84,12 +88,10 @@ describe("auth route cookie contracts", () => {
     }));
 
     expect(response.headers.get("location")).toBe("https://app.test/vi?auth=email_not_confirmed");
-    expect(response.cookies.get("sb-access-token")).toBeUndefined();
+    expect(response.cookies.get("__Host-nanohome-session")).toBeUndefined();
   });
 
-  it("returns Supabase's cleared session cookie after sign-out", async () => {
-    cookieState.value = "";
-    cookieState.options = { path: "/", maxAge: 0 };
+  it("expires the Firebase cookie after same-origin sign-out", async () => {
     const { POST } = await import("./sign-out/route");
 
     const response = await POST(formRequest("/auth/sign-out", {
@@ -98,21 +100,22 @@ describe("auth route cookie contracts", () => {
     }));
 
     expect(response.headers.get("location")).toBe("https://app.test/en");
-    expect(response.cookies.get("sb-access-token")?.value).toBe("");
+    expect(response.cookies.get("__Host-nanohome-session")?.value).toBe("");
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
+    expect(response.headers.get("set-cookie")).not.toContain("sb-access-token");
   });
 });
 
 function formRequest(path: string, fields: Readonly<Record<string, string>>): NextRequest {
   const formData = new URLSearchParams();
-
-  Object.entries(fields).forEach(([key, value]) => {
-    formData.set(key, value);
-  });
+  Object.entries(fields).forEach(([key, value]) => formData.set(key, value));
 
   return new NextRequest(`https://app.test${path}`, {
     method: "POST",
     body: formData,
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Origin: "https://app.test",
+    },
   });
 }

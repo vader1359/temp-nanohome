@@ -1,24 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Libre_Franklin, Noto_Sans_KR } from "next/font/google";
 import { getLocale } from "next-intl/server";
 import { TrackingProvider } from "@/components/analytics/tracking-provider";
 import { getLocalizedMetadata, SITE_NAME, SITE_URL } from "@/lib/site-metadata";
 import "./globals.css";
-
-const libreFranklin = Libre_Franklin({
-  display: "swap",
-  variable: "--font-libre-franklin",
-  subsets: ["latin", "vietnamese"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const notoSansKr = Noto_Sans_KR({
-  display: "swap",
-  preload: false,
-  variable: "--font-noto-sans-kr",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
 
 const defaultMetadata = getLocalizedMetadata("vi");
 
@@ -79,7 +63,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang={locale}>
       <head />
-      <body className={`${libreFranklin.variable} ${notoSansKr.variable} antialiased font-[family-name:var(--font-libre-franklin)]`}>
+      <body className="antialiased font-sans">
         {children}
         <TrackingProvider />
       </body>

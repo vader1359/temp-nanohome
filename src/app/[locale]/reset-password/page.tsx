@@ -4,7 +4,7 @@ import { ResetPasswordForm, type ResetPasswordStatus } from "@/components/auth/r
 
 interface ResetPasswordPageProps {
   readonly params: Promise<{ locale: string }>;
-  readonly searchParams: Promise<{ status?: string }>;
+  readonly searchParams: Promise<{ oobCode?: string; status?: string }>;
 }
 
 function getResetPasswordStatus(status: string | undefined): ResetPasswordStatus {
@@ -16,8 +16,8 @@ function getResetPasswordStatus(status: string | undefined): ResetPasswordStatus
 }
 
 export default async function ResetPasswordPage({ params, searchParams }: ResetPasswordPageProps) {
-  const [{ locale }, { status }] = await Promise.all([params, searchParams]);
+  const [{ locale }, { oobCode, status }] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
 
-  return <ResetPasswordForm status={getResetPasswordStatus(status)} />;
+  return <ResetPasswordForm oobCode={oobCode} status={getResetPasswordStatus(status)} />;
 }

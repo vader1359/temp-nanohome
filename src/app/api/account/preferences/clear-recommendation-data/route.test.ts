@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sameOriginRequest } from "@/test/same-origin-request";
 
 const ports = vi.hoisted(() => ({ clearRecommendationData: vi.fn(), getAuthenticatedAccount: vi.fn() }));
 vi.mock("@/lib/account/account-ports.server", () => ({
@@ -20,7 +21,7 @@ describe("/api/account/preferences/clear-recommendation-data", () => {
     ports.clearRecommendationData.mockResolvedValue(preferences);
 
     // When: recommendation data is cleared.
-    const response = await POST(new Request("https://app.test/api/account/preferences/clear-recommendation-data", { method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/preferences/clear-recommendation-data", { method: "POST" }));
 
     // Then: the account-scoped port result is private and canonical.
     expect(response.status).toBe(200);
@@ -35,7 +36,7 @@ describe("/api/account/preferences/clear-recommendation-data", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
 
     // When: malformed JSON is sent to the bodyless action.
-    const response = await POST(new Request("https://app.test/api/account/preferences/clear-recommendation-data", {
+    const response = await POST(sameOriginRequest("https://app.test/api/account/preferences/clear-recommendation-data", {
       body: "{",
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -52,7 +53,7 @@ describe("/api/account/preferences/clear-recommendation-data", () => {
     ports.clearRecommendationData.mockRejectedValue(new Error("recommendation data failure"));
 
     // When: recommendation data is cleared.
-    const response = await POST(new Request("https://app.test/api/account/preferences/clear-recommendation-data", { method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/preferences/clear-recommendation-data", { method: "POST" }));
 
     // Then: the rejection remains private and generic.
     expect(response.status).toBe(500);

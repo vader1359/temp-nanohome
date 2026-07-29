@@ -3,6 +3,7 @@
 import { ChevronRight, Globe, Mail, Phone } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { CloudflareEmailOptOut } from "@/components/cloudflare-email-opt-out";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
@@ -185,10 +186,12 @@ export function Footer() {
               <Phone className="size-3.5 shrink-0" aria-hidden="true" />
               {t("phone")}
             </a>
-            <a href="mailto:info@nanohome.vn" className="flex items-center gap-2 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white w-fit">
-              <Mail className="size-3.5 shrink-0" aria-hidden="true" />
-              {t("email")}
-            </a>
+            <CloudflareEmailOptOut>
+              <a href="mailto:info@nanohome.vn" className="flex items-center gap-2 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white w-fit">
+                <Mail className="size-3.5 shrink-0" aria-hidden="true" />
+                {t("email")}
+              </a>
+            </CloudflareEmailOptOut>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm leading-[20px] text-[#AFAFAF]">{t("followUs")}</span>

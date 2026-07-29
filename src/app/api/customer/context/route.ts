@@ -16,6 +16,23 @@ const json = (body: unknown, status = 200): NextResponse => NextResponse.json(bo
   headers: responseHeaders,
 });
 
+const anonymousContext = (): ClientCustomerContext => ({
+  locale: "vi",
+  consent: {
+    analytics: false,
+    personalization: false,
+    aiProcessing: false,
+    aiConversationStorage: false,
+    roomImageProcessing: false,
+    roomImageStorage: false,
+    version: "none",
+  },
+  capabilities: {
+    analyticsTracking: false,
+    marketingTracking: false,
+  },
+});
+
 const requestCookies = (request: Request): Readonly<{ visitor?: string; session?: string }> => {
   const values = new Map<string, string>();
   for (const part of (request.headers.get("cookie") ?? "").split(";")) {
@@ -31,7 +48,13 @@ function hasSupabaseAuthCookie(request: Request): boolean {
     .some((cookie) => {
       const name = cookie.trim().split("=", 1)[0] ?? "";
       return name.startsWith("sb-") && name.includes("auth-token");
-    });
+  });
+}
+
+function hasAuthenticatedSessionCookie(request: Request): boolean {
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  return hasSupabaseAuthCookie(request)
+    || cookieHeader.split(";").some((cookie) => cookie.trim().startsWith("__Host-nanohome-session="));
 }
 
 export const GET = async (request: Request): Promise<Response> => {
@@ -42,7 +65,15 @@ export const GET = async (request: Request): Promise<Response> => {
   const issued = existing === null ? issueCustomerIdentity() : null;
   const bootstrapped = issued === null ? null : await repository.bootstrapIdentity({ visitor: issued.visitorId, session: issued.sessionId });
   const identity = existing ?? bootstrapped?.identity;
-  if (identity === null || identity === undefined) return json({ error: "Identity unavailable" }, 503);
+  if (identity === null || identity === undefined) {
+    // Public pages must remain usable when the optional customer-memory
+    // persistence plane is unavailable. Keep every capability disabled and do
+    // not issue cookies. Authenticated requests still fail closed below rather
+    // than being silently treated as anonymous.
+    return hasAuthenticatedSessionCookie(request)
+      ? json({ error: "Identity unavailable" }, 503)
+      : json(anonymousContext());
+  }
   let verifiedUserId: string | null = null;
   if (hasSupabaseAuthCookie(request)) {
     try {

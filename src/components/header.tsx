@@ -5,7 +5,6 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } fr
 import {
   ChevronDown,
   Heart,
-  LogOut,
   Menu,
   Search,
   ShoppingCart,
@@ -349,13 +348,9 @@ export function Header() {
                 ) : null}
               </button>
               {isAuthenticated ? (
-                <form action="/auth/sign-out" method="POST">
-                  <input type="hidden" name="locale" value={locale} />
-                  <input type="hidden" name="redirectTo" value={`/${locale}`} />
-                  <button aria-label={t("signOut")} type="submit">
-                    <LogOut className="size-5 stroke-[1.4]" />
-                  </button>
-                </form>
+                <Link aria-label={t("account")} href={`/${locale}/account`}>
+                  <User className="size-5 stroke-[1.4]" />
+                </Link>
               ) : (
                 <button aria-label={t("account")} type="button" onClick={openLogin} data-auth-trigger>
                   <User className="size-5 stroke-[1.4]" />
@@ -375,13 +370,9 @@ export function Header() {
             <div className="flex items-center justify-between border-b border-[#cfc9c0] pb-4">
               <div className="flex items-center gap-5 text-[#111]">
                 {isAuthenticated ? (
-                  <form action="/auth/sign-out" method="POST">
-                    <input type="hidden" name="locale" value={locale} />
-                    <input type="hidden" name="redirectTo" value={`/${locale}`} />
-                    <button aria-label={t("signOut")} type="submit">
-                      <LogOut className="size-5 stroke-[1.4]" />
-                    </button>
-                  </form>
+                  <Link aria-label={t("account")} href={`/${locale}/account`} onClick={() => setDrawerOpen(false)}>
+                    <User className="size-5 stroke-[1.4]" />
+                  </Link>
                 ) : (
                   <button aria-label={t("account")} type="button" onClick={openLogin} data-auth-trigger>
                     <User className="size-5 stroke-[1.4]" />
@@ -413,7 +404,15 @@ export function Header() {
             </nav>
             {/* Top links */}
             <div className="flex flex-col gap-3 pt-4">
-              {!isAuthenticated ? (
+              {isAuthenticated ? (
+                <Link
+                  href={`/${locale}/account`}
+                  onClick={() => setDrawerOpen(false)}
+                  className="text-sm leading-[18px] text-[#666]"
+                >
+                  {t("account")}
+                </Link>
+              ) : (
                 <Link
                   href={accountSignInPath}
                   onClick={() => setDrawerOpen(false)}
@@ -421,7 +420,7 @@ export function Header() {
                 >
                   {t("account")}
                 </Link>
-              ) : null}
+              )}
               {topLeft.map((key) => (
                 <Link
                   key={key}

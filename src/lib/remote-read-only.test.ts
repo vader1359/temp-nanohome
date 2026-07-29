@@ -199,8 +199,26 @@ describe("remote read-only safeguard", () => {
   });
 
   it.each(["/api/v2/Customers", "/api/v2/Contacts"])("allows AMIS safe read on %s", (pathname) => {
-    expect(() => assertAmisRequestAllowed(new URL(`https://crmconnect.misa.vn${pathname}?page=0`), "GET"))
+    expect(() => assertAmisRequestAllowed(
+      new URL(`https://crmconnect.misa.vn${pathname}?page=0&pageSize=100&orderBy=modified_date&isDescending=true`),
+      "GET",
+    ))
       .not.toThrow();
+  });
+
+  it.each([
+    "page=-1",
+    "page=0&page=1",
+    "pageSize=0",
+    "pageSize=101",
+    "orderBy=office_tel",
+    "isDescending=false",
+    "filter=all",
+  ])("blocks unsafe AMIS Customer paging query before network I/O: %s", (query) => {
+    expect(() => assertAmisRequestAllowed(
+      new URL(`https://crmconnect.misa.vn/api/v2/Customers?${query}`),
+      "GET",
+    )).toThrow(RemoteWriteBlockedError);
   });
 
   it.each([

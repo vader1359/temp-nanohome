@@ -49,13 +49,25 @@ select throws_ok($$ insert into public.commerce_refund_ledger
 select throws_ok($$ update public.commerce_payment_ledger set amount = 101 where app_trans_id = 'app-01' $$, 'P0001', 'commerce ledger is append-only', 'payment ledger rejects updates');
 select throws_ok($$ delete from public.commerce_refund_ledger where m_refund_id = 'refund-01' $$, 'P0001', 'commerce ledger is append-only', 'refund ledger rejects deletes');
 
-update public.commerce_inventory_holds set expires_at = now() - interval '1 second' where raw_sku = E' SKU\t01 ';
+update public.commerce_inventory_holds
+set expires_at = now() - interval '1 second'
+where checkout_id = '00000000-0000-4000-8000-000000000101';
 select is(public.commerce_expire_holds(), 1, 'expiry function expires due holds');
-select is((select status from public.commerce_inventory_holds limit 1), 'expired', 'expired hold releases active uniqueness');
+select is(
+  (select status from public.commerce_inventory_holds
+   where checkout_id = '00000000-0000-4000-8000-000000000101'),
+  'expired',
+  'expired hold releases active uniqueness'
+);
 select lives_ok($$ insert into public.commerce_inventory_holds (checkout_id, raw_sku, warehouse, quantity) values ('00000000-0000-4000-8000-000000000101', E' SKU\t01 ', E'WH\n01', 1) $$, 'expired hold no longer blocks a new hold');
 
 set local role authenticated;
-select is((select count(*) from public.commerce_checkouts), 0::bigint, 'authenticated cannot read checkout ledger');
+select throws_ok(
+  $$ select count(*) from public.commerce_checkouts $$,
+  '42501',
+  null,
+  'authenticated cannot read checkout ledger'
+);
 select throws_ok($$ insert into public.commerce_checkouts (owner_scope, web_order_id, idempotency_key, payload_hash) values ('guest:denied', 'WEB-denied', 'idem-denied', 'payload-denied') $$, '42501', null, 'authenticated cannot write checkout ledger');
 select throws_ok($$ insert into public.commerce_payment_ledger (checkout_id, app_trans_id, amount, event) values ('00000000-0000-4000-8000-000000000101', 'app-denied', 1, 'failed') $$, '42501', null, 'authenticated cannot write payment ledger');
 select ok(not has_function_privilege('public.commerce_expire_holds()', 'execute'), 'authenticated cannot execute expiry function');

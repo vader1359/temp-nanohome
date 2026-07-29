@@ -8,7 +8,9 @@ const AMIS_CONTACT_PAGE_SIZE = 100;
 
 export type AmisContactRecord = {
   readonly id: string;
-  readonly customerId: string | null;
+  readonly code: string;
+  readonly customerCode: string | null;
+  readonly inactive: boolean | null;
   readonly modifiedDate: string;
 };
 
@@ -58,12 +60,23 @@ async function fetchContactPage(config: AmisClientConfig, token: string, page: n
   if (!parsed.data.success || parsed.data.code !== 200) {
     return { kind: "http_error", status: parsed.data.code, message: "AMIS rejected the Contact read request" };
   }
-  return { kind: "success", records: parsed.data.data.map((record) => ({ id: record.id, customerId: record.customer_id ?? null, modifiedDate: record.modified_date })) };
+  return {
+    kind: "success",
+    records: parsed.data.data.map((record) => ({
+      id: record.id,
+      code: record.contact_code,
+      customerCode: record.account_code ?? null,
+      inactive: record.inactive ?? null,
+      modifiedDate: record.modified_date,
+    })),
+  };
 }
 
 const contactSchema = z.object({
-  id: z.string().min(1),
-  customer_id: z.string().min(1).nullable().optional(),
+  id: z.union([z.string().min(1), z.number().int().safe()]).transform(String),
+  contact_code: z.string().min(1),
+  account_code: z.string().min(1).nullable().optional(),
+  inactive: z.boolean().nullable().optional(),
   modified_date: z.string().datetime({ offset: true }),
 }).strip();
 

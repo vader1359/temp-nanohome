@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { createFakeAccountCartPort } from "./cart-port";
+import { createAccountCartPort, createFakeAccountCartPort } from "./cart-port";
 
 const account = { accountId: "account_01", firebaseUid: "firebase_01", locale: "vi", identities: [] } as const;
 
@@ -64,5 +64,92 @@ describe("FakeAccountCartPort", () => {
     });
     // Then: version remains 1 because no items changed.
     expect(result.version).toBe(1);
+  });
+});
+
+describe("AccountCartPort", () => {
+  const variantId = "00000000-0000-4000-8000-000000000001";
+
+  it("uses only the server-resolved account and canonical catalog price", async () => {
+    const repository = {
+      getCart: vi.fn().mockResolvedValue({
+        items: [{
+          available: true,
+          productSlug: "chair-oak",
+          quantity: 2,
+          title: "Ghế gỗ sồi",
+          unitAmount: 1290000,
+          variantId,
+        }],
+        version: 1,
+      }),
+      mergeGuestCart: vi.fn(),
+      mutateCart: vi.fn().mockResolvedValue({ status: "updated", version: 1 }),
+    };
+    const port = createAccountCartPort(repository);
+
+    const result = await port.addItem(account, {
+      expectedVersion: 0,
+      quantity: 2,
+      variantId,
+    });
+
+    expect(repository.mutateCart).toHaveBeenCalledWith(account.accountId, {
+      expectedVersion: 0,
+      operation: "add",
+      quantity: 2,
+      variantId,
+    });
+    expect(result).toMatchObject({
+      cart: {
+        items: [{ available: true, lineTotal: { amount: 2580000 }, variantId }],
+        total: { amount: 2580000, currency: "VND" },
+        version: 1,
+      },
+      status: "updated",
+    });
+  });
+
+  it("returns current server state without replaying a version conflict", async () => {
+    const repository = {
+      getCart: vi.fn().mockResolvedValue({ items: [], version: 3 }),
+      mergeGuestCart: vi.fn(),
+      mutateCart: vi.fn().mockResolvedValue({ status: "version_conflict", version: 3 }),
+    };
+    const port = createAccountCartPort(repository);
+
+    const result = await port.updateItem(account, {
+      expectedVersion: 1,
+      quantity: 2,
+      variantId,
+    });
+
+    expect(result).toMatchObject({ cart: { version: 3 }, status: "version_conflict" });
+    expect(repository.mutateCart).toHaveBeenCalledOnce();
+  });
+
+  it("surfaces deterministic guest-merge changes and removed lines", async () => {
+    const repository = {
+      getCart: vi.fn().mockResolvedValue({ items: [], version: 2 }),
+      mergeGuestCart: vi.fn().mockResolvedValue({
+        changedLines: 1,
+        removedLines: 2,
+        version: 2,
+      }),
+      mutateCart: vi.fn(),
+    };
+    const port = createAccountCartPort(repository);
+
+    const result = await port.mergeGuestCart(account, {
+      idempotencyKey: "merge-001",
+      items: [{ quantity: 1, variantId }],
+    });
+
+    expect(repository.mergeGuestCart).toHaveBeenCalledWith(
+      account.accountId,
+      "merge-001",
+      [{ quantity: 1, variantId }],
+    );
+    expect(result.mergeSummary).toEqual({ changedLines: 1, removedLines: 2 });
   });
 });

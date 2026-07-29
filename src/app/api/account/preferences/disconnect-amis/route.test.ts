@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sameOriginRequest } from "@/test/same-origin-request";
 
 const ports = vi.hoisted(() => ({ disconnectAmis: vi.fn(), getAuthenticatedAccount: vi.fn() }));
 vi.mock("@/lib/account/account-ports.server", () => ({
@@ -18,7 +19,7 @@ describe("/api/account/preferences/disconnect-amis", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(null);
 
     // When: AMIS disconnection is requested.
-    const response = await POST(new Request("https://app.test/api/account/preferences/disconnect-amis", { method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/preferences/disconnect-amis", { method: "POST" }));
 
     // Then: it fails closed without calling the account port.
     expect(response.status).toBe(401);
@@ -31,7 +32,7 @@ describe("/api/account/preferences/disconnect-amis", () => {
     ports.getAuthenticatedAccount.mockResolvedValue(account);
 
     // When: a JSON payload is submitted to the bodyless action.
-    const response = await POST(new Request("https://app.test/api/account/preferences/disconnect-amis", {
+    const response = await POST(sameOriginRequest("https://app.test/api/account/preferences/disconnect-amis", {
       body: JSON.stringify({ confirm: true }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -48,7 +49,7 @@ describe("/api/account/preferences/disconnect-amis", () => {
     ports.disconnectAmis.mockRejectedValue(new Error("AMIS credential failure"));
 
     // When: AMIS is disconnected.
-    const response = await POST(new Request("https://app.test/api/account/preferences/disconnect-amis", { method: "POST" }));
+    const response = await POST(sameOriginRequest("https://app.test/api/account/preferences/disconnect-amis", { method: "POST" }));
 
     // Then: the rejection remains private and generic.
     expect(response.status).toBe(500);

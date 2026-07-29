@@ -1,45 +1,84 @@
 import "server-only";
 
-import { createFakeAccountAuthPort } from "./auth-port";
-import { createFakeAccountCartPort } from "./cart-port";
-import { createFakeAccountOrdersPort } from "./orders-port";
-import { createFakeAccountProfilePort } from "./profile-port";
-import { createFakeAccountWishlistPort } from "./wishlist-port";
+import { cookies } from "next/headers";
+
+import { env } from "@/lib/env";
+import { getSupportedLocale } from "@/lib/auth/redirect";
+import { getCurrentFirebaseSessionClaims } from "@/lib/auth/firebase-session.server";
+
+import { createAccountDataRepository, type AccountDataRepository } from "./account-data-repository.server";
+import { createFirebaseAccountAuthPort } from "./auth-port";
+import { createAccountCartPort } from "./cart-port";
+import { createAccountOrdersPort } from "./orders-port";
+import { createAccountProfilePort } from "./profile-port";
+import { createAccountWishlistPort } from "./wishlist-port";
 import { createFakeAccountOffersPort } from "./offers-port";
 import { createFakeAccountPreferencesPort } from "./preferences-port";
 import { createFakeAccountSecurityPort } from "./security-port";
 
-const anonymousAuthPort = createFakeAccountAuthPort(null);
-const fakeOrdersPort = createFakeAccountOrdersPort();
-const fakeProfilePort = createFakeAccountProfilePort();
-const fakeCartPort = createFakeAccountCartPort();
-const fakeWishlistPort = createFakeAccountWishlistPort();
+let repository: AccountDataRepository | undefined;
+function getRepository(): AccountDataRepository {
+  repository ??= createAccountDataRepository({
+    baseUrl: env.NEXT_PUBLIC_SUPABASE_URL,
+    mutationsEnabled: env.ACCOUNT_CENTER_ENABLED === true,
+    projectRef: env.SUPABASE_PROJECT_REF,
+    serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY,
+  });
+  return repository;
+}
+
+const accountAuthPort = createFirebaseAccountAuthPort({
+  getClaims: getCurrentFirebaseSessionClaims,
+  getLocale: async () => {
+    const cookieStore = await cookies();
+    return getSupportedLocale(cookieStore.get("NEXT_LOCALE")?.value ?? null);
+  },
+  resolveAccountId: (firebaseUid) => getRepository().resolveAccountId(firebaseUid),
+});
+const ordersPort = createAccountOrdersPort({
+  getOrder: (accountId, orderId) => getRepository().getOrder(accountId, orderId),
+  listOrders: (accountId, page) => getRepository().listOrders(accountId, page),
+}, env.AUTH_CSRF_SECRET);
+const profilePort = createAccountProfilePort({
+  getProfile: (accountId) => getRepository().getProfile(accountId),
+  patchProfile: (accountId, patch) => getRepository().patchProfile(accountId, patch),
+});
+const wishlistPort = createAccountWishlistPort({
+  addWishlistItem: (accountId, variantId) => getRepository().addWishlistItem(accountId, variantId),
+  listWishlistItems: (accountId) => getRepository().listWishlistItems(accountId),
+  mergeWishlistItems: (accountId, key, variantIds) =>
+    getRepository().mergeWishlistItems(accountId, key, variantIds),
+  removeWishlistItem: (accountId, variantId) =>
+    getRepository().removeWishlistItem(accountId, variantId),
+});
+const cartPort = createAccountCartPort({
+  getCart: (accountId) => getRepository().getCart(accountId),
+  mergeGuestCart: (accountId, key, items) =>
+    getRepository().mergeGuestCart(accountId, key, items),
+  mutateCart: (accountId, input) => getRepository().mutateCart(accountId, input),
+});
 const fakeOffersPort = createFakeAccountOffersPort();
 const fakePreferencesPort = createFakeAccountPreferencesPort();
 const fakeSecurityPort = createFakeAccountSecurityPort();
 
-/**
- * Development-only Account-lane ports. Foundation replaces these accessors
- * with its verified Firebase session adapter and durable profile and wishlist repositories.
- */
 export function getAccountAuthPort() {
-  return anonymousAuthPort;
+  return accountAuthPort;
 }
 
 export function getAccountOrdersPort() {
-  return fakeOrdersPort;
+  return ordersPort;
 }
 
 export function getAccountProfilePort() {
-  return fakeProfilePort;
+  return profilePort;
 }
 
 export function getAccountCartPort() {
-  return fakeCartPort;
+  return cartPort;
 }
 
 export function getAccountWishlistPort() {
-  return fakeWishlistPort;
+  return wishlistPort;
 }
 
 export function getAccountOffersPort() {

@@ -12,7 +12,6 @@ function unlinkAction(provider: AccountSecurity["identities"][number]["provider"
   switch (provider) {
     case "email": return "unlink_email";
     case "google": return "unlink_google";
-    case "kakao": return "unlink_kakao";
     case "phone": return "unlink_phone";
   }
 }

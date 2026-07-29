@@ -1,4 +1,8 @@
 import type { AuthenticatedAccount } from "./auth-port";
+import type {
+  AccountDataRepository,
+  StoredAccountCart,
+} from "./account-data-repository.server";
 import type { CartMutationInput, CartRemovalInput, GuestCartMergeInput } from "./cart-schema";
 import { createFakeAccountCartRepository, type AccountCartRepository, type StoredCart, type StoredCartItem } from "./cart-repository.server";
 
@@ -10,8 +14,27 @@ const catalog = [
 ] as const;
 
 type CatalogItem = (typeof catalog)[number];
-export type AccountCart = Readonly<{ readonly items: readonly Readonly<{ readonly href: string; readonly lineTotal: Readonly<{ readonly amount: number; readonly currency: "VND" }>; readonly quantity: number; readonly title: string; readonly unitPrice: Readonly<{ readonly amount: number; readonly currency: "VND" }>; readonly variantId: string }>[]; readonly total: Readonly<{ readonly amount: number; readonly currency: "VND" }>; readonly version: number }>;
-export type CartMutationResult = Readonly<{ readonly cart: AccountCart; readonly status: "updated" | "version_conflict" }>;
+export type AccountCart = Readonly<{
+  readonly items: readonly Readonly<{
+    readonly available: boolean;
+    readonly href: string;
+    readonly lineTotal: Readonly<{ readonly amount: number; readonly currency: "VND" }>;
+    readonly quantity: number;
+    readonly title: string;
+    readonly unitPrice: Readonly<{ readonly amount: number; readonly currency: "VND" }>;
+    readonly variantId: string;
+  }>[];
+  readonly mergeSummary?: Readonly<{
+    readonly changedLines: number;
+    readonly removedLines: number;
+  }>;
+  readonly total: Readonly<{ readonly amount: number; readonly currency: "VND" }>;
+  readonly version: number;
+}>;
+export type CartMutationResult = Readonly<{
+  readonly cart: AccountCart;
+  readonly status: "unavailable" | "updated" | "version_conflict";
+}>;
 export interface AccountCartPort {
   addItem(account: AuthenticatedAccount, input: CartMutationInput): Promise<CartMutationResult>;
   getCart(account: AuthenticatedAccount): Promise<AccountCart>;
@@ -24,7 +47,7 @@ function catalogItem(variantId: string): CatalogItem | null { return catalog.fin
 function present(cart: StoredCart, locale: string): AccountCart {
   const items = cart.items.flatMap((item) => {
     const product = catalogItem(item.variantId);
-    return product === null ? [] : [{ href: `/${locale}/products/${product.slug}`, lineTotal: { amount: product.amount * item.quantity, currency: "VND" as const }, quantity: item.quantity, title: product.title, unitPrice: { amount: product.amount, currency: "VND" as const }, variantId: product.slug }];
+    return product === null ? [] : [{ available: true, href: `/${locale}/products/${product.slug}`, lineTotal: { amount: product.amount * item.quantity, currency: "VND" as const }, quantity: item.quantity, title: product.title, unitPrice: { amount: product.amount, currency: "VND" as const }, variantId: product.slug }];
   });
   return { items, total: { amount: items.reduce((total, item) => total + item.lineTotal.amount, 0), currency: "VND" }, version: cart.version };
 }
@@ -71,5 +94,87 @@ export function createFakeAccountCartPort(repository: AccountCartRepository = cr
       await repository.saveMergeReceipt(account.accountId, input.idempotencyKey, nextCart);
       return present(nextCart, account.locale);
     },
+  };
+}
+
+type DurableCartRepository = Pick<
+  AccountDataRepository,
+  "getCart" | "mergeGuestCart" | "mutateCart"
+>;
+
+function presentDurableCart(
+  cart: StoredAccountCart,
+  locale: string,
+  mergeSummary?: AccountCart["mergeSummary"],
+): AccountCart {
+  const items = cart.items.map((item) => {
+    const unitAmount = item.available ? item.unitAmount : 0;
+    return {
+      available: item.available,
+      href: item.productSlug === null
+        ? `/${locale}/products`
+        : `/${locale}/products/${item.productSlug}`,
+      lineTotal: {
+        amount: unitAmount * item.quantity,
+        currency: "VND" as const,
+      },
+      quantity: item.quantity,
+      title: item.title,
+      unitPrice: {
+        amount: unitAmount,
+        currency: "VND" as const,
+      },
+      variantId: item.variantId,
+    };
+  });
+  return {
+    items,
+    ...(mergeSummary === undefined ? {} : { mergeSummary }),
+    total: {
+      amount: items.reduce((total, item) => total + item.lineTotal.amount, 0),
+      currency: "VND",
+    },
+    version: cart.version,
+  };
+}
+
+export function createAccountCartPort(repository: DurableCartRepository): AccountCartPort {
+  async function mutate(
+    account: AuthenticatedAccount,
+    input: CartMutationInput | CartRemovalInput,
+    operation: "add" | "remove" | "update",
+  ): Promise<CartMutationResult> {
+    const result = await repository.mutateCart(account.accountId, {
+      expectedVersion: input.expectedVersion,
+      operation,
+      quantity: "quantity" in input ? input.quantity : null,
+      variantId: input.variantId,
+    });
+    const cart = await repository.getCart(account.accountId);
+    return {
+      cart: presentDurableCart(cart, account.locale),
+      status: result.status,
+    };
+  }
+
+  return {
+    addItem: (account, input) => mutate(account, input, "add"),
+    async getCart(account) {
+      return presentDurableCart(await repository.getCart(account.accountId), account.locale);
+    },
+    async mergeGuestCart(account, input) {
+      const summary = await repository.mergeGuestCart(
+        account.accountId,
+        input.idempotencyKey,
+        input.items,
+      );
+      const cart = await repository.getCart(account.accountId);
+      return presentDurableCart(cart, account.locale, {
+        changedLines: summary.changedLines,
+        removedLines: summary.removedLines,
+      });
+    },
+    removeItem: (account, input) => mutate(account, input, "remove"),
+    updateItem: (account, input) => mutate(account, input, "update"),
   };
 }

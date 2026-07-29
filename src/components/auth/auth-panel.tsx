@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
-import { LoginForm } from "./login-form";
+import { useLocale, useTranslations } from "next-intl";
+import { AccountAuthFlow } from "@/components/account/account-auth-flow";
 import { RegisterForm } from "./register-form";
 import { ForgotPasswordForm } from "./forgot-password-form";
 import { SuccessView } from "./success-view";
@@ -16,6 +16,7 @@ type AuthPanelProps = {
 
 export function AuthPanel({ redirectTo }: AuthPanelProps) {
   const t = useTranslations("Auth");
+  const locale = useLocale();
   const { isOpen, view, authError, closeAuth, switchAuthView } = useAuthContext();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -128,7 +129,7 @@ export function AuthPanel({ redirectTo }: AuthPanelProps) {
 
         <div className="mt-12 flex-1 min-h-0">
           {view === "login" && (
-            <LoginForm onSwitchView={switchAuthView} authError={authError ?? undefined} redirectTo={redirectTo} />
+            <AccountAuthFlow embedded locale={locale} returnTo={redirectTo} />
           )}
           {view === "register" && (
             <RegisterForm onSwitchView={switchAuthView} authError={authError ?? undefined} redirectTo={redirectTo} />

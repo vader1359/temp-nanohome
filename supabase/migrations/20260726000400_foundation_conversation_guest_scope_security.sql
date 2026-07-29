@@ -61,6 +61,8 @@ drop policy if exists chat_answer_evidence_owner_delete on public.chat_answer_ev
 
 revoke all on public.conversations, public.chat_messages, public.chat_answer_evidence
   from public, anon, authenticated;
+grant all on public.conversations, public.chat_messages, public.chat_answer_evidence
+  to service_role;
 revoke execute on function public.assign_conversation_account_ownership() from public, anon, authenticated;
 revoke execute on function public.verify_conversation_guest_scope(uuid, text) from public, anon, authenticated;
 revoke execute on function public.delete_verified_guest_conversation(uuid, text) from public, anon, authenticated;

@@ -1,100 +1,166 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 import { z } from "zod";
 
 import { createVerifiedPaymentEvidence, type VerifiedPaymentEvidence } from "../contracts";
 
-const delayedThresholdMilliseconds = 15 * 60 * 1000;
-
+const maximumTimestampSkewSeconds = 5 * 60;
 export const maximumSePayIpnBodyBytes = 32 * 1024;
 
-const amountSchema = z.string().regex(/^\d+$/).transform(Number).pipe(z.number().safe().int().positive());
+const eventIdSchema = z.union([
+  z.number().int().safe().positive().transform(String),
+  z.string().trim().min(1).max(256),
+]);
 
-const sePayIpnSchema = z.object({
-  timestamp: z.string().datetime({ offset: true }),
-  notification_type: z.literal("ORDER_PAID"),
-  order: z.object({
-    order_status: z.literal("CAPTURED"),
-    order_currency: z.literal("VND"),
-    order_amount: amountSchema,
-    order_invoice_number: z.string().min(1),
-  }).strict(),
-  transaction: z.object({
-    id: z.string().min(1),
-    transaction_id: z.string().min(1),
-    payment_method: z.string().min(1),
-    transaction_status: z.literal("APPROVED"),
-    amount: amountSchema,
-    currency: z.literal("VND"),
-  }).strict(),
-  customer: z.object({ id: z.string().min(1) }).strict(),
-}).strict();
-
-type SePayIpn = z.infer<typeof sePayIpnSchema>;
+const sePayInboundTransferSchema = z.object({
+  id: eventIdSchema,
+  code: z.string().trim().min(1).max(256),
+  referenceCode: z.string().trim().min(1).max(256),
+  transferAmount: z.number().int().safe().positive(),
+  transferType: z.literal("in"),
+}).passthrough();
 
 type ExpectedPayment = Readonly<{
-  readonly merchantReference: string;
   readonly amount: number;
   readonly currency: "VND";
+  readonly environment: "sandbox";
+  readonly merchantReference: string;
 }>;
+
+export type SePayIpnRejectionReason =
+  | "body_too_large"
+  | "configuration_missing"
+  | "expired_timestamp"
+  | "invalid_payload"
+  | "invalid_signature"
+  | "invalid_timestamp"
+  | "missing_signature"
+  | "missing_timestamp"
+  | "payment_mismatch";
 
 export type SePayIpnVerificationResult =
   | Readonly<{
       readonly kind: "verified";
       readonly evidence: VerifiedPaymentEvidence;
+      readonly payloadDigest: string;
       readonly providerEventId: string;
-      readonly delayed: boolean;
+      readonly providerTransactionId: string;
     }>
-  | Readonly<{ readonly kind: "rejected" }>;
+  | Readonly<{ readonly kind: "rejected"; readonly reason: SePayIpnRejectionReason }>;
 
-export type VerifySePayIpnInput = Readonly<{
+type AuthenticateSePayIpnInput = Readonly<{
+  readonly nowSeconds: number;
   readonly rawBody: string;
-  readonly secret: string;
-  readonly suppliedSecret: string | null;
-  readonly receivedAt: Date;
+  readonly secret: string | undefined;
+  readonly signature: string | null;
+  readonly timestamp: string | null;
+}>;
+
+export type VerifySePayIpnInput = AuthenticateSePayIpnInput & Readonly<{
   readonly expected: ExpectedPayment;
 }>;
 
-const parseIpn = (rawBody: string): SePayIpn | null => {
-  try {
-    return sePayIpnSchema.safeParse(JSON.parse(rawBody)).data ?? null;
-  } catch {
-    return null;
+export type AuthenticatedSePayIpn = Readonly<{
+  readonly amount: number;
+  readonly merchantReference: string;
+  readonly payloadDigest: string;
+  readonly providerEventId: string;
+  readonly providerTransactionId: string;
+}>;
+
+export type AuthenticateSePayIpnResult =
+  | Readonly<{ readonly kind: "authenticated"; readonly transfer: AuthenticatedSePayIpn }>
+  | Readonly<{ readonly kind: "rejected"; readonly reason: SePayIpnRejectionReason }>;
+
+function constantTimeTextEqual(expected: string, supplied: string): boolean {
+  const expectedBuffer = Buffer.from(expected, "utf8");
+  const suppliedBuffer = Buffer.from(supplied.trim(), "utf8");
+  return expectedBuffer.length === suppliedBuffer.length
+    && timingSafeEqual(expectedBuffer, suppliedBuffer);
+}
+
+function authenticate(input: AuthenticateSePayIpnInput): SePayIpnRejectionReason | null {
+  if (Buffer.byteLength(input.rawBody, "utf8") > maximumSePayIpnBodyBytes) {
+    return "body_too_large";
   }
-};
+  if (input.secret === undefined || input.secret.length === 0) return "configuration_missing";
+  if (input.signature === null || input.signature.trim().length === 0) return "missing_signature";
+  if (input.timestamp === null || input.timestamp.trim().length === 0) return "missing_timestamp";
 
-const secretsMatch = (expected: string, supplied: string | null): boolean => {
-  if (supplied === null) return false;
-  const expectedDigest = createHash("sha256").update(expected).digest();
-  const suppliedDigest = createHash("sha256").update(supplied).digest();
-  return timingSafeEqual(expectedDigest, suppliedDigest);
-};
+  const timestamp = Number(input.timestamp);
+  if (!Number.isSafeInteger(timestamp) || timestamp <= 0) return "invalid_timestamp";
+  if (Math.abs(input.nowSeconds - timestamp) > maximumTimestampSkewSeconds) {
+    return "expired_timestamp";
+  }
+  if (!/^sha256=[0-9a-f]{64}$/.test(input.signature.trim())) return "invalid_signature";
 
-const matchesExpectedPayment = (ipn: SePayIpn, expected: ExpectedPayment): boolean =>
-  ipn.order.order_invoice_number === expected.merchantReference
-  && ipn.order.order_amount === expected.amount
-  && ipn.order.order_currency === expected.currency
-  && ipn.transaction.amount === expected.amount
-  && ipn.transaction.currency === expected.currency;
+  const expectedSignature = `sha256=${createHmac("sha256", input.secret)
+    .update(`${timestamp}.${input.rawBody}`, "utf8")
+    .digest("hex")}`;
+  return constantTimeTextEqual(expectedSignature, input.signature)
+    ? null
+    : "invalid_signature";
+}
 
-export const verifySePayIpn = (input: VerifySePayIpnInput): SePayIpnVerificationResult => {
-  if (Buffer.byteLength(input.rawBody, "utf8") > maximumSePayIpnBodyBytes) return { kind: "rejected" };
-  if (!secretsMatch(input.secret, input.suppliedSecret)) return { kind: "rejected" };
-  const ipn = parseIpn(input.rawBody);
-  if (ipn === null || !matchesExpectedPayment(ipn, input.expected)) return { kind: "rejected" };
+export function authenticateSePayIpn(
+  input: AuthenticateSePayIpnInput,
+): AuthenticateSePayIpnResult {
+  const authenticationFailure = authenticate(input);
+  if (authenticationFailure !== null) {
+    return { kind: "rejected", reason: authenticationFailure };
+  }
 
-  const sentAt = new Date(ipn.timestamp);
-  const delayed = input.receivedAt.getTime() - sentAt.getTime() > delayedThresholdMilliseconds;
+  let payload: unknown;
+  try {
+    payload = JSON.parse(input.rawBody);
+  } catch {
+    return { kind: "rejected", reason: "invalid_payload" };
+  }
+  const parsed = sePayInboundTransferSchema.safeParse(payload);
+  if (!parsed.success) return { kind: "rejected", reason: "invalid_payload" };
+
   return {
-    kind: "verified",
-    evidence: createVerifiedPaymentEvidence({
-      provider: "sepay",
-      merchantReference: ipn.order.order_invoice_number,
-      providerTransactionId: ipn.transaction.transaction_id,
-      amount: ipn.transaction.amount,
-      currency: ipn.transaction.currency,
-    }),
-    providerEventId: ipn.transaction.id,
-    delayed,
+    kind: "authenticated",
+    transfer: {
+      amount: parsed.data.transferAmount,
+      merchantReference: parsed.data.code,
+      payloadDigest: createHash("sha256").update(input.rawBody, "utf8").digest("hex"),
+      providerEventId: parsed.data.id,
+      providerTransactionId: parsed.data.referenceCode,
+    },
   };
-};
+}
+
+export function matchSePayIpnToExpectedPayment(
+  transfer: AuthenticatedSePayIpn,
+  expected: ExpectedPayment,
+): SePayIpnVerificationResult {
+  if (expected.environment !== "sandbox"
+    || expected.currency !== "VND"
+    || transfer.merchantReference !== expected.merchantReference
+    || transfer.amount !== expected.amount) {
+    return { kind: "rejected", reason: "payment_mismatch" };
+  }
+
+  return {
+    evidence: createVerifiedPaymentEvidence({
+      amount: transfer.amount,
+      currency: "VND",
+      merchantReference: transfer.merchantReference,
+      provider: "sepay",
+      providerTransactionId: transfer.providerTransactionId,
+    }),
+    kind: "verified",
+    payloadDigest: transfer.payloadDigest,
+    providerEventId: transfer.providerEventId,
+    providerTransactionId: transfer.providerTransactionId,
+  };
+}
+
+export function verifySePayIpn(input: VerifySePayIpnInput): SePayIpnVerificationResult {
+  const { expected, ...authenticationInput } = input;
+  const authenticated = authenticateSePayIpn(authenticationInput);
+  return authenticated.kind === "rejected"
+    ? authenticated
+    : matchSePayIpnToExpectedPayment(authenticated.transfer, expected);
+}

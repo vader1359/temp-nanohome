@@ -30,8 +30,22 @@ describe("GET /api/customer/context", () => {
     expect(auth.getUser).not.toHaveBeenCalled();
   });
 
-  it("fails closed when identity persistence is unavailable", async () => {
+  it("returns a safe anonymous context when identity persistence is unavailable", async () => {
     const response = await GET(new Request("https://app.test/api/customer/context"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      consent: { analytics: false, personalization: false, version: "none" },
+      capabilities: { analyticsTracking: false, marketingTracking: false },
+    });
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("fails closed for an authenticated session when identity persistence is unavailable", async () => {
+    const response = await GET(new Request("https://app.test/api/customer/context", {
+      headers: { cookie: "__Host-nanohome-session=opaque-session-cookie" },
+    }));
     const body = await response.json();
 
     expect(response.status).toBe(503);

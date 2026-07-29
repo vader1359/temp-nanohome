@@ -4,7 +4,7 @@ import RootLayout from "./layout";
 
 interface HoistedState {
   isAuthenticated: boolean | undefined;
-  session: { user: { id: string } } | null;
+  session: { uid: string } | null;
   toasterMobileOffset: string | undefined;
   toasterOffset: string | undefined;
   toasterPosition: string | undefined;
@@ -93,24 +93,14 @@ vi.mock("@/components/privacy/consent-center", () => ({
   ConsentCenter: () => <div data-testid="consent-center" />,
 }));
 
-// Mock Supabase Server Client setup
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({
-    auth: {
-      getSession: async () => ({
-        data: {
-          session: hoisted.session,
-        },
-        error: null,
-      }),
-    },
-  }),
+vi.mock("@/lib/auth/firebase-session.server", () => ({
+  getCurrentFirebaseSessionClaims: async () => hoisted.session,
 }));
 
 describe("RootLayout auth bootstrap", () => {
   it("authenticates the UI when a non-null session exists", async () => {
-    // Given: Supabase server client returns a non-null session
-    hoisted.session = { user: { id: "user-123" } };
+    // Given: Firebase server verification returns a non-null session
+    hoisted.session = { uid: "firebase-user-123" };
     hoisted.isAuthenticated = undefined;
 
     // When: the layout is rendered with supported parameters

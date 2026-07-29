@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import messages from "../../../messages/vi.json";
 import { AccountOrderList } from "./account-order-list";
 
-const order = { orderId: "o1", orderNumber: "1001", placedAt: "2026-01-01T00:00:00.000Z", status: "paid", total: { amount: 120000, currency: "VND" } } as const;
+const order = { items: [], orderId: "o1", orderNumber: "1001", paymentStatus: "paid", placedAt: "2026-01-01T00:00:00.000Z", refundStatus: "none", status: "paid", total: { amount: 120000, currency: "VND" } } as const;
 
 describe("AccountOrderList", () => {
   it("renders history and only supplied cursor navigation", () => {
