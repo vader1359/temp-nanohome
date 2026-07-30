@@ -18,12 +18,12 @@ describe("AccountCartPage", () => {
       .rejects.toThrow("NEXT_REDIRECT:/vi/account/sign-in");
     expect(ports.getCart).not.toHaveBeenCalled();
   });
-  it("links an empty authenticated cart to product discovery", async () => {
+  it("renders the account cart client for an empty authenticated cart so guest items can be merged", async () => {
     // Given: an authenticated empty cart.
     ports.getAuthenticatedAccount.mockResolvedValue(account); ports.getCart.mockResolvedValue({ items: [], total: { amount: 0, currency: "VND" }, version: 0 });
     // When: the page renders.
     render(await AccountCartPage({ params: Promise.resolve({ locale: "vi" }) }));
-    // Then: it provides the locale product link.
-    expect(screen.getByRole("link", { name: "Khám phá sản phẩm" })).toHaveAttribute("href", "/vi/products");
+    // Then: the merge-capable client still renders instead of returning the empty fallback.
+    expect(screen.getByText("Cart UI")).toBeInTheDocument();
   });
 });
