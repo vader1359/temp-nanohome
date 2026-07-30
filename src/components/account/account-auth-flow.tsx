@@ -19,6 +19,12 @@ import {
   normalizeInternationalPhone,
   type SupportedPhoneCountry,
 } from "@/lib/auth/phone-e164";
+import {
+  EMAIL_LINK_RECOVERY_CHANNEL,
+  EMAIL_LINK_RECOVERY_STORAGE_KEY,
+  isFreshEmailLinkRecoverySignal,
+  readEmailLinkRecoverySignal,
+} from "@/lib/auth/email-link-recovery";
 import type { AuthSessionIntent } from "@/lib/auth/session-intent";
 import { cn } from "@/lib/utils";
 
@@ -223,7 +229,7 @@ export function AccountAuthFlow({
     setPending(true);
     setError(null);
     try {
-      await port.verifyEmailBeforeUpdate(identityUser, normalizedEmail, locale, returnTo);
+      await port.verifyEmailBeforeUpdate(identityUser, normalizedEmail, locale, returnTo, intent);
       setEmail(normalizedEmail);
       setStep("email_verification");
       setPending(false);
@@ -232,7 +238,7 @@ export function AccountAuthFlow({
     }
   };
 
-  const checkEmailVerification = async () => {
+  const checkEmailVerification = useCallback(async () => {
     if (identityUser === null) {
       setError("unknown");
       return;
@@ -252,7 +258,36 @@ export function AccountAuthFlow({
     } catch (caught) {
       handleFailure(caught);
     }
-  };
+  }, [completeSession, handleFailure, identityUser, port]);
+
+  useEffect(() => {
+    if (step !== "email_verification" || identityUser === null) return;
+
+    let completed = false;
+    const recover = () => {
+      if (completed) return;
+      completed = true;
+      void checkEmailVerification();
+    };
+    const channel = typeof BroadcastChannel === "undefined"
+      ? null
+      : new BroadcastChannel(EMAIL_LINK_RECOVERY_CHANNEL);
+    channel?.addEventListener("message", (event: MessageEvent<unknown>) => {
+      if (isFreshEmailLinkRecoverySignal(event.data)) recover();
+    });
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === EMAIL_LINK_RECOVERY_STORAGE_KEY && isFreshEmailLinkRecoverySignal(readEmailLinkRecoverySignal())) {
+        recover();
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    if (isFreshEmailLinkRecoverySignal(readEmailLinkRecoverySignal())) recover();
+
+    return () => {
+      channel?.close();
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [checkEmailVerification, identityUser, step]);
 
   const changePhone = () => {
     port.clearPhoneVerifier();

@@ -384,7 +384,13 @@
     },
     "emailLink": {
       "title": "Continue securely",
-      "body": "You can return to your destination when you are ready."
+      "body": "You can return to your destination when you are ready.",
+      "recovering": "Completing email verification securely…",
+      "returnToOriginalTab": "Your email is verified. Return to the original checkout tab; it will finish signing you in without another phone code.",
+      "returnToCheckout": "Return to checkout",
+      "expired": "This verification link has expired. Request a new email verification link.",
+      "invalid": "This verification link is no longer valid. Request a new email verification link.",
+      "unknown": "We could not restore your checkout session. Return to the original tab or start sign-in again."
     },
     "action": {
       "title": "Continue securely",

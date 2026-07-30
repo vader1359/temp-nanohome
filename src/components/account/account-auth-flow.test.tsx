@@ -43,6 +43,7 @@ function createAuthPort() {
     clearPhoneVerifier: vi.fn(),
     consumeGoogleRedirect: vi.fn(async () => null),
     createServerSession: vi.fn(async () => "/en/products"),
+    recoverEmailLinkSession: vi.fn(async () => null),
     requestPhoneCode: vi.fn(async () => confirmation),
     sendPasswordReset: vi.fn(async () => undefined),
     signInGoogle: vi.fn(async () => firebaseUser),

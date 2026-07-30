@@ -1,7 +1,7 @@
 "use client";
 
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, inMemoryPersistence, setPersistence, type Auth } from "firebase/auth";
+import { browserLocalPersistence, getAuth, setPersistence, type Auth } from "firebase/auth";
 
 let browserAuthPromise: Promise<Auth> | null = null;
 
@@ -24,7 +24,11 @@ function getFirebaseBrowserApp(): FirebaseApp {
 export function getFirebaseBrowserAuth(): Promise<Auth> {
   browserAuthPromise ??= (async () => {
     const auth = getAuth(getFirebaseBrowserApp());
-    await setPersistence(auth, inMemoryPersistence);
+    // Email verification opens Firebase's hosted action in a new tab. Local
+    // Firebase persistence lets that tab observe the same browser user; the
+    // application session is still short-lived, HttpOnly, and created only by
+    // /api/auth/session.
+    await setPersistence(auth, browserLocalPersistence);
     return auth;
   })();
   return browserAuthPromise;

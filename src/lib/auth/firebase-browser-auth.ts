@@ -39,6 +39,7 @@ export type FirebaseAuthUiErrorCode =
   | "unverified_email"
   | "account_conflict"
   | "email_verification_pending"
+  | "email_link_invalid"
   | "recent_sign_in_required"
   | "unauthorized_domain"
   | "unknown";
@@ -61,7 +62,8 @@ export interface FirebaseBrowserAuthPort {
   readonly consumeGoogleRedirect: () => Promise<User | null>;
   readonly signInPassword: (email: string, password: string) => Promise<User>;
   readonly sendPasswordReset: (email: string, locale: string) => Promise<void>;
-  readonly verifyEmailBeforeUpdate: (user: User, email: string, locale: string, returnTo: string) => Promise<void>;
+  readonly verifyEmailBeforeUpdate: (user: User, email: string, locale: string, returnTo: string, intent?: AuthSessionIntent) => Promise<void>;
+  readonly recoverEmailLinkSession: (locale: string, returnTo: string, intent?: AuthSessionIntent) => Promise<string | null>;
   readonly reloadUser: (user: User) => Promise<User>;
   readonly createServerSession: (user: User, locale: string, returnTo: string, intent?: AuthSessionIntent) => Promise<string>;
   readonly clearPhoneVerifier: () => void;
@@ -81,7 +83,10 @@ function mapFirebaseError(error: unknown): FirebaseAuthUiError {
       return new FirebaseAuthUiError("invalid_code");
     case "auth/code-expired":
     case "auth/session-expired":
+    case "auth/expired-action-code":
       return new FirebaseAuthUiError("code_expired");
+    case "auth/invalid-action-code":
+      return new FirebaseAuthUiError("email_link_invalid");
     case "auth/too-many-requests":
     case "auth/quota-exceeded":
       return new FirebaseAuthUiError("too_many_requests");
@@ -129,6 +134,36 @@ function parseCsrfResponse(input: unknown): string {
     throw new FirebaseAuthUiError("unknown");
   }
   return input.csrfToken;
+}
+
+async function createServerSessionForUser(
+  user: User,
+  locale: string,
+  returnTo: string,
+  intent: AuthSessionIntent,
+): Promise<string> {
+  const auth = await getFirebaseBrowserAuth();
+  try {
+    const csrfResponse = await fetch("/api/auth/session", {
+      cache: "no-store",
+      credentials: "same-origin",
+      method: "GET",
+    });
+    if (!csrfResponse.ok) throw new FirebaseAuthUiError("unknown");
+    const csrfToken = parseCsrfResponse(await csrfResponse.json());
+    const idToken = await user.getIdToken();
+    const sessionResponse = await fetch("/api/auth/session", {
+      body: JSON.stringify({ csrfToken, idToken, intent, locale, returnTo }),
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+    if (sessionResponse.status === 403) throw new FirebaseAuthUiError("unverified_email");
+    if (!sessionResponse.ok) throw new FirebaseAuthUiError("unknown");
+    return parseSessionResponse(await sessionResponse.json());
+  } finally {
+    await signOut(auth);
+  }
 }
 
 async function shouldUseStagingPhoneTestMode(auth: Auth, linkUser: User | undefined): Promise<boolean> {
@@ -249,13 +284,26 @@ export function createFirebaseBrowserAuthPort(): FirebaseBrowserAuthPort {
         throw mapFirebaseError(error);
       }
     },
-    async verifyEmailBeforeUpdate(user, email, locale, returnTo) {
+    async verifyEmailBeforeUpdate(user, email, locale, returnTo, intent = "account") {
       try {
         await verifyBeforeUpdateEmail(user, email, {
           handleCodeInApp: false,
-          url: `${window.location.origin}/${locale}/auth/email-link?returnTo=${encodeURIComponent(returnTo)}`,
+          url: `${window.location.origin}/${locale}/auth/email-link?intent=${intent}&returnTo=${encodeURIComponent(returnTo)}`,
         });
       } catch (error) {
+        throw mapFirebaseError(error);
+      }
+    },
+    async recoverEmailLinkSession(locale, returnTo, intent = "account") {
+      try {
+        const auth = await getFirebaseBrowserAuth();
+        await auth.authStateReady();
+        const user = auth.currentUser;
+        if (user === null) return null;
+        await user.reload();
+        return await createServerSessionForUser(user, locale, returnTo, intent);
+      } catch (error) {
+        if (error instanceof FirebaseAuthUiError) throw error;
         throw mapFirebaseError(error);
       }
     },
@@ -268,28 +316,7 @@ export function createFirebaseBrowserAuthPort(): FirebaseBrowserAuthPort {
       }
     },
     async createServerSession(user, locale, returnTo, intent = "account") {
-      const auth = await getFirebaseBrowserAuth();
-      try {
-        const csrfResponse = await fetch("/api/auth/session", {
-          cache: "no-store",
-          credentials: "same-origin",
-          method: "GET",
-        });
-        if (!csrfResponse.ok) throw new FirebaseAuthUiError("unknown");
-        const csrfToken = parseCsrfResponse(await csrfResponse.json());
-        const idToken = await user.getIdToken();
-        const sessionResponse = await fetch("/api/auth/session", {
-          body: JSON.stringify({ csrfToken, idToken, intent, locale, returnTo }),
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          method: "POST",
-        });
-        if (sessionResponse.status === 403) throw new FirebaseAuthUiError("unverified_email");
-        if (!sessionResponse.ok) throw new FirebaseAuthUiError("unknown");
-        return parseSessionResponse(await sessionResponse.json());
-      } finally {
-        await signOut(auth);
-      }
+      return createServerSessionForUser(user, locale, returnTo, intent);
     },
   };
 }

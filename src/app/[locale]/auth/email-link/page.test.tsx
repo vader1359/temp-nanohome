@@ -11,6 +11,9 @@ vi.mock("next-intl/server", () => ({
     "emailLink.title": "Continue securely",
   })[key] ?? key,
 }));
+vi.mock("./email-link-recovery", () => ({
+  EmailLinkRecovery: ({ returnTo }: { readonly returnTo: string }) => <a href={returnTo}>Continue</a>,
+}));
 
 import EmailLinkPage from "./page";
 

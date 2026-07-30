@@ -77,10 +77,12 @@ Migration order must remain:
 4. `20260730030000_staging_firebase_phone_test_mode.sql`
 5. `20260730040000_checkout_one_verified_contact.sql`
 
-## Deferred defect: email verification link opens another tab
+## Email verification link opens another tab
 
-This release intentionally does **not** fix the Firebase email-link/session
-handoff. The user requested that this bounded follow-up be documented for Claude.
+The initial one-factor checkout release documented this defect for the follow-up
+implementation. The follow-up is now implemented in the same integration branch
+as a bounded browser/session recovery change. Firebase service configuration,
+providers, rules, and authorized domains remain untouched.
 
 ### Reproduction
 
@@ -120,6 +122,30 @@ handoff. The user requested that this bounded follow-up be documented for Claude
 After successful email verification, a shopper with checkout-ready identity must
 obtain a valid server session and return to the sanitized checkout intent without
 repeating phone OTP solely because the email link opened in a second tab.
+
+### Implemented recovery contract
+
+- `src/lib/auth/firebase-client.ts` now uses Firebase browser-local persistence
+  so the hosted verification tab can observe the same Firebase user. This does
+  not create the application session; `/api/auth/session` remains the only
+  HttpOnly session boundary and the browser adapter signs out after exchange.
+- `verifyEmailBeforeUpdate` carries the validated `intent` alongside the safe
+  return path.
+- `src/app/[locale]/auth/email-link/email-link-recovery.tsx` attempts to wait for
+  the restored Firebase user, reload it after the hosted action, and call the
+  existing CSRF + ID-token session exchange. A successful exchange navigates to
+  the server-returned safe destination.
+- If the callback tab has no Firebase user, it publishes only an opaque,
+  ten-minute recovery marker through `BroadcastChannel` and localStorage. The
+  original auth tab listens for the marker, reloads its in-memory user, and
+  completes the existing server session flow without a second phone OTP.
+- The callback shows explicit recovering, expired, invalid-link, and
+  return-to-original-tab states instead of a generic unknown state.
+- `src/lib/auth/firebase-browser-auth.test.ts` and
+  `src/app/[locale]/auth/email-link/email-link-recovery.test.tsx` cover the
+  email-only checkout session exchange, no-user second-tab signal, opaque marker
+  invariant, expired-link state, and safe navigation. Existing one-factor
+  checkout/auth tests remain unchanged and passing.
 
 ### Recommended bounded implementation
 
@@ -202,14 +228,12 @@ Use SePay Test Mode only.
 
 ## Current handoff verification status
 
-Verified on the integration worktree before handoff:
+Verified on the integration worktree during the recovery follow-up:
 
-- Focused Vitest: 10 files / 73 tests passed.
-- Full Vitest: process exited 0; the token-filtered runner did not retain the
-  aggregate count in its final output.
+- Recovery/auth focused Vitest: 6 files / 30 tests passed.
+- Full Vitest: process exited 0.
 - TypeScript `--noEmit`: passed.
-- Scoped ESLint: 0 errors, 2 existing `@next/next/no-img-element` warnings in
-  `src/components/checkout/checkout-page.tsx`.
+- Scoped ESLint on the recovery surface: 0 errors.
 - `git diff --check`: passed.
 - Batch state validator: passed.
 - SePay Test bank-account discovery: sandbox endpoint returned HTTP 520 twice.
@@ -217,12 +241,14 @@ Verified on the integration worktree before handoff:
 - Production build: webpack compilation completed successfully; the follow-up
   TypeScript phase was manually interrupted after it stopped producing output.
   Treat the build gate as pending, not passed.
-- Disposable Supabase reset/pgTAP: pending in this handoff continuation.
+- Disposable Supabase reset/lint/pgTAP: 27 files / 911 tests passed, plus
+  Instagram cleanup 1 file / 8 tests passed.
 
 The intended commit excludes `.env.local`, `.agents/`, and `supabase/.temp/`.
-The staged release contains only the checkout/auth contract, its tests and
-migration, translations, and this handoff document. No email-link recovery code
-has been implemented in this release.
+The release contains only the checkout/auth contract, email-link recovery code,
+their tests, translations, migration, and this handoff document. No production
+deployment, Firebase configuration change, AMIS write, or secret disclosure was
+made by this worktree.
 
 ## Suggested verification commands
 

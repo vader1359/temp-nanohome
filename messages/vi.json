@@ -384,7 +384,13 @@
     },
     "emailLink": {
       "title": "Tiếp tục an toàn",
-      "body": "Bạn có thể quay lại điểm đến của mình khi sẵn sàng."
+      "body": "Bạn có thể quay lại điểm đến của mình khi sẵn sàng.",
+      "recovering": "Đang hoàn tất xác minh email an toàn…",
+      "returnToOriginalTab": "Email đã được xác minh. Hãy quay lại tab checkout ban đầu; hệ thống sẽ đăng nhập mà không bắt nhập lại mã điện thoại.",
+      "returnToCheckout": "Quay lại checkout",
+      "expired": "Liên kết xác minh đã hết hạn. Hãy yêu cầu gửi lại liên kết xác minh email.",
+      "invalid": "Liên kết xác minh không còn hợp lệ. Hãy yêu cầu gửi lại liên kết xác minh email.",
+      "unknown": "Không thể khôi phục phiên checkout. Hãy quay lại tab ban đầu hoặc bắt đầu đăng nhập lại."
     },
     "action": {
       "title": "Tiếp tục an toàn",
