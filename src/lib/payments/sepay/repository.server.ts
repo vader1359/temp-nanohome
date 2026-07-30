@@ -7,7 +7,10 @@ export type SePayTestAttempt = Readonly<{
   readonly attemptId: string;
   readonly created: boolean;
   readonly currency: "VND";
+  readonly expiresAt: string;
   readonly merchantReference: string;
+  readonly providerCheckoutUrl: string;
+  readonly providerOrderId: string;
   readonly state: "created" | "pending" | "authorized" | "succeeded" | "failed" | "expired" | "cancelled";
 }>;
 
@@ -35,7 +38,11 @@ export interface SePayTestRepository {
     readonly providerTransactionId: string;
     readonly receivedAt: Date;
   }>) => Promise<"applied" | "conflict" | "duplicate" | "not_found" | "rejected">;
-  readonly createAttempt: (accountId: string, orderId: string) => Promise<SePayTestAttempt>;
+  readonly createAttempt: (
+    accountId: string,
+    orderId: string,
+    idempotencyKey: string,
+  ) => Promise<SePayTestAttempt>;
   readonly getExpectedPayment: (
     merchantReference: string,
   ) => Promise<ExpectedSePayTestPayment | null>;
@@ -58,7 +65,10 @@ type AttemptRow = Readonly<{
   attempt_state: SePayTestAttempt["state"];
   created: boolean;
   currency: string;
+  expires_at: string;
   merchant_reference: string;
+  provider_checkout_url: string;
+  provider_order_id: string;
 }>;
 
 type ExpectedRow = Readonly<{
@@ -130,9 +140,13 @@ export function createSePayTestRepository(options: Readonly<{
   }
 
   return {
-    async createAttempt(accountId, orderId) {
+    async createAttempt(accountId, orderId, idempotencyKey) {
       const rows = await requestRows<AttemptRow>("rpc/create_customer_sepay_test_attempt", {}, {
-        body: { p_account_id: accountId, p_order_id: orderId },
+        body: {
+          p_account_id: accountId,
+          p_idempotency_key: idempotencyKey,
+          p_order_id: orderId,
+        },
         method: "POST",
       });
       const row = rows[0];
@@ -140,7 +154,10 @@ export function createSePayTestRepository(options: Readonly<{
         || row.currency !== "VND"
         || typeof row.attempt_id !== "string"
         || typeof row.created !== "boolean"
-        || typeof row.merchant_reference !== "string") {
+        || typeof row.expires_at !== "string"
+        || typeof row.merchant_reference !== "string"
+        || typeof row.provider_checkout_url !== "string"
+        || typeof row.provider_order_id !== "string") {
         throw new SePayTestRepositoryError("request_failed");
       }
       return {
@@ -148,7 +165,10 @@ export function createSePayTestRepository(options: Readonly<{
         attemptId: row.attempt_id,
         created: row.created,
         currency: "VND",
+        expiresAt: row.expires_at,
         merchantReference: row.merchant_reference,
+        providerCheckoutUrl: row.provider_checkout_url,
+        providerOrderId: row.provider_order_id,
         state: row.attempt_state,
       };
     },

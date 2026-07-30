@@ -5,6 +5,11 @@ import { env } from "../../env";
 import { publicChatAnswerSchema, publicChatToolCallSchema, type PublicChatAnswer, type PublicChatLocale, type PublicChatToolCall } from "../contracts";
 import type { PublicChatPolicyDecision } from "../policy";
 import { resolvePublicChatAnswer, type PublicChatServerRegistries, type RenderSafePublicChatAnswer } from "../resolution";
+import {
+  parseShoppingIntent,
+  shoppingIntentToCatalogRequest,
+  type ShoppingIntent,
+} from "../shopping-intent";
 import { executePublicChatTool, type PublicCatalogRecord, type PublicChatToolAdapters, type PublicChatToolResult } from "../tools/public-tools";
 import { requestDeepSeek, type DeepSeekModel } from "./provider";
 
@@ -21,6 +26,8 @@ type OrchestratorInput = Readonly<{
   toolAdapters?: PublicChatToolAdapters;
   signal?: AbortSignal;
   onToolStarted?: (name: PublicChatToolCall["name"]) => void;
+  onToolResult?: (result: PublicChatToolResult) => void;
+  onIntentParsed?: (intent: ShoppingIntent) => void;
 }>;
 
 // A grounded answer can need a catalog search followed by canonical detail lookup.
@@ -55,6 +62,12 @@ const noCatalogResultText: Readonly<Record<PublicChatLocale, string>> = {
   vi: "Hiện tôi chưa tìm thấy sản phẩm công khai đã được duyệt phù hợp với yêu cầu này. Bạn có thể mô tả rõ hơn loại sản phẩm, kích thước, màu sắc hoặc không gian cần sử dụng.",
   en: "I could not find an approved public product matching this request. Try adding the product type, size, color, or intended space.",
   ko: "현재 요청에 맞는 승인된 공개 제품을 찾지 못했습니다. 제품 종류, 크기, 색상 또는 사용할 공간을 더 구체적으로 알려 주세요.",
+};
+
+const clarificationText: Readonly<Record<PublicChatLocale, string>> = {
+  vi: "Để gợi ý đúng hơn, bạn cho tôi biết loại sản phẩm, không gian sử dụng và ngân sách mong muốn nhé.",
+  en: "To make a useful recommendation, please tell me the product type, intended space, and budget.",
+  ko: "정확한 추천을 위해 제품 종류, 사용할 공간, 예산을 알려 주세요.",
 };
 
 const noPageResultText: Readonly<Record<PublicChatLocale, string>> = {
@@ -408,6 +421,22 @@ function toolSignature(call: PublicChatToolCall): string {
   return JSON.stringify(call);
 }
 
+function deterministicCatalogCall(
+  input: OrchestratorInput,
+  request: NonNullable<ReturnType<typeof shoppingIntentToCatalogRequest>>,
+): PublicChatToolCall {
+  if (input.toolAdapters?.catalog.searchStructured !== undefined) {
+    return { name: "search_catalog_v2", arguments: request };
+  }
+  return {
+    name: "search_catalog",
+    arguments: {
+      query: input.question.slice(0, 240),
+      limit: request.limit,
+    },
+  };
+}
+
 function isVerifiedFollowupTool(
   call: PublicChatToolCall,
   toolResults: readonly PublicChatToolResult[],
@@ -466,6 +495,16 @@ export async function orchestratePublicChat(input: OrchestratorInput): Promise<R
       : (toolInput: Parameters<typeof executePublicChatTool>[0], signal?: AbortSignal) => executePublicChatTool(toolInput, adapters, signal);
   })();
   let toolResults = input.toolResults ?? [];
+  const shoppingIntent = parseShoppingIntent(input.question, input.locale);
+  input.onIntentParsed?.(shoppingIntent);
+  const structuredCatalogRequest = shoppingIntentToCatalogRequest(shoppingIntent);
+  if (shoppingIntent.kind === "unsupported") return fallback(input);
+  if (
+    shoppingIntent.kind === "clarification"
+    && shoppingIntent.ambiguity !== undefined
+    && (input.evidence?.length ?? 0) === 0
+    && publicPageIntent(input.question) === undefined
+  ) return plainAnswer(clarificationText[input.locale]);
   const executedTools = new Map<string, PublicChatToolResult>();
   const executeOnce = async (call: PublicChatToolCall): Promise<{
     readonly result: PublicChatToolResult;
@@ -480,10 +519,19 @@ export async function orchestratePublicChat(input: OrchestratorInput): Promise<R
     const result = await executeTool(call, input.signal);
     executedTools.set(signature, result);
     toolResults = [...toolResults, result];
+    input.onToolResult?.(result);
     return { result, repeated: false };
   };
 
-  const productQuestion = isProductQuestion(input.question);
+  const productQuestion = shoppingIntent.kind !== "policy"
+    && (structuredCatalogRequest !== undefined || isProductQuestion(input.question));
+  // Normal product discovery gets one provider render round after the
+  // deterministic retrieval.  Comparisons may spend one extra round on an
+  // allowlisted, already-grounded comparison call; general knowledge keeps
+  // the existing bounded three-round ceiling.
+  const providerRoundLimit = productQuestion
+    ? shoppingIntent.kind === "comparison" ? 2 : 1
+    : maximumRounds;
   const pageSection = !productQuestion && (input.evidence?.length ?? 0) === 0
     ? publicPageIntent(input.question)
     : undefined;
@@ -503,12 +551,12 @@ export async function orchestratePublicChat(input: OrchestratorInput): Promise<R
   }
 
   if (productQuestion) {
+    if (structuredCatalogRequest === undefined) {
+      return plainAnswer(clarificationText[input.locale]);
+    }
     if (input.signal?.aborted) return fallback(input);
     try {
-      const retrieval = await executeOnce({
-        name: "search_catalog",
-        arguments: { query: input.question.slice(0, 240), limit: 8 },
-      });
+      const retrieval = await executeOnce(deterministicCatalogCall(input, structuredCatalogRequest));
       if (input.signal?.aborted) return fallback(input);
       const failure = explicitToolFailure(retrieval.result, input.locale);
       if (failure !== undefined) return failure;
@@ -517,7 +565,7 @@ export async function orchestratePublicChat(input: OrchestratorInput): Promise<R
     }
   }
 
-  for (let round = 0; round < maximumRounds; round += 1) {
+  for (let round = 0; round < providerRoundLimit; round += 1) {
     if (input.signal?.aborted) return fallback(input);
     try {
       const providerResult = await provider({ apiKey, model, question: input.question, locale: input.locale, evidence: input.evidence ?? [], toolResults, signal: input.signal });

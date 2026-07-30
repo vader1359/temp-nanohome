@@ -4,6 +4,7 @@ import { z } from "zod";
 import { isCloudinaryUrl, isR2PublicMediaUrl } from "@/lib/image";
 
 import { publicChatToolCallSchema, type PublicChatToolCall, type PublicChatLocale } from "../contracts";
+import type { ShoppingCatalogSearchRequest } from "../shopping-intent";
 
 const publicIdentifierSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/);
 const publicAttributeKeySchema = z.enum([
@@ -75,6 +76,10 @@ type PublicCatalogAdapterRecord = PublicCatalogRecord & { readonly eligible: boo
 
 export type PublicCatalogAdapters = {
   readonly search: (query: string, limit: number, signal?: AbortSignal) => Promise<readonly PublicCatalogAdapterRecord[]>;
+  readonly searchStructured?: (
+    request: ShoppingCatalogSearchRequest,
+    signal?: AbortSignal,
+  ) => Promise<readonly PublicCatalogAdapterRecord[]>;
   readonly details: (canonicalIds: readonly string[], signal?: AbortSignal) => Promise<readonly PublicCatalogAdapterRecord[]>;
   readonly compare: (
     variantIds: readonly string[],
@@ -171,6 +176,15 @@ async function executeParsedTool(tool: PublicChatToolCall, adapters: PublicChatT
   switch (tool.name) {
     case "search_catalog": {
       const parsedRecords = parseCatalogRecords(await adapters.catalog.search(tool.arguments.query, tool.arguments.limit, signal));
+      if (!hasUniqueRecordIds(parsedRecords, "variantId")) return { kind: "adapter_error", operation: tool.name };
+      const records = eligible(parsedRecords);
+      return { kind: "catalog", records: records.slice(0, tool.arguments.limit) };
+    }
+    case "search_catalog_v2": {
+      if (adapters.catalog.searchStructured === undefined) {
+        return { kind: "adapter_error", operation: tool.name };
+      }
+      const parsedRecords = parseCatalogRecords(await adapters.catalog.searchStructured(tool.arguments, signal));
       if (!hasUniqueRecordIds(parsedRecords, "variantId")) return { kind: "adapter_error", operation: tool.name };
       const records = eligible(parsedRecords);
       return { kind: "catalog", records: records.slice(0, tool.arguments.limit) };

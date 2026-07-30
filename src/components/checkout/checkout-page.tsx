@@ -3,48 +3,78 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { useCart, type CartItem } from "@/components/cart/cart-context";
 import type { AccountCart } from "@/lib/account/cart-port";
-import { ShoppingCart } from "lucide-react";
+import { cartCheckoutReadiness } from "@/lib/checkout/cart-readiness";
+import type { CheckoutIdentity } from "@/lib/checkout/checkout-identity";
+import {
+  isExpectedSePayTestVietQrUrl,
+  isSePayTestPaymentReference,
+} from "@/lib/payments/sepay/checkout";
 
-type CheckoutStatus = "idle" | "submitting" | "success" | "error";
+type CheckoutStatus = "idle" | "submitting" | "payment_pending" | "error";
 
-type CheckoutForm = {
+type CheckoutForm = Readonly<{
   address: string;
   name: string;
   phone: string;
   email: string;
-};
-
-type CheckoutCompletion = Readonly<{
-  readonly amount: number;
-  readonly currency: "VND";
-  readonly merchantReference: string;
-  readonly orderNumber: string;
-  readonly paymentState: "paid" | "pending";
 }>;
 
-const initialForm: CheckoutForm = { address: "", email: "", name: "", phone: "" };
+type CheckoutPageProps = Readonly<{
+  initialAccountCart: AccountCart;
+  checkoutIdentity: CheckoutIdentity;
+  initialFullName?: string;
+  locale?: string;
+}>;
+
+type OrderResponse = Readonly<{
+  orderId: string;
+  orderNumber: string;
+  replayed: boolean;
+  next: "initialize_payment";
+}>;
+
+type PaymentResponse = Readonly<{
+  payment: Readonly<{
+    amount: number;
+    attemptId: string;
+    currency: "VND";
+    environment: "sandbox";
+    expiresAt: string;
+    handoff: "vietqr";
+    merchantReference: string;
+    paymentUrl: string;
+    state: "pending";
+  }>;
+}>;
 
 export function CheckoutPage({
+  checkoutIdentity,
   initialAccountCart,
-}: Readonly<{ initialAccountCart: AccountCart }>) {
+  initialFullName = "",
+  locale = "vi",
+}: CheckoutPageProps) {
   const t = useTranslations("Checkout");
-  const { items: guestItems, removeItem, updateQuantity } = useCart();
-  const [form, setForm] = useState<CheckoutForm>(initialForm);
+  const readiness = cartCheckoutReadiness(initialAccountCart);
+  const [form, setForm] = useState<CheckoutForm>({
+    address: "",
+    email: checkoutIdentity.verifiedEmail,
+    name: initialFullName,
+    phone: checkoutIdentity.verifiedPhoneE164,
+  });
   const [vatRequested, setVatRequested] = useState(false);
   const [vatCompanyName, setVatCompanyName] = useState("");
   const [vatTaxCode, setVatTaxCode] = useState("");
   const [vatInvoiceAddress, setVatInvoiceAddress] = useState("");
   const [status, setStatus] = useState<CheckoutStatus>("idle");
   const [error, setError] = useState("");
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [completion, setCompletion] = useState<CheckoutCompletion | null>(null);
+  const [payment, setPayment] = useState<PaymentResponse["payment"] | null>(null);
   const checkoutIdempotencyKey = useRef<string | null>(null);
-  const mergeIdempotencyKey = useRef<string | null>(null);
-  const accountCartItems: CartItem[] = initialAccountCart.items.map((item) => ({
+  const paymentIdempotencyKey = useRef<string | null>(null);
+
+  const items = initialAccountCart.items.map((item) => ({
     badge: item.available ? "In stock" : "Unavailable",
-    badgeTone: "stock",
+    badgeTone: "stock" as const,
     category: "nanoHome",
     id: item.variantId,
     image: "/images/p_lc2.png",
@@ -52,477 +82,346 @@ export function CheckoutPage({
     price: String(item.unitPrice.amount),
     quantity: item.quantity,
   }));
-  const usingAccountCart = accountCartItems.length > 0;
-  const items = usingAccountCart ? accountCartItems : guestItems;
+  const total = items.reduce((sum, item) => sum + item.quantity * parseCartPrice(item.price), 0);
 
-  // Selection state is tracking unselected items (inverse). Default all selected.
-  const [unselectedIds, setUnselectedIds] = useState<Set<string>>(new Set());
-
-  // Derive active selections
-  const selectedItems = items.filter((item) => !unselectedIds.has(item.id));
-  const isAllSelected = selectedItems.length === items.length && items.length > 0;
-
-  const toggleSelectAll = () => {
-    if (usingAccountCart) return;
-    if (isAllSelected) {
-      setUnselectedIds(new Set(items.map((i) => i.id)));
-    } else {
-      setUnselectedIds(new Set());
-    }
-  };
-
-  const toggleItem = (id: string) => {
-    if (usingAccountCart) return;
-    const next = new Set(unselectedIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setUnselectedIds(next);
-  };
-
-  const total = selectedItems.reduce((sum, item) => sum + parseCartPrice(item.price) * item.quantity, 0);
-  const originalTotal = selectedItems.reduce((sum, item) => sum + parseCartPrice(item.originalPrice || item.price) * item.quantity, 0);
-  const savings = Math.max(0, originalTotal - total);
-
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (items.length === 0 || status === "submitting") return;
+    if (status === "submitting" || status === "payment_pending") return;
 
-    if (selectedItems.length === 0) {
-      setError(t("validationSelectItems"));
+    if (readiness.kind !== "ready") {
+      setError(readiness.kind === "stock_changed"
+        ? t("checkoutStockChanged")
+        : t("checkoutUnavailableCart"));
       setStatus("error");
       return;
     }
-
-    if (step === 2 && (!form.name.trim() || !form.phone.trim() || !form.email.trim() || !form.address.trim())) {
+    if (!form.name.trim() || !form.address.trim()) {
       setError(t("validationRequired"));
       setStatus("error");
       return;
     }
-    
-    // Fallback block if form gets submitted during a transition block
-    if (step < 3 && typeof window !== 'undefined' && window.innerWidth < 1024) {
-      setStep((s) => (s + 1) as 1 | 2 | 3);
-      setError("");
+    if (vatRequested && (!vatCompanyName.trim() || !vatTaxCode.trim() || !vatInvoiceAddress.trim())) {
+      setError(t("validationRequired"));
+      setStatus("error");
       return;
     }
 
-    const submittedIds = selectedItems.map((item) => item.id);
     checkoutIdempotencyKey.current ??= crypto.randomUUID();
-    mergeIdempotencyKey.current ??= crypto.randomUUID();
-
-    setStatus("submitting");
+    paymentIdempotencyKey.current ??= crypto.randomUUID();
     setError("");
+    setStatus("submitting");
 
     try {
-      if (!usingAccountCart) {
-        const mergeResponse = await fetch("/api/account/cart/merge-guest", {
-          body: JSON.stringify({
-            idempotencyKey: mergeIdempotencyKey.current,
-            items: selectedItems.map((item) => ({ quantity: item.quantity, variantId: item.id })),
-          }),
-          headers: { "Content-Type": "application/json" },
-          method: "POST",
-        });
-        if (!mergeResponse.ok) {
-          if (mergeResponse.status === 401) throw new Error(t("authenticationRequired"));
-          throw new Error(t("serverError"));
-        }
-      }
-
       const checkoutResponse = await fetch("/api/checkout", {
         body: JSON.stringify({
-          address: form.address.trim(),
-          email: form.email.trim(),
-          fullName: form.name.trim(),
           idempotencyKey: checkoutIdempotencyKey.current,
-          note: vatRequested
-            ? `VAT: ${vatCompanyName.trim()} | ${vatTaxCode.trim()} | ${vatInvoiceAddress.trim()}`
-            : undefined,
-          phone: form.phone.trim(),
+          delivery: {
+            address: form.address.trim(),
+            addressId: null,
+            fullName: form.name.trim(),
+          },
+          vat: vatRequested
+            ? {
+                address: vatInvoiceAddress.trim(),
+                companyName: vatCompanyName.trim(),
+                taxCode: vatTaxCode.trim(),
+              }
+            : null,
         }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });
       const checkoutData: unknown = await checkoutResponse.json();
       if (!checkoutResponse.ok || !isOrderResponse(checkoutData)) {
-        throw new Error(t("serverError"));
+        throw new Error(checkoutErrorMessage(apiErrorCode(checkoutData), t));
       }
 
       const paymentResponse = await fetch(
         `/api/orders/${checkoutData.orderId}/payments/sepay`,
-        { method: "POST" },
+        {
+          body: JSON.stringify({
+            idempotencyKey: paymentIdempotencyKey.current,
+            returnUrlsVersion: "v1",
+          }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        },
       );
       const paymentData: unknown = await paymentResponse.json();
       if (!paymentResponse.ok || !isPaymentResponse(paymentData)) {
-        throw new Error(t("paymentError"));
+        throw new Error(paymentErrorMessage(apiErrorCode(paymentData), t));
       }
 
-      if (!usingAccountCart) submittedIds.forEach((id) => removeItem(id));
-      setCompletion({
-        amount: paymentData.payment.amount,
-        currency: paymentData.payment.currency,
-        merchantReference: paymentData.payment.merchantReference,
-        orderNumber: checkoutData.orderNumber,
-        paymentState: paymentData.payment.paymentState,
-      });
-      checkoutIdempotencyKey.current = null;
-      mergeIdempotencyKey.current = null;
-      setStatus("success");
+      setPayment(paymentData.payment);
+      setStatus("payment_pending");
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : t("serverError"));
       setStatus("error");
     }
-  };
+  }
 
-  if (items.length === 0 && status !== "success") {
+  if (readiness.kind === "empty") {
     return (
       <main className="min-h-[60vh] bg-white px-4 py-16 sm:px-6 lg:px-12">
         <div className="mx-auto max-w-3xl border border-[#E5E5E5] bg-white p-8 text-center sm:p-12">
           <h1 className="text-2xl text-[#1A1A1A]">{t("emptyTitle")}</h1>
           <p className="mt-3 text-sm text-[#666666]">{t("emptyDescription")}</p>
-          <Link href="/products" className="mt-8 inline-flex bg-[#1A1A1A] px-6 py-3 text-sm text-white hover:bg-black transition-colors">{t("continueShopping")}</Link>
+          <Link className="mt-8 inline-flex bg-[#1A1A1A] px-6 py-3 text-sm text-white" href="/products">
+            {t("continueShopping")}
+          </Link>
         </div>
       </main>
     );
   }
 
+  if (status === "payment_pending" && payment !== null) {
+    return (
+      <main className="min-h-[60vh] bg-white px-4 py-16 sm:px-6 lg:px-12">
+        <section aria-live="polite" className="mx-auto max-w-3xl border border-[#E5E5E5] p-8 text-center sm:p-12">
+          <h1 className="text-2xl text-[#1A1A1A]">{t("sepayQrTitle")}</h1>
+          <p className="mt-3 text-sm text-[#666666]">{t("sepayQrInstructions")}</p>
+          <img
+            alt={t("sepayQrAlt")}
+            className="mx-auto mt-8 w-full max-w-md"
+            src={payment.paymentUrl}
+          />
+          <dl className="mx-auto mt-8 grid max-w-md gap-4 border-t border-[#E5E5E5] pt-6 text-left text-sm">
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-[#666666]">{t("total")}</dt>
+              <dd className="font-medium text-[#1A1A1A]">{formatVnd(payment.amount)}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-[#666666]">{t("paymentReference")}</dt>
+              <dd className="font-mono font-medium text-[#1A1A1A]">{payment.merchantReference}</dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-sm text-[#666666]">{t("sepayTestPending")}</p>
+          <p className="mt-2 text-xs font-medium text-[#B54708]">{t("sepayQrTestOnly")}</p>
+        </section>
+      </main>
+    );
+  }
+
   return (
-    <main className="min-h-[60vh] bg-white px-4 py-8 sm:px-6 lg:px-12 pb-32 lg:pb-16">
-      <div className="mx-auto max-w-[1540px]">
-        {status === "success" ? (
-          <div className="mx-auto max-w-3xl text-center mt-8">
-            <h1 className="text-3xl font-normal text-[#1A1A1A]">{t("successTitle")}</h1>
-            <section className="mt-8 border border-[#E5E5E5] bg-white p-8 sm:p-12" aria-live="polite">
-              <p className="text-base text-[#666666]">{t("successDescription")}</p>
-              {completion !== null ? (
-                <dl className="mt-6 grid gap-3 text-left text-sm">
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-[#666666]">{t("orderNumber")}</dt>
-                    <dd className="font-medium text-[#1A1A1A]">{completion.orderNumber}</dd>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-[#666666]">{t("paymentReference")}</dt>
-                    <dd className="font-medium text-[#1A1A1A]">{completion.merchantReference}</dd>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-[#666666]">{t("paymentStatus")}</dt>
-                    <dd className="font-medium text-[#1A1A1A]">
-                      {completion.paymentState === "paid" ? t("paid") : t("pendingVerification")}
-                    </dd>
-                  </div>
-                </dl>
-              ) : null}
-            </section>
-          </div>
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className={`flex flex-col gap-6 ${step !== 2 && step !== 3 ? 'hidden lg:flex' : ''}`}>
-              {/* Shipping Form Card (Step 2 on mobile, always on desktop) */}
-              <div className={`border border-[#E5E5E5] bg-white p-6 sm:p-8 ${step !== 2 && step !== 3 ? 'hidden lg:block' : ''}`}>
-                <h2 className="text-xl text-[#1A1A1A] mb-6">{t("details")}</h2>
-                <form id="checkout-form" data-testid="checkout-form" onSubmit={submit} className="flex flex-col gap-6">
-                  {(["name", "phone", "email", "address"] as const).map((field) => (
-                    <div key={field} className="relative">
-                      <input
-                        id={`checkout-${field}`}
-                        required
-                        value={form[field]}
-                        onChange={(event) => setForm({ ...form, [field]: event.target.value })}
-                        className="peer w-full border-b border-[#E5E5E5] bg-transparent pb-2 pt-5 text-base text-[#1A1A1A] outline-none placeholder:text-transparent focus:border-[#1A1A1A] disabled:opacity-50"
-                        type={field === "email" ? "email" : field === "phone" ? "tel" : "text"}
-                        placeholder={t(field)}
-                        disabled={status === "submitting"}
-                      />
-                      <label
-                        htmlFor={`checkout-${field}`}
-                        className="absolute left-0 top-1 text-xs text-[#666666] transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#1A1A1A]"
-                      >
-                        {t(field)} <span aria-hidden="true">*</span>
-                      </label>
-                    </div>
-                  ))}
-
-                  <label className="flex items-center gap-3 text-sm text-[#1A1A1A] mt-2 cursor-pointer">
-                    <div className="relative flex h-4 w-4 shrink-0 items-center justify-center">
-                      <input
-                        type="checkbox"
-                        aria-label="Issue VAT Invoice (Optional)"
-                        checked={vatRequested}
-                        onChange={(e) => setVatRequested(e.target.checked)}
-                        disabled={status === "submitting"}
-                        className="peer h-4 w-4 appearance-none rounded-[2px] border border-[#CCCCCC] bg-white checked:border-[#1A1A1A] checked:bg-[#1A1A1A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A1A1A] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                      />
-                      <svg className="pointer-events-none absolute h-3 w-3 text-white opacity-0 peer-checked:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </div>
-                    {t("vatInvoice")}
-                  </label>
-                  {vatRequested && (
-                    <div className="space-y-3 pt-2">
-                      <input value={vatCompanyName} onChange={(e) => setVatCompanyName(e.target.value)} placeholder="Tên công ty xuất hóa đơn" className="w-full border-b border-[#E5E5E5] bg-transparent pb-2 pt-2 text-sm outline-none focus:border-[#1A1A1A]" />
-                      <input value={vatTaxCode} onChange={(e) => setVatTaxCode(e.target.value)} placeholder="Mã số thuế" className="w-full border-b border-[#E5E5E5] bg-transparent pb-2 pt-2 text-sm outline-none focus:border-[#1A1A1A]" />
-                      <input value={vatInvoiceAddress} onChange={(e) => setVatInvoiceAddress(e.target.value)} placeholder="Địa chỉ xuất hóa đơn" className="w-full border-b border-[#E5E5E5] bg-transparent pb-2 pt-2 text-sm outline-none focus:border-[#1A1A1A]" />
-                    </div>
-                  )}
-                </form>
-              </div>
-
-              {/* Payment Card (Step 3 on mobile, always on desktop) */}
-              <div className={`border border-[#E5E5E5] bg-white p-6 sm:p-8 ${step !== 3 ? 'hidden lg:block' : ''}`}>
-                <h2 className="text-xl text-[#1A1A1A] mb-6">{t("payment")}</h2>
-                <p className="text-sm text-[#666666]">{t("sepayTestPending")}</p>
-              </div>
+    <main className="min-h-[60vh] bg-white px-4 py-8 pb-32 sm:px-6 lg:px-12">
+      <div className="mx-auto grid max-w-[1540px] gap-6 lg:grid-cols-2">
+        <section className="border border-[#E5E5E5] bg-white p-6 sm:p-8">
+          <h1 className="text-2xl text-[#1A1A1A]">{t("title")}</h1>
+          <h2 className="mt-8 text-xl text-[#1A1A1A]">{t("details")}</h2>
+          <form className="mt-6 flex flex-col gap-6" data-testid="checkout-form" onSubmit={submit}>
+            <label className="grid gap-2 text-sm text-[#666666]" htmlFor="checkout-name">
+              {t("name")} <span aria-hidden="true">*</span>
+              <input
+                className="min-h-11 border-b border-[#E5E5E5] bg-transparent px-1 text-base text-[#1A1A1A] outline-none focus:border-[#1A1A1A]"
+                disabled={status === "submitting"}
+                id="checkout-name"
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
+                required
+                value={form.name}
+              />
+            </label>
+            <label className="grid gap-2 text-sm text-[#666666]" htmlFor="checkout-email">
+              {t("email")}
+              <input
+                aria-readonly="true"
+                className="min-h-11 border-b border-[#E5E5E5] bg-[#FAFAFA] px-1 text-base text-[#666666] outline-none"
+                id="checkout-email"
+                readOnly
+                value={form.email}
+              />
+            </label>
+            <div className="grid gap-2 text-sm text-[#666666]">
+              <label htmlFor="checkout-phone">{t("phone")}</label>
+              <input
+                aria-readonly="true"
+                className="min-h-11 border-b border-[#E5E5E5] bg-[#FAFAFA] px-1 text-base text-[#666666] outline-none"
+                id="checkout-phone"
+                readOnly
+                value={form.phone}
+              />
+              <Link
+                className="text-xs text-[#666666] underline underline-offset-4"
+                href={`/account/sign-in?returnTo=${encodeURIComponent(`/${locale}/checkout`)}`}
+              >
+                {t("changeVerifiedPhone")}
+              </Link>
+              <p className="text-xs leading-5 text-[#666666]">
+                {t("verifiedContactNotice")}
+              </p>
             </div>
-
-            <div className={`flex flex-col gap-6 ${step !== 1 && step !== 3 ? 'hidden lg:flex' : ''}`}>
-              {/* Cart Card (Step 1 on mobile, always visible on desktop) */}
-              <div className={`border border-[#E5E5E5] bg-white p-6 sm:p-8 ${step !== 1 ? 'hidden lg:block' : ''}`}>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl text-[#1A1A1A]">{t("summary")}</h2>
-                  <div className="flex items-center gap-4 text-sm">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <div className="relative flex h-4 w-4 shrink-0 items-center justify-center">
-                        <input
-                          type="checkbox"
-                          aria-label="selectAll"
-                          checked={isAllSelected}
-                          onChange={toggleSelectAll}
-                          disabled={status === "submitting" || usingAccountCart}
-                          className="peer h-4 w-4 appearance-none rounded-[2px] border border-[#CCCCCC] bg-white checked:border-[#1A1A1A] checked:bg-[#1A1A1A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A1A1A] disabled:opacity-50 cursor-pointer"
-                        />
-                        <svg className="pointer-events-none absolute h-3 w-3 text-white opacity-0 peer-checked:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      </div>
-                      <span className="text-[#666666]">{t("selectAll")}</span>
-                    </label>
-
-                  </div>
-                </div>
-
-                <div className="flex flex-col">
-                  {items.map((item, index) => (
-                    <CheckoutItem
-                      key={item.id}
-                      item={item}
-                      selected={!unselectedIds.has(item.id)}
-                      onToggle={() => toggleItem(item.id)}
-                      onUpdateQuantity={updateQuantity}
-                      disabled={status === "submitting" || usingAccountCart}
-                      isLast={index === items.length - 1}
-                    />
-                  ))}
-                </div>
+            <label className="grid gap-2 text-sm text-[#666666]" htmlFor="checkout-address">
+              {t("address")} <span aria-hidden="true">*</span>
+              <textarea
+                className="min-h-28 border border-[#E5E5E5] bg-transparent p-3 text-base text-[#1A1A1A] outline-none focus:border-[#1A1A1A]"
+                disabled={status === "submitting"}
+                id="checkout-address"
+                onChange={(event) => setForm({ ...form, address: event.target.value })}
+                required
+                value={form.address}
+              />
+            </label>
+            <label className="flex items-center gap-3 text-sm text-[#1A1A1A]">
+              <input
+                checked={vatRequested}
+                disabled={status === "submitting"}
+                onChange={(event) => setVatRequested(event.target.checked)}
+                type="checkbox"
+              />
+              {t("vatInvoice")}
+            </label>
+            {vatRequested ? (
+              <div className="grid gap-3">
+                <input aria-label="VAT company" className="border-b border-[#E5E5E5] p-2" onChange={(event) => setVatCompanyName(event.target.value)} placeholder="Tên công ty xuất hóa đơn" value={vatCompanyName} />
+                <input aria-label="VAT tax code" className="border-b border-[#E5E5E5] p-2" onChange={(event) => setVatTaxCode(event.target.value)} placeholder="Mã số thuế" value={vatTaxCode} />
+                <input aria-label="VAT address" className="border-b border-[#E5E5E5] p-2" onChange={(event) => setVatInvoiceAddress(event.target.value)} placeholder="Địa chỉ xuất hóa đơn" value={vatInvoiceAddress} />
               </div>
+            ) : null}
+            <button
+              className="min-h-12 bg-[#1A1A1A] px-6 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-[#CCCCCC]"
+              disabled={status === "submitting" || readiness.kind !== "ready"}
+              type="submit"
+            >
+              {status === "submitting" ? t("submitting") : t("submit")}
+            </button>
+            {status === "error" ? <p aria-live="polite" className="text-sm text-[#FF4D4F]" role="alert">{error}</p> : null}
+          </form>
+        </section>
 
-              {/* Total/Coupon Card (Visible in Step 1 and 3 on mobile, always on desktop) */}
-              <div className={`border border-[#E5E5E5] bg-white p-6 sm:p-8 lg:mb-24 ${step === 2 ? 'hidden lg:block' : ''}`}>
-                <div className="flex gap-2 mb-6 opacity-50 cursor-not-allowed">
-                  <input
-                    disabled
-                    placeholder={t("couponPlaceholder")}
-                    className="flex-1 h-12 border border-[#E5E5E5] px-3 text-sm outline-none cursor-not-allowed bg-[#FAFAFA]"
-                    type="text"
-                  />
-                  <button type="button" disabled className="h-12 px-6 bg-[#F4F4F4] text-[#1A1A1A] text-sm border border-[#E5E5E5] cursor-not-allowed">{t("comingSoon")}</button>
-                </div>
-                <p className="text-xs leading-5 text-[#666666] mb-6">{t("couponUnavailable")}</p>
-
-                <div className="flex flex-col gap-3 text-sm text-[#666666] mb-6 border-b border-[#E5E5E5] pb-6">
-                  <div className="flex justify-between">
-                    <span>{t("provisional")} ({selectedItems.length})</span>
-                    <span>{formatVnd(total)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>{t("savings")}</span>
-                    <span>{formatVnd(savings)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>{t("shipping")}</span>
-                    <span>{t("calculatedNextStep")}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-end justify-between text-[#1A1A1A]">
-                  <span className="text-base">{t("total")}</span>
-                  <div className="text-right">
-                    <span className="block text-2xl font-medium">{formatVnd(total)}</span>
-                    <span className="text-xs text-[#666666]">{t("vatIncluded")}</span>
-                  </div>
-                </div>
-              </div>
+        <section className="border border-[#E5E5E5] bg-white p-6 sm:p-8">
+          <h2 className="text-xl text-[#1A1A1A]">{t("summary")}</h2>
+          {readiness.kind === "unavailable_items" ? (
+            <div className="mt-6 border border-[#FF4D4F] bg-[#FFF8F8] p-4 text-sm text-[#1A1A1A]" role="alert">
+              <p className="font-medium">{t("checkoutUnavailableCart")}</p>
+              <ul className="mt-2 list-disc pl-5 text-[#666666]">
+                {readiness.unavailableItems.map((item) => <li key={item.variantId}>{item.title}</li>)}
+              </ul>
+              <Link className="mt-3 inline-flex underline" href="/account/cart">{t("checkoutGoToCart")}</Link>
             </div>
+          ) : null}
+          {readiness.kind === "stock_changed" ? (
+            <div className="mt-6 border border-[#FF4D4F] bg-[#FFF8F8] p-4 text-sm text-[#1A1A1A]" role="alert">
+              <p className="font-medium">{t("checkoutStockChanged")}</p>
+              <ul className="mt-2 list-disc pl-5 text-[#666666]">
+                {readiness.changedItems.map((item) => <li key={item.variantId}>{item.title}</li>)}
+              </ul>
+              <Link className="mt-3 inline-flex underline" href="/account/cart">{t("checkoutGoToCart")}</Link>
+            </div>
+          ) : null}
+          <ul className="mt-6 divide-y divide-[#E5E5E5]">
+            {items.map((item) => <CheckoutItem item={item} key={item.id} />)}
+          </ul>
+          <div className="mt-6 flex items-center justify-between border-t border-[#E5E5E5] pt-6 text-base text-[#1A1A1A]">
+            <span>{t("total")}</span>
+            <strong>{formatVnd(total)}</strong>
           </div>
-        )}
+        </section>
       </div>
-
-      {status !== "success" && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E5E5E5] bg-white px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] sm:p-6 lg:p-4">
-          <div className="mx-auto flex max-w-[1540px] flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="hidden lg:flex items-center gap-4 text-sm text-[#666666]">
-            </div>
-
-            <div className="flex items-center justify-between gap-6 lg:justify-end w-full lg:w-auto">
-              <div className="hidden lg:flex flex-col">
-                <span className="text-xs text-[#666666]">{t("total")}:</span>
-                <span className="text-xl font-medium text-[#1A1A1A]">{formatVnd(total)}</span>
-              </div>
-              
-              <div className="flex items-center gap-2 w-full lg:w-auto">
-                {step > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setStep(s => s - 1 as 1 | 2 | 3)}
-                    disabled={status === "submitting"}
-                    className="lg:hidden h-12 min-w-[80px] border border-[#1A1A1A] bg-white px-4 text-sm font-medium text-[#1A1A1A] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {t("back") || "Back"}
-                  </button>
-                )}
-                
-                <button
-                  type="submit"
-                  form="checkout-form"
-                  disabled={status === "submitting"}
-                  className="flex h-12 w-full min-w-[120px] items-center justify-center gap-2 rounded-[10px] bg-[#1A1A1A] px-6 text-sm font-medium text-white transition-colors hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A1A1A] disabled:cursor-not-allowed disabled:bg-[#CCCCCC] lg:w-auto lg:min-w-[160px] lg:rounded-none lg:px-8"
-                  onClick={(e) => {
-                    // Mobile intercept for multi-step to bypass form submission validation initially
-                    if (step < 3 && typeof window !== 'undefined' && window.innerWidth < 1024) {
-                       e.preventDefault(); // Stop native form submit
-                       
-                       if (items.length === 0 || status === "submitting") return;
-                       
-                       if (selectedItems.length === 0) {
-                         setError(t("validationSelectItems"));
-                         setStatus("error");
-                         return;
-                       }
-                       
-                       setStep((s) => (s + 1) as 1 | 2 | 3);
-                       setError("");
-                    }
-                  }}
-                >
-                  <ShoppingCart className="h-5 w-5 lg:hidden" aria-hidden="true" />
-                  <span className="lg:hidden">{status === "submitting" ? t("submitting") : "Đặt hàng ngay"}</span>
-                  <span className="hidden lg:inline">{status === "submitting" ? t("submitting") : t("submit")}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-          {status === "error" && (
-            <p className="mx-auto mt-2 max-w-[1540px] text-right text-xs text-[#FF4D4F]">{error}</p>
-          )}
-        </div>
-      )}
     </main>
   );
 }
 
-function CheckoutItem({ item, selected, onToggle, onUpdateQuantity, disabled, isLast }: { item: CartItem, selected: boolean, onToggle: () => void, onUpdateQuantity: (id: string, q: number) => void, disabled: boolean, isLast: boolean }) {
-  const t = useTranslations("Checkout");
-
-  const currentPrice = parseCartPrice(item.price);
-  const originalPrice = parseCartPrice(item.originalPrice || "");
-  const hasValidDiscount = item.badgeTone === "sale" && item.discount && originalPrice > currentPrice;
-
+function CheckoutItem({ item }: Readonly<{ item: Readonly<{ badge: string; category: string; id: string; image: string; name: string; price: string; quantity: number }> }>) {
   return (
-    <div className={`flex gap-4 py-6 ${!isLast ? 'border-b border-[#E5E5E5]' : ''}`}>
-      <div className="flex items-start pt-8">
-        <div className="relative flex h-4 w-4 shrink-0 items-center justify-center">
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={onToggle}
-            disabled={disabled}
-            className="peer h-4 w-4 appearance-none rounded-[2px] border border-[#CCCCCC] bg-white checked:border-[#1A1A1A] checked:bg-[#1A1A1A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A1A1A] disabled:opacity-50 cursor-pointer"
-          />
-          <svg className="pointer-events-none absolute h-3 w-3 text-white opacity-0 peer-checked:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    <li className="flex gap-4 py-5">
+      <img alt="" className="h-20 w-20 border border-[#E5E5E5] object-contain p-2" src={item.image} />
+      <div className="flex min-w-0 flex-1 items-start justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-medium text-[#1A1A1A]">{item.name}</h3>
+          <p className="mt-1 text-xs text-[#666666]">{item.category} · x{item.quantity}</p>
+          {item.badge === "Unavailable" ? <p className="mt-1 text-xs text-[#FF4D4F]">{item.badge}</p> : null}
         </div>
+        <span className="shrink-0 text-sm font-medium text-[#1A1A1A]">{formatVnd(parseCartPrice(item.price) * item.quantity)}</span>
       </div>
-      <div className="relative h-24 w-24 shrink-0 bg-white border border-[#E5E5E5] p-2">
-         {hasValidDiscount && (
-           <span className="absolute -left-2 -top-2 z-10 bg-[#FF4D4F] px-2 py-0.5 text-xs font-bold text-white shadow-sm">
-             {item.discount}
-           </span>
-         )}
-         <img src={item.image} alt={item.name} className="absolute inset-2 h-[calc(100%-16px)] w-[calc(100%-16px)] object-contain" />
-      </div>
-      <div className="flex flex-1 flex-col justify-between">
-        <div className="flex justify-between gap-4">
-          <div className="flex flex-col">
-            <h3 className="text-sm font-medium text-[#1A1A1A] line-clamp-2">{item.name}</h3>
-            <p className="mt-1 text-xs text-[#666666]">{item.category}</p>
-          </div>
-          <div className="text-right shrink-0">
-            <span className="block text-sm font-medium text-[#1A1A1A]">{formatVnd(currentPrice)}</span>
-            {hasValidDiscount && <span className="text-xs text-[#999999] line-through">{item.originalPrice}</span>}
-          </div>
-        </div>
-        <div className="flex items-center justify-between mt-4">
-          <div className="flex items-center border border-[#E5E5E5]">
-            <button
-              type="button"
-              aria-label={t("decreaseQuantity")}
-              disabled={disabled}
-              onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-              className="h-8 w-8 flex items-center justify-center text-[#1A1A1A] hover:bg-[#F4F4F4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              -
-            </button>
-            <span className="flex h-8 w-10 items-center justify-center text-sm font-medium text-[#1A1A1A] border-x border-[#E5E5E5]">{item.quantity}</span>
-            <button
-              type="button"
-              aria-label={t("increaseQuantity")}
-              disabled={disabled}
-              onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-              className="h-8 w-8 flex items-center justify-center text-[#1A1A1A] hover:bg-[#F4F4F4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </li>
   );
 }
 
 function parseCartPrice(price: string): number {
-  const numeric = Number(price.replace(/[^\d]/g, ""));
+  const numeric = Number(price.replace(/[^\d]/gu, ""));
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
 function formatVnd(value: number): string {
-  return new Intl.NumberFormat("vi-VN", { currency: "VND", maximumFractionDigits: 0, style: "currency" }).format(value);
+  return new Intl.NumberFormat("vi-VN", {
+    currency: "VND",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(value);
 }
 
-function isOrderResponse(value: unknown): value is Readonly<{
-  readonly orderId: string;
-  readonly orderNumber: string;
-}> {
+function isOrderResponse(value: unknown): value is OrderResponse {
   return typeof value === "object"
     && value !== null
     && "orderId" in value
     && typeof value.orderId === "string"
     && "orderNumber" in value
-    && typeof value.orderNumber === "string";
+    && typeof value.orderNumber === "string"
+    && "replayed" in value
+    && typeof value.replayed === "boolean"
+    && "next" in value
+    && value.next === "initialize_payment";
 }
 
-function isPaymentResponse(value: unknown): value is Readonly<{
-  readonly payment: Readonly<{
-    readonly amount: number;
-    readonly currency: "VND";
-    readonly merchantReference: string;
-    readonly paymentState: "paid" | "pending";
-  }>;
-}> {
+function apiErrorCode(value: unknown): string | null {
+  return typeof value === "object"
+    && value !== null
+    && "error" in value
+    && typeof value.error === "string"
+    ? value.error
+    : null;
+}
+
+function checkoutErrorMessage(errorCode: string | null, t: (key: string) => string): string {
+  switch (errorCode) {
+    case "identity_required": return t("identityRequired");
+    case "invalid_checkout_data": return t("validationRequired");
+    case "checkout_empty_cart": return t("checkoutEmptyCart");
+    case "checkout_invalid_cart": return t("checkoutUnavailableCart");
+    case "checkout_cart_not_found": return t("checkoutCartNotFound");
+    case "checkout_idempotency_conflict": return t("checkoutRetry");
+    default: return t("serverError");
+  }
+}
+
+function paymentErrorMessage(errorCode: string | null, t: (key: string) => string): string {
+  switch (errorCode) {
+    case "payment_already_paid":
+    case "payment_expired":
+    case "payment_not_payable":
+    case "payment_idempotency_conflict":
+      return t("paymentRetry");
+    default: return t("paymentError");
+  }
+}
+
+function isPaymentResponse(value: unknown): value is PaymentResponse {
   if (typeof value !== "object" || value === null || !("payment" in value)) return false;
   const payment = value.payment;
-  return typeof payment === "object"
-    && payment !== null
-    && "amount" in payment
-    && typeof payment.amount === "number"
+  if (typeof payment !== "object" || payment === null) return false;
+  if (!("amount" in payment)
+    || typeof payment.amount !== "number"
+    || !Number.isSafeInteger(payment.amount)
+    || payment.amount <= 0
+    || !("merchantReference" in payment)
+    || typeof payment.merchantReference !== "string"
+    || !isSePayTestPaymentReference(payment.merchantReference)
+    || !("paymentUrl" in payment)
+    || typeof payment.paymentUrl !== "string"
+    || !isExpectedSePayTestVietQrUrl(payment.paymentUrl, {
+      amount: payment.amount,
+      merchantReference: payment.merchantReference,
+    })) return false;
+  return "attemptId" in payment
+    && typeof payment.attemptId === "string"
     && "currency" in payment
     && payment.currency === "VND"
-    && "merchantReference" in payment
-    && typeof payment.merchantReference === "string"
-    && "paymentState" in payment
-    && (payment.paymentState === "paid" || payment.paymentState === "pending");
+    && "environment" in payment
+    && payment.environment === "sandbox"
+    && "expiresAt" in payment
+    && typeof payment.expiresAt === "string"
+    && !Number.isNaN(Date.parse(payment.expiresAt))
+    && "handoff" in payment
+    && payment.handoff === "vietqr"
+    && "state" in payment
+    && payment.state === "pending";
 }

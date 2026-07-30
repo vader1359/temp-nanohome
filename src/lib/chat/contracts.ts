@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { shoppingCatalogSearchRequestSchema } from "./shopping-intent";
+
 const publicChatIdentifierSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/);
 const publicChatTextSchema = z
   .string()
@@ -70,6 +72,12 @@ export const publicChatToolCallSchema = z.discriminatedUnion("name", [
           limit: z.number().int().min(1).max(12),
         })
         .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      name: z.literal("search_catalog_v2"),
+      arguments: shoppingCatalogSearchRequestSchema,
     })
     .strict(),
   z

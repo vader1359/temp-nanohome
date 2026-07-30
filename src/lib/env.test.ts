@@ -17,6 +17,7 @@ const MATRIX_KEYS = [
   "ROOM_ANALYSIS_ENABLED", "VISUAL_SIMILARITY_ENABLED", "VISION_RETENTION_DAYS",
   "VISION_EVALUATION_STORAGE_ENABLED", "SEPAY_ENV", "SEPAY_MERCHANT_ID", "SEPAY_MERCHANT_SECRET",
   "SEPAY_IPN_SECRET", "SEPAY_PAYMENT_METHOD", "SEPAY_SUCCESS_URL", "SEPAY_ERROR_URL", "SEPAY_CANCEL_URL",
+  "SEPAY_TEST_BANK_ACCOUNT_ID",
   "SEPAY_API_BASE_URL", "SEPAY_API_TOKEN", "SEPAY_WEBHOOK_HMAC_SECRET", "SEPAY_RECONCILIATION_ENABLED",
   "AMIS_API_BASE_URL", "AMIS_CLIENT_ID", "AMIS_CLIENT_SECRET",
   "AMIS_SYNC_ENABLED", "AMIS_WRITES_ENABLED", "AMIS_PERSONALIZATION_ENABLED", "AMIS_CUSTOMER_PILOT_ENABLED",
@@ -66,7 +67,9 @@ const SEPAY_SANDBOX = {
   SEPAY_API_BASE_URL: "https://userapi-sandbox.sepay.vn/v2",
   SEPAY_API_TOKEN: "sandbox-api-token-test",
   SEPAY_WEBHOOK_HMAC_SECRET: "webhook-secret-test",
+  SEPAY_TEST_BANK_ACCOUNT_ID: "00000000-0000-4000-8000-000000000701",
   SEPAY_PAYMENT_METHOD: "BANK_TRANSFER",
+  NEXT_PUBLIC_APP_ORIGIN: "https://staging.nanohome.vn",
 };
 
 describe("environment matrix", () => {
@@ -171,7 +174,7 @@ describe("environment matrix", () => {
   });
 
   it("accepts complete SePay sandbox configuration", async () => {
-    // Given: complete sandbox credentials and HTTPS callbacks.
+    // Given: complete Test Mode API, bank-account, and HMAC configuration.
     // When: the environment is parsed.
     const { env } = await importEnvWith({ ...BASE_ENV, ...CLEAN_MATRIX_ENV, ...SEPAY_SANDBOX });
 

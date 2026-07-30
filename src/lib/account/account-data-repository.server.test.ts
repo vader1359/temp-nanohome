@@ -46,6 +46,30 @@ describe("createAccountDataRepository", () => {
     expect(calls[1]?.searchParams.get("state")).toBe("eq.active");
   });
 
+  it("reads only verified identity kinds and never selects raw identity values", async () => {
+    const calls: URL[] = [];
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      calls.push(url);
+      return jsonResponse([{ kind: "email" }, { kind: "phone" }, { kind: "other" }]);
+    });
+    const repository = createAccountDataRepository({
+      baseUrl,
+      fetcher: fetcher as unknown as typeof fetch,
+      projectRef,
+      mutationsEnabled: false,
+      serviceRoleKey: "not-printed",
+    });
+
+    await expect(repository.getVerifiedContactKinds("account-owned")).resolves.toEqual(["email", "phone"]);
+    expect(calls[0]?.pathname).toBe("/rest/v1/customer_account_verified_identities");
+    expect(calls[0]?.searchParams.get("account_id")).toBe("eq.account-owned");
+    expect(calls[0]?.searchParams.get("status")).toBe("eq.active");
+    expect(calls[0]?.searchParams.has("verified_at")).toBe(false);
+    expect(calls[0]?.searchParams.get("select")).toBe("kind");
+    expect(calls[0]?.searchParams.get("select")).not.toMatch(/digest|encrypted|email|phone/iu);
+  });
+
   it("fails closed before network I/O when account mutations are disabled", async () => {
     const fetcher = vi.fn();
     const repository = createAccountDataRepository({
@@ -262,6 +286,37 @@ describe("createAccountDataRepository", () => {
       p_account_id: "account-owned",
       p_idempotency_key: "merge-001",
       p_items: [{ quantity: 1, variantId }],
+    });
+  });
+
+  it("calls the server-only fallback identity RPC with opaque digests", async () => {
+    const calls: Array<Readonly<{ body: unknown; url: URL }>> = [];
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ body: JSON.parse(String(init?.body)), url: new URL(String(input)) });
+      return jsonResponse([{ account_id: "account-created", outcome: "created" }]);
+    });
+    const repository = createAccountDataRepository({
+      baseUrl,
+      fetcher: fetcher as unknown as typeof fetch,
+      projectRef,
+      mutationsEnabled: true,
+      serviceRoleKey: "not-printed",
+    });
+
+    await expect(repository.resolveOrCreateAccount({
+      emailDigest: "e".repeat(64),
+      firebaseUid: "firebase-user-01",
+      idempotencyKey: "idempotency-01",
+      phoneDigest: "p".repeat(64),
+      policyVersions: { identity: "identity-v1", phone: "e164-v1" },
+    })).resolves.toEqual({ accountId: "account-created", outcome: "created" });
+    expect(calls[0]?.url.pathname).toBe("/rest/v1/rpc/resolve_or_create_account");
+    expect(calls[0]?.body).toEqual({
+      p_email_digest: "e".repeat(64),
+      p_firebase_uid: "firebase-user-01",
+      p_idempotency_key: "idempotency-01",
+      p_phone_digest: "p".repeat(64),
+      p_policy_versions: { identity: "identity-v1", phone: "e164-v1" },
     });
   });
 });

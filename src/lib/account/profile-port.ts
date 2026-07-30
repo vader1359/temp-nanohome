@@ -2,7 +2,7 @@ import "server-only";
 
 import type { AccountIdentityProvider, AuthenticatedAccount } from "./auth-port";
 import type { ProfilePatch } from "./profile-schema";
-import type { StoredAccountProfile } from "./account-data-repository.server";
+import type { StoredAccountProfile, StoredVerifiedContactKind } from "./account-data-repository.server";
 
 export type AccountProviderMetadata = Readonly<{
   readonly provider: AccountIdentityProvider;
@@ -25,9 +25,17 @@ export interface AccountProfilePort {
   readonly patchProfile: (account: AuthenticatedAccount, patch: ProfilePatch) => Promise<AccountProfile>;
 }
 
-function createProfile(account: AuthenticatedAccount): AccountProfile {
-  const verifiedEmail = account.identities.find((identity) => identity.provider === "email" && identity.verified);
-  const verifiedPhone = account.identities.find((identity) => identity.provider === "phone" && identity.verified);
+function createProfile(
+  account: AuthenticatedAccount,
+  canonicalContactKinds?: readonly StoredVerifiedContactKind[],
+): AccountProfile {
+  const canonicalKinds = canonicalContactKinds === undefined ? null : new Set(canonicalContactKinds);
+  const verifiedEmail = account.identities.find((identity) => identity.provider === "email"
+    && identity.verified
+    && (canonicalKinds === null || canonicalKinds.has("email")));
+  const verifiedPhone = account.identities.find((identity) => identity.provider === "phone"
+    && identity.verified
+    && (canonicalKinds === null || canonicalKinds.has("phone")));
   const providerMetadata = account.identities
     .filter((identity) => !identity.verified)
     .map((identity) => ({ provider: identity.provider, identifier: identity.identifier }));
@@ -46,13 +54,15 @@ function createProfile(account: AuthenticatedAccount): AccountProfile {
 
 export function createAccountProfilePort(repository: Readonly<{
   readonly getProfile: (accountId: string) => Promise<StoredAccountProfile | null>;
+  readonly getVerifiedContactKinds?: (accountId: string) => Promise<readonly StoredVerifiedContactKind[]>;
   readonly patchProfile: (accountId: string, patch: ProfilePatch) => Promise<StoredAccountProfile>;
 }>): AccountProfilePort {
   const present = (
     account: AuthenticatedAccount,
     stored: StoredAccountProfile | null,
+    canonicalContactKinds?: readonly StoredVerifiedContactKind[],
   ): AccountProfile => {
-    const identityProfile = createProfile(account);
+    const identityProfile = createProfile(account, canonicalContactKinds);
     return {
       ...identityProfile,
       ...(stored ?? {}),
@@ -64,10 +74,12 @@ export function createAccountProfilePort(repository: Readonly<{
     getProfile: async (account) => present(
       account,
       await repository.getProfile(account.accountId),
+      await repository.getVerifiedContactKinds?.(account.accountId),
     ),
     patchProfile: async (account, patch) => present(
       account,
       await repository.patchProfile(account.accountId, patch),
+      await repository.getVerifiedContactKinds?.(account.accountId),
     ),
   };
 }

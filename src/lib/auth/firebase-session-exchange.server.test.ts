@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   exchangeFirebaseIdToken,
-  FirebaseSessionExchangeError,
   type FirebaseSessionIssuer,
 } from "./firebase-session-exchange.server";
+import type { AccountIdentityResolution, FirebaseIdentityResolutionInput } from "@/lib/account/identity-resolution";
 
 const nowSeconds = 2_000_000_000;
 const projectId = "temp-nanohome";
@@ -88,5 +88,86 @@ describe("exchangeFirebaseIdToken", () => {
       projectId,
       sessionTtlSeconds: 3_600,
     })).resolves.toMatchObject({ firebaseUid: "firebase-user-01" });
+  });
+
+  it("fails closed for a checkout intent until both verified contacts are present", async () => {
+    await expect(exchangeFirebaseIdToken({
+      auth,
+      idToken,
+      intent: "checkout",
+      nowSeconds,
+      projectId,
+      sessionTtlSeconds: 3_600,
+    })).rejects.toMatchObject({ code: "incomplete_identity" });
+    expect(createSessionCookie).not.toHaveBeenCalled();
+  });
+
+  it("accepts a checkout intent only with verified email and E.164 phone claims", async () => {
+    verifyIdToken.mockResolvedValueOnce(claims({
+      email: "person@example.test",
+      email_verified: true,
+      phone_number: "+84901234567",
+    }));
+
+    await expect(exchangeFirebaseIdToken({
+      auth,
+      idToken,
+      intent: "checkout",
+      nowSeconds,
+      projectId,
+      sessionTtlSeconds: 3_600,
+    })).resolves.toMatchObject({ firebaseUid: "firebase-user-01" });
+  });
+
+  it("resolves the account before creating a session cookie", async () => {
+    const resolveAccount = vi.fn<(input: FirebaseIdentityResolutionInput) => Promise<AccountIdentityResolution>>(async () => ({
+      accountId: "account-owned",
+      outcome: "existing_principal" as const,
+    }));
+    verifyIdToken.mockResolvedValueOnce(claims({
+      email: "person@example.test",
+      email_verified: true,
+      phone_number: "+84901234567",
+    }));
+
+    await expect(exchangeFirebaseIdToken({
+      auth,
+      idToken,
+      intent: "checkout",
+      nowSeconds,
+      projectId,
+      resolveAccount,
+      sessionTtlSeconds: 3_600,
+    })).resolves.toMatchObject({ firebaseUid: "firebase-user-01" });
+
+    expect(resolveAccount).toHaveBeenCalledWith(expect.objectContaining({
+      email: "person@example.test",
+      firebaseUid: "firebase-user-01",
+      intent: "checkout",
+      phoneE164: "+84901234567",
+      idempotencyKey: expect.any(String),
+    }));
+    expect(resolveAccount.mock.calls[0]?.[0] ?? {}).not.toHaveProperty("idToken");
+  });
+
+  it("does not create a session cookie when account resolution fails", async () => {
+    verifyIdToken.mockResolvedValueOnce(claims({
+      email: "person@example.test",
+      email_verified: true,
+      phone_number: "+84901234567",
+    }));
+
+    await expect(exchangeFirebaseIdToken({
+      auth,
+      idToken,
+      intent: "checkout",
+      nowSeconds,
+      projectId,
+      resolveAccount: async () => {
+        throw new Error("crm_claim_unavailable");
+      },
+      sessionTtlSeconds: 3_600,
+    })).rejects.toMatchObject({ code: "account_resolution_failed" });
+    expect(createSessionCookie).not.toHaveBeenCalled();
   });
 });

@@ -17,7 +17,6 @@ const pilotMappingSchema = z.object({
   environment: z.literal(FIREBASE_CUSTOMER_PILOT_PROJECT),
   ordinal: z.number().int().min(1).max(10),
   customerId: z.string().min(1),
-  contactId: z.string().min(1).nullable(),
   firebaseUid: z.string().regex(/^nh-pilot-[a-f0-9]{40}$/),
   phoneDigest: z.string().regex(/^[a-f0-9]{64}$/),
   sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),

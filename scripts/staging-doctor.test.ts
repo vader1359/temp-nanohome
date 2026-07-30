@@ -30,6 +30,7 @@ const complete = {
   SEPAY_API_TOKEN: "sepay-test-token",
   SEPAY_ENV: "sandbox",
   SEPAY_PAYMENT_METHOD: "BANK_TRANSFER",
+  SEPAY_TEST_BANK_ACCOUNT_ID: "00000000-0000-4000-8000-000000000701",
   SEPAY_WEBHOOK_HMAC_SECRET: "sepay-test-hmac-secret-at-least-32-bytes",
   SUPABASE_PROJECT_REF: "xtjmwpeqarmsumjspnyw",
   SUPABASE_SERVICE_ROLE_KEY: "supabase-service-role-not-shared",
@@ -93,5 +94,17 @@ describe("staging doctor", () => {
       localGate.map(() => "PASS"),
     );
     expect(JSON.stringify(checks)).not.toContain(complete.AUTH_CSRF_SECRET);
+  });
+
+  it("blocks Test Mode when its exact bank-account selector is absent", () => {
+    const checks = inspectStagingConfiguration({
+      ...complete,
+      SEPAY_TEST_BANK_ACCOUNT_ID: undefined,
+    }, { exists: true, mode: 0o600 });
+
+    expect(checks.sepayConfig?.status).toBe("BLOCKED_CONFIG");
+    expect(checks.sepayConfig?.detail).toMatchObject({
+      testBankAccountConfigured: false,
+    });
   });
 });

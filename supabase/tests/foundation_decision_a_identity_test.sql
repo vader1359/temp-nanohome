@@ -129,8 +129,8 @@ select is(
   (
     select count(*) from decision_a_account_references
   ),
-  23::bigint,
-  'all twenty-three current foreign keys to customer_accounts.id are inventoried'
+  27::bigint,
+  'all twenty-seven current foreign keys to customer_accounts.id are inventoried'
 );
 
 select is(
@@ -140,8 +140,8 @@ select is(
     where confdeltype = 'r'
       and constraint_definition like '%ON DELETE RESTRICT%'
   ),
-  21::bigint,
-  'the dynamic FK manifest preserves all twenty-one current RESTRICT delete actions'
+  25::bigint,
+  'the dynamic FK manifest preserves all twenty-five current RESTRICT delete actions'
 );
 
 select is(
@@ -153,7 +153,7 @@ select is(
     )
     from decision_a_account_references
   ),
-  'public.account_policy_acceptances.account_id,public.carts.account_id,public.conversations.owner_account_id,public.customer_account_deletion_requests.account_id,public.customer_account_profiles.account_id,public.customer_amis_links.account_id,public.customer_auth_identities.account_id,public.customer_cart_merge_receipts.account_id,public.customer_firebase_principals.account_id,public.customer_firebase_principals.merged_into_account_id,public.customer_identity_ledger.account_id,public.customer_memory_briefs.account_id,public.customer_memory_projections.account_id,public.customer_personalization_settings.account_id,public.customer_recommendation_signals.account_id,public.customer_wishlist_items.account_id,public.customer_wishlist_merge_receipts.account_id,public.order_status_history.actor_account_id,public.orders.account_id,public.profiles.account_id,public.room_scenes.owner_account_id,public.vision_analysis_requests.owner_account_id,public.vision_object_crops.owner_account_id',
+  'public.account_identity_events.account_id,public.account_policy_acceptances.account_id,public.carts.account_id,public.conversations.owner_account_id,public.customer_account_claim_candidates.account_id,public.customer_account_deletion_requests.account_id,public.customer_account_precreation_items.account_id,public.customer_account_profiles.account_id,public.customer_account_verified_identities.account_id,public.customer_amis_links.account_id,public.customer_auth_identities.account_id,public.customer_cart_merge_receipts.account_id,public.customer_firebase_principals.account_id,public.customer_firebase_principals.merged_into_account_id,public.customer_identity_ledger.account_id,public.customer_memory_briefs.account_id,public.customer_memory_projections.account_id,public.customer_personalization_settings.account_id,public.customer_recommendation_signals.account_id,public.customer_wishlist_items.account_id,public.customer_wishlist_merge_receipts.account_id,public.order_status_history.actor_account_id,public.orders.account_id,public.profiles.account_id,public.room_scenes.owner_account_id,public.vision_analysis_requests.owner_account_id,public.vision_object_crops.owner_account_id',
   'the FK manifest covers all final identity, memory, conversation, order, personalization, and vision owners'
 );
 
@@ -162,7 +162,7 @@ select is(
     select string_agg(conname, ',' order by conname)
     from decision_a_account_references
   ),
-  'account_policy_acceptances_account_id_fkey,carts_account_id_fkey,conversations_owner_account_id_fkey,customer_account_deletion_requests_account_id_fkey,customer_account_profiles_account_id_fkey,customer_amis_links_account_id_fkey,customer_auth_identities_account_id_fkey,customer_cart_merge_receipts_account_id_fkey,customer_firebase_principals_account_id_fkey,customer_firebase_principals_merged_into_account_id_fkey,customer_identity_ledger_account_id_fkey,customer_memory_briefs_account_id_fkey,customer_memory_projections_account_id_fkey,customer_personalization_settings_account_id_fkey,customer_recommendation_signals_account_id_fkey,customer_wishlist_items_account_id_fkey,customer_wishlist_merge_receipts_account_id_fkey,order_status_history_actor_account_id_fkey,orders_account_id_fkey,profiles_account_id_fkey,room_scenes_owner_account_id_fkey,vision_analysis_requests_owner_account_id_fkey,vision_object_crops_owner_account_id_fkey',
+  'account_identity_events_account_id_fkey,account_policy_acceptances_account_id_fkey,carts_account_id_fkey,conversations_owner_account_id_fkey,customer_account_claim_candidates_account_id_fkey,customer_account_deletion_requests_account_id_fkey,customer_account_precreation_items_account_id_fkey,customer_account_profiles_account_id_fkey,customer_account_verified_identities_account_id_fkey,customer_amis_links_account_id_fkey,customer_auth_identities_account_id_fkey,customer_cart_merge_receipts_account_id_fkey,customer_firebase_principals_account_id_fkey,customer_firebase_principals_merged_into_account_id_fkey,customer_identity_ledger_account_id_fkey,customer_memory_briefs_account_id_fkey,customer_memory_projections_account_id_fkey,customer_personalization_settings_account_id_fkey,customer_recommendation_signals_account_id_fkey,customer_wishlist_items_account_id_fkey,customer_wishlist_merge_receipts_account_id_fkey,order_status_history_actor_account_id_fkey,orders_account_id_fkey,profiles_account_id_fkey,room_scenes_owner_account_id_fkey,vision_analysis_requests_owner_account_id_fkey,vision_object_crops_owner_account_id_fkey',
   'the dynamic FK manifest preserves every current constraint name'
 );
 

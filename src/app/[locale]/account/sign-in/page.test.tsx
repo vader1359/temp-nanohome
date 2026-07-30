@@ -5,7 +5,7 @@ const notFound = vi.hoisted(() => vi.fn(() => { throw new Error("NEXT_NOT_FOUND"
 
 vi.mock("next/navigation", () => ({ notFound }));
 vi.mock("@/components/account/account-auth-flow", () => ({
-  AccountAuthFlow: ({ locale, returnTo }: { readonly locale: string; readonly returnTo: string }) => <div>{`${locale}:${returnTo}`}</div>,
+  AccountAuthFlow: ({ intent, locale, returnTo }: { readonly intent?: string; readonly locale: string; readonly returnTo: string }) => <div>{`${locale}:${intent ?? "account"}:${returnTo}`}</div>,
 }));
 
 import AccountSignInPage from "./page";
@@ -19,7 +19,21 @@ describe("AccountSignInPage", () => {
     render(await AccountSignInPage(props));
 
     // Then: the client receives only the safe normalized destination.
-    expect(screen.getByText("vi:/vi/products?q=chair")).toBeInTheDocument();
+    expect(screen.getByText("vi:account:/vi/products?q=chair")).toBeInTheDocument();
+  });
+
+  it("preserves checkout intent while returning to the safe checkout route", async () => {
+    // Given: checkout initiated authentication with a stale drawer parameter.
+    const props = {
+      params: Promise.resolve({ locale: "vi" }),
+      searchParams: Promise.resolve({ intent: "checkout", returnTo: "/vi/checkout?step=contact&auth=login" }),
+    };
+
+    // When: the sign-in landing page renders.
+    render(await AccountSignInPage(props));
+
+    // Then: the flow receives checkout intent and no auth query noise.
+    expect(screen.getByText("vi:checkout:/vi/checkout?step=contact")).toBeInTheDocument();
   });
 
   it("rejects an unsupported locale", async () => {

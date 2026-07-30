@@ -187,6 +187,126 @@ describe("bounded public chat orchestration", () => {
     ]);
   });
 
+  it("uses structured v2 retrieval and refuses a provider attempt to widen the family filter", async () => {
+    const executedCalls: unknown[] = [];
+    let providerCalls = 0;
+    const result = await orchestratePublicChat({
+      question: "Chỉ cho tôi bàn ăn dưới 100 triệu còn hàng",
+      locale: "vi",
+      apiKey: "secret",
+      toolAdapters: {
+        catalog: {
+          search: async () => [],
+          searchStructured: async () => [],
+          details: async () => [],
+          compare: async () => [],
+        },
+        site: { page: async () => null },
+        handoff: {
+          create: async () => ({ id: "handoff-1", reasonCode: "unsupported_request" as const }),
+        },
+      },
+      provider: async () => {
+        providerCalls += 1;
+        return {
+          kind: "tool_call",
+          call: {
+            name: "search_catalog_v2",
+            arguments: {
+              productFamilies: ["lamp"],
+              subtypes: [],
+              categoryKeys: ["lamp"],
+              collectionKeys: [],
+              roomKeys: [],
+              brandKeys: [],
+              designerKeys: [],
+              materialKeys: [],
+              colorKeys: [],
+              availability: "include_unknown",
+              sort: "relevance",
+              limit: 8,
+            },
+          },
+        };
+      },
+      executeTool: async (call) => {
+        executedCalls.push(call);
+        return {
+          kind: "catalog",
+          records: [{
+            canonicalId: "dining-table",
+            variantId: "dining-table-01",
+            title: "Public dining table",
+            canonicalLink: "/vi/products/dining-table",
+            image: { id: "dining-table-image", alt: "Public dining table" },
+            price: { mode: "contact" as const },
+            stock: { state: "unknown" as const },
+            attributes: { category: "table" },
+          }],
+        };
+      },
+      registries: { products: [], sources: [], images: [] },
+      policyDecision: { kind: "handoff", reasonCode: "unsupported_request", text: "Safe fallback." },
+    });
+
+    expect(providerCalls).toBe(1);
+    expect(executedCalls).toHaveLength(1);
+    expect(executedCalls[0]).toMatchObject({
+      name: "search_catalog_v2",
+      arguments: {
+        productFamilies: ["table"],
+        subtypes: ["dining_table"],
+        maxPrice: 100_000_000,
+        availability: "available_only",
+      },
+    });
+    expect(result.blocks).toEqual([
+      expect.objectContaining({
+        type: "product_cards",
+        products: [expect.objectContaining({ variantId: "dining-table-01" })],
+      }),
+    ]);
+  });
+
+  it("caps ordinary product rendering to one provider round after deterministic retrieval", async () => {
+    let providerCalls = 0;
+    const result = await orchestratePublicChat({
+      question: "Find chairs",
+      locale: "en",
+      apiKey: "secret",
+      provider: async () => {
+        providerCalls += 1;
+        return {
+          kind: "tool_call",
+          call: { name: "get_product_details", arguments: { canonicalIds: ["unverified-id"] } },
+        };
+      },
+      executeTool: async () => ({
+        kind: "catalog",
+        records: [{
+          canonicalId: "chair",
+          variantId: "chair-01",
+          title: "Public chair",
+          canonicalLink: "/products/chair",
+          image: { id: "chair-image", alt: "Public chair" },
+          price: { mode: "contact" as const },
+          stock: { state: "unknown" as const },
+          attributes: {},
+        }],
+      }),
+      registries: { products: [], sources: [], images: [] },
+      policyDecision: { kind: "handoff", reasonCode: "unsupported_request", text: "Safe fallback." },
+    });
+
+    expect(providerCalls).toBe(1);
+    expect(result.blocks).toEqual([
+      expect.objectContaining({
+        type: "product_cards",
+        products: [expect.objectContaining({ variantId: "chair-01" })],
+      }),
+    ]);
+  });
+
   it("treats a concrete Vietnamese consultation request as product discovery", async () => {
     let toolCalls = 0;
     const result = await orchestratePublicChat({
@@ -340,7 +460,7 @@ describe("bounded public chat orchestration", () => {
       name: "search_catalog",
       arguments: {
         query: "Compare these living room chairs",
-        limit: 8,
+        limit: 4,
       },
     });
     expect(executedCalls[1]).toEqual({

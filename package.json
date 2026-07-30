@@ -9,6 +9,7 @@
     "staging:doctor": "tsx scripts/staging-doctor.ts",
     "staging:catalog-snapshot": "tsx scripts/staging-catalog-snapshot.ts",
     "staging:test-identities": "tsx scripts/staging-test-identities.ts",
+    "amis:account-precreation": "tsx scripts/amis-account-precreation.ts",
     "lint": "eslint",
     "test": "vitest run",
     "db:types:local": "supabase/plan00-local/generate-database-types.sh",

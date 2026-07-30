@@ -26,6 +26,20 @@ describe("EmailLinkPage", () => {
     expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute("href", "/en/account");
   });
 
+  it("preserves a checkout destination after the email action returns", async () => {
+    // Given: email verification was started from checkout.
+    const props = {
+      params: Promise.resolve({ locale: "vi" }),
+      searchParams: Promise.resolve({ returnTo: "/vi/checkout?step=contact&auth=login" }),
+    };
+
+    // When: the email-action landing page renders.
+    render(await EmailLinkPage(props));
+
+    // Then: the intended checkout step survives without auth query noise.
+    expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute("href", "/vi/checkout?step=contact");
+  });
+
   it("rejects an unsupported locale", async () => {
     // Given: an unsupported route locale.
     const props = { params: Promise.resolve({ locale: "xx" }), searchParams: Promise.resolve({}) };

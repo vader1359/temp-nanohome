@@ -62,4 +62,24 @@ describe("createAccountProfilePort", () => {
     });
     expect(getProfile).toHaveBeenCalledWith("account_01");
   });
+
+  it("uses the server canonical contact kinds when presenting verified contacts", async () => {
+    const port = createAccountProfilePort({
+      getProfile: vi.fn(async () => null),
+      getVerifiedContactKinds: vi.fn(async () => ["email"] as const),
+      patchProfile: vi.fn(),
+    });
+    const accountWithEmail = {
+      ...account,
+      identities: [
+        { identifier: "customer@example.test", provider: "email", verified: true },
+        { identifier: "+84901234567", provider: "phone", verified: true },
+      ],
+    } as const;
+
+    await expect(port.getProfile(accountWithEmail)).resolves.toMatchObject({
+      primaryEmail: "customer@example.test",
+      primaryPhone: null,
+    });
+  });
 });

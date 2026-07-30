@@ -14,18 +14,9 @@ export type AmisPilotCustomerSource = Readonly<{
   emailValues: readonly string[];
 }>;
 
-export type AmisPilotContactSource = Readonly<{
-  id: string;
-  customerCode: string | null;
-  state: PilotSourceState;
-  phoneValues: readonly string[];
-  emailValues: readonly string[];
-}>;
-
 export type SelectedPilotCustomer = Readonly<{
   ordinal: number;
   customerId: string;
-  contactId: string | null;
   phoneE164: string;
   phoneDigest: string;
   emailDigest: string | null;
@@ -40,7 +31,6 @@ export type PilotRejectionCode =
   | "invalid_email"
   | "invalid_phone"
   | "missing_customer_code"
-  | "multiple_valid_contacts"
   | "phone_count_not_one"
   | "source_state_not_active";
 
@@ -49,7 +39,6 @@ export type PilotCohortEvidence = Readonly<{
   selectedCount: number;
   cohortDigest: string | null;
   conflictCounts: Readonly<Record<PilotRejectionCode, number>>;
-  orphanContactCount: number;
 }>;
 
 export type PilotCohortResult =
@@ -67,7 +56,6 @@ export type PilotCohortResult =
 type PreparedCandidate = Readonly<{
   customerId: string;
   customerCode: string;
-  contactId: string | null;
   phoneLocal: string;
   phoneE164: string;
   phoneDigest: string;
@@ -80,7 +68,6 @@ const emailSchema = z.string().email();
 
 export function selectCustomerPilotCohort(input: Readonly<{
   customers: readonly AmisPilotCustomerSource[];
-  contacts: readonly AmisPilotContactSource[];
   existingLinkedCustomerIds: ReadonlySet<string>;
   existingFirebasePhoneDigests: ReadonlySet<string>;
   auditHmacKey: string;
@@ -99,10 +86,6 @@ export function selectCustomerPilotCohort(input: Readonly<{
       .filter(([, customers]) => customers.length !== 1)
       .map(([code]) => code),
   );
-  const contactsByCustomerCode = indexContactsByCustomerCode(input.contacts);
-  const orphanContactCount = input.contacts.filter((contact) =>
-    contact.customerCode === null || !customersByCode.has(contact.customerCode.trim())).length;
-
   const prepared: PreparedCandidate[] = [];
   for (const customer of input.customers) {
     const customerCode = customer.code.trim();
@@ -123,45 +106,23 @@ export function selectCustomerPilotCohort(input: Readonly<{
       continue;
     }
 
-    const contacts = contactsByCustomerCode.get(customerCode) ?? [];
-    if (contacts.some((contact) => contact.state !== "active")) {
-      conflictCounts.source_state_not_active += 1;
-      continue;
-    }
-
     const normalizedCustomerPhones = normalizePhoneValues(customer.phoneValues);
-    const normalizedContactPhones = contacts.map((contact) => ({
-      contact,
-      phones: normalizePhoneValues(contact.phoneValues),
-    }));
-    if (!normalizedCustomerPhones.valid || normalizedContactPhones.some((entry) => !entry.phones.valid)) {
+    if (!normalizedCustomerPhones.valid) {
       conflictCounts.invalid_phone += 1;
       continue;
     }
-    const contactsWithPhone = normalizedContactPhones.filter((entry) => entry.phones.values.length > 0);
-    if (contactsWithPhone.length > 1) {
-      conflictCounts.multiple_valid_contacts += 1;
-      continue;
-    }
-    const phones = new Set([
-      ...normalizedCustomerPhones.values,
-      ...normalizedContactPhones.flatMap((entry) => entry.phones.values),
-    ]);
+    const phones = new Set(normalizedCustomerPhones.values);
     if (phones.size !== 1) {
       conflictCounts.phone_count_not_one += 1;
       continue;
     }
 
     const normalizedCustomerEmails = normalizeEmailValues(customer.emailValues);
-    const normalizedContactEmails = contacts.map((contact) => normalizeEmailValues(contact.emailValues));
-    if (!normalizedCustomerEmails.valid || normalizedContactEmails.some((entry) => !entry.valid)) {
+    if (!normalizedCustomerEmails.valid) {
       conflictCounts.invalid_email += 1;
       continue;
     }
-    const emails = new Set([
-      ...normalizedCustomerEmails.values,
-      ...normalizedContactEmails.flatMap((entry) => entry.values),
-    ]);
+    const emails = new Set(normalizedCustomerEmails.values);
     if (emails.size > 1) {
       conflictCounts.identity_conflict += 1;
       continue;
@@ -180,15 +141,13 @@ export function selectCustomerPilotCohort(input: Readonly<{
     }
     const email = [...emails][0] ?? null;
     const emailDigest = email === null ? null : hmac(input.auditHmacKey, `email\u0000${email}`);
-    const contactId = contactsWithPhone[0]?.contact.id ?? null;
     const sourceDigest = hmac(
       input.auditHmacKey,
-      ["source", customer.id, customerCode, contactId ?? "", phoneDigest, emailDigest ?? ""].join("\u0000"),
+      ["source", customer.id, customerCode, phoneDigest, emailDigest ?? ""].join("\u0000"),
     );
     prepared.push({
       customerId: customer.id,
       customerCode,
-      contactId,
       phoneLocal,
       phoneE164,
       phoneDigest,
@@ -213,7 +172,6 @@ export function selectCustomerPilotCohort(input: Readonly<{
         selectedCount: 0,
         cohortDigest: null,
         conflictCounts,
-        orphanContactCount,
       },
     };
   }
@@ -221,7 +179,6 @@ export function selectCustomerPilotCohort(input: Readonly<{
   const selected = eligible.slice(0, size).map((candidate, index): SelectedPilotCustomer => ({
     ordinal: index + 1,
     customerId: candidate.customerId,
-    contactId: candidate.contactId,
     phoneE164: candidate.phoneE164,
     phoneDigest: candidate.phoneDigest,
     emailDigest: candidate.emailDigest,
@@ -230,7 +187,7 @@ export function selectCustomerPilotCohort(input: Readonly<{
   const cohortDigest = hmac(
     input.auditHmacKey,
     selected.map((candidate) =>
-      [candidate.ordinal, candidate.customerId, candidate.contactId ?? "", candidate.phoneDigest, candidate.sourceDigest].join("\u0000"))
+      [candidate.ordinal, candidate.customerId, candidate.phoneDigest, candidate.sourceDigest].join("\u0000"))
       .join("\u0001"),
   );
 
@@ -242,7 +199,6 @@ export function selectCustomerPilotCohort(input: Readonly<{
       selectedCount: selected.length,
       cohortDigest,
       conflictCounts,
-      orphanContactCount,
     },
   };
 }
@@ -292,21 +248,6 @@ function indexCustomersByCode(
   return result;
 }
 
-function indexContactsByCustomerCode(
-  contacts: readonly AmisPilotContactSource[],
-): ReadonlyMap<string, readonly AmisPilotContactSource[]> {
-  const result = new Map<string, AmisPilotContactSource[]>();
-  for (const contact of contacts) {
-    if (contact.customerCode === null) continue;
-    const code = contact.customerCode.trim();
-    if (code.length === 0) continue;
-    const bucket = result.get(code) ?? [];
-    bucket.push(contact);
-    result.set(code, bucket);
-  }
-  return result;
-}
-
 function findIdentityConflicts(candidates: readonly PreparedCandidate[]): ReadonlySet<string> {
   const conflicts = new Set<string>();
   const phoneOwners = new Map<string, Set<string>>();
@@ -344,7 +285,6 @@ function emptyConflictCounts(): Record<PilotRejectionCode, number> {
     invalid_email: 0,
     invalid_phone: 0,
     missing_customer_code: 0,
-    multiple_valid_contacts: 0,
     phone_count_not_one: 0,
     source_state_not_active: 0,
   };

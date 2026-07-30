@@ -116,4 +116,26 @@ describe("Firebase session route", () => {
     const response = await createFirebaseSessionRouteHandlers(dependencies).POST(request);
     await expect(response.json()).resolves.toEqual({ returnTo: "/ko" });
   });
+
+  it("does not set a session cookie for an incomplete checkout identity", async () => {
+    const request = new NextRequest("https://staging.nanohome.vn/api/auth/session", {
+      body: JSON.stringify({
+        csrfToken,
+        idToken,
+        intent: "checkout",
+        locale: "vi",
+        returnTo: "/vi/checkout",
+      }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${FIREBASE_CSRF_COOKIE}=${csrfToken}`,
+      },
+      method: "POST",
+    });
+
+    const response = await createFirebaseSessionRouteHandlers(dependencies).POST(request);
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
 });

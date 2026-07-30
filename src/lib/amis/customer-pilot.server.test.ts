@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeVietnamMobile,
   selectCustomerPilotCohort,
-  type AmisPilotContactSource,
   type AmisPilotCustomerSource,
 } from "@/lib/amis/customer-pilot.server";
 
@@ -30,17 +29,9 @@ describe("customer pilot cohort", () => {
 
   it("selects exactly ten in stable ID order and emits only opaque evidence", () => {
     const customers = buildCustomers(12).reverse();
-    const contacts = customers.map((customer, index): AmisPilotContactSource => ({
-      id: `contact-${customer.id}`,
-      customerCode: customer.code,
-      state: "active",
-      phoneValues: [customer.phoneValues[0] ?? ""],
-      emailValues: [`USER${index + 1}@EXAMPLE.TEST`],
-    }));
 
     const result = selectCustomerPilotCohort({
       customers,
-      contacts,
       existingLinkedCustomerIds: new Set(),
       existingFirebasePhoneDigests: new Set(),
       auditHmacKey,
@@ -65,25 +56,6 @@ describe("customer pilot cohort", () => {
     customers[3] = { ...customers[3]!, phoneValues: [customers[4]!.phoneValues[0]!] };
     customers[5] = { ...customers[5]!, code: customers[6]!.code };
     customers[7] = { ...customers[7]!, phoneValues: [] };
-    const contacts: AmisPilotContactSource[] = [{
-      id: "contact-a",
-      customerCode: customers[8]!.code,
-      state: "active",
-      phoneValues: ["0911111111"],
-      emailValues: [],
-    }, {
-      id: "contact-b",
-      customerCode: customers[8]!.code,
-      state: "active",
-      phoneValues: ["0922222222"],
-      emailValues: [],
-    }, {
-      id: "orphan",
-      customerCode: null,
-      state: "active",
-      phoneValues: [],
-      emailValues: [],
-    }];
     const existingPhone = normalizeVietnamMobile(customers[9]!.phoneValues[0]!)!;
     const existingPhoneDigest = createHmac("sha256", auditHmacKey)
       .update(`phone\u0000${existingPhone}`)
@@ -91,7 +63,6 @@ describe("customer pilot cohort", () => {
 
     const result = selectCustomerPilotCohort({
       customers,
-      contacts,
       existingLinkedCustomerIds: new Set([customers[10]!.id]),
       existingFirebasePhoneDigests: new Set([existingPhoneDigest]),
       auditHmacKey,
@@ -102,7 +73,6 @@ describe("customer pilot cohort", () => {
       reason: "insufficient_eligible_candidates",
       evidence: {
         selectedCount: 0,
-        orphanContactCount: 1,
         conflictCounts: {
           duplicate_customer_code: 2,
           existing_firebase_phone: 1,
@@ -110,7 +80,6 @@ describe("customer pilot cohort", () => {
           identity_conflict: 2,
           invalid_email: 1,
           invalid_phone: 1,
-          multiple_valid_contacts: 1,
           phone_count_not_one: 1,
           source_state_not_active: 1,
         },
@@ -121,7 +90,6 @@ describe("customer pilot cohort", () => {
   it("rejects a short audit key before processing PII", () => {
     expect(() => selectCustomerPilotCohort({
       customers: [],
-      contacts: [],
       existingLinkedCustomerIds: new Set(),
       existingFirebasePhoneDigests: new Set(),
       auditHmacKey: "short",

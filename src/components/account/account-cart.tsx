@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { AccountCart as Cart } from "@/lib/account/cart-port";
 import { useCart } from "@/components/cart/cart-context";
+import { cartCheckoutReadiness } from "@/lib/checkout/cart-readiness";
 
 function isCartResponse(value: unknown): value is Readonly<{ readonly cart: Cart }> {
   return (
@@ -22,6 +23,7 @@ export function AccountCart({
   const [message, setMessage] = useState("");
   const { clearCart, items } = useCart();
   const mergeIdempotencyKeyRef = useRef<string | null>(null);
+  const readiness = cartCheckoutReadiness(cart);
 
   async function mutate(method: "PATCH" | "DELETE", variantId: string, quantity?: number) {
     const optimistic =
@@ -100,6 +102,38 @@ export function AccountCart({
       <p aria-live="polite" className="text-sm text-[var(--nh-muted)]">
         {message}
       </p>
+      {readiness.kind === "unavailable_items" ? (
+        <div
+          aria-live="polite"
+          className="mt-4 border border-[var(--nh-red)] bg-[var(--nh-surface-warm)] p-4 text-sm text-[var(--nh-ink)]"
+          role="alert"
+        >
+          <p className="font-medium">Không thể thanh toán khi giỏ còn sản phẩm không khả dụng.</p>
+          <p className="mt-1 text-[var(--nh-muted)]">
+            Hãy xóa hoặc điều chỉnh các dòng được đánh dấu rồi thử lại.
+          </p>
+          <ul className="mt-2 list-disc pl-5 text-[var(--nh-muted)]">
+            {readiness.unavailableItems.map((item) => (
+              <li key={item.variantId}>
+                {item.title} ({item.quantity})
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {readiness.kind === "stock_changed" ? (
+        <div
+          aria-live="polite"
+          className="mt-4 border border-[var(--nh-red)] bg-[var(--nh-surface-warm)] p-4 text-sm text-[var(--nh-ink)]"
+          role="alert"
+        >
+          <p className="font-medium">Số lượng tồn kho đã thay đổi.</p>
+          <p className="mt-1 text-[var(--nh-muted)]">Hãy kiểm tra và điều chỉnh các dòng được đánh dấu trước khi thanh toán.</p>
+          <ul className="mt-2 list-disc pl-5 text-[var(--nh-muted)]">
+            {readiness.changedItems.map((item) => <li key={item.variantId}>{item.title} ({item.quantity})</li>)}
+          </ul>
+        </div>
+      ) : null}
       <ul className="mt-4 divide-y divide-[var(--nh-border)]">
         {cart.items.map((item) => (
           <li className="flex items-center justify-between gap-4 py-4" key={item.variantId}>
@@ -135,7 +169,7 @@ export function AccountCart({
       <p className="mt-4 text-sm font-medium text-[var(--nh-ink)]">
         Tổng cộng: {cart.total.amount.toLocaleString("vi-VN")} {cart.total.currency}
       </p>
-      {cart.items.some((item) => item.available) ? (
+      {readiness.kind === "ready" ? (
         <a
           className="mt-4 inline-flex min-h-11 items-center bg-[var(--nh-ink)] px-5 text-sm text-white"
           href={checkoutHref}

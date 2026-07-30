@@ -1,10 +1,10 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const imageProps: { className?: string; fetchPriority?: "auto" | "high" }[] = [];
 
 vi.mock("@/i18n/navigation", () => ({
-  Link: ({ children, href }: Readonly<{ children: React.ReactNode; href: string }>) => <a href={href}>{children}</a>,
+  Link: ({ children, href, ...props }: Readonly<{ children: React.ReactNode; href: string; "aria-label"?: string; className?: string }>) => <a href={href} {...props}>{children}</a>,
 }));
 
 vi.mock("next/image", () => ({
@@ -57,5 +57,22 @@ describe("ProductCard", () => {
     expect(imageProps[0]?.className).toContain("opacity-75");
     expect(imageProps[0]?.className).toContain("grayscale-[35%]");
     expect(imageProps[0]?.className).not.toContain("blur");
+  });
+
+  it("keeps wishlist/detail interactions and renders unknown stock neutrally", () => {
+    const onToggleFavorite = vi.fn();
+    render(
+      <ProductCard
+        locale="en"
+        product={{ ...product, status: "unknown" }}
+        isFavorite={false}
+        onToggleFavorite={onToggleFavorite}
+      />,
+    );
+
+    expect(screen.getByText("NEEDS CONFIRMATION")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add Chair to favorites" }));
+    expect(onToggleFavorite).toHaveBeenCalledWith("chair-1");
+    expect(screen.getByRole("link", { name: "View Chair details" })).toHaveAttribute("href", "/vi/products/chair");
   });
 });

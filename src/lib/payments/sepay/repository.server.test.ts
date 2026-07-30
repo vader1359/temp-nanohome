@@ -30,11 +30,11 @@ describe("SePayTestRepository", () => {
       mutationsEnabled: false,
       serviceRoleKey: "not-printed",
     });
-    await expect(repository.createAttempt("account-owned", orderId))
+    await expect(repository.createAttempt("account-owned", orderId, "00000000-0000-4000-8000-000000000302"))
       .rejects.toEqual(new SePayTestRepositoryError("mutation_disabled"));
     await expect(repository.applyVerifiedIpn({
       amount: 125000,
-      merchantReference: "WEB-TEST001",
+      merchantReference: "WEB0123456789AB",
       payloadDigest: "a".repeat(64),
       providerEventId: "event-1",
       providerTransactionId: "transaction-1",
@@ -55,7 +55,10 @@ describe("SePayTestRepository", () => {
         attempt_state: "pending",
         created: true,
         currency: "VND",
-        merchant_reference: "WEB-TEST001",
+        expires_at: "2026-07-29T00:00:00.000Z",
+        merchant_reference: "WEB0123456789AB",
+        provider_checkout_url: "https://vietqr.app/img",
+        provider_order_id: "WEB0123456789AB",
       }]);
     });
     const repository = createSePayTestRepository({
@@ -66,16 +69,27 @@ describe("SePayTestRepository", () => {
       serviceRoleKey: "not-printed",
     });
 
-    await expect(repository.createAttempt("account-owned", orderId)).resolves.toEqual({
+    await expect(repository.createAttempt(
+      "account-owned",
+      orderId,
+      "00000000-0000-4000-8000-000000000302",
+    )).resolves.toEqual({
       amount: 125000,
       attemptId: "00000000-0000-4000-8000-000000000401",
       created: true,
       currency: "VND",
-      merchantReference: "WEB-TEST001",
+      expiresAt: "2026-07-29T00:00:00.000Z",
+      merchantReference: "WEB0123456789AB",
+      providerCheckoutUrl: "https://vietqr.app/img",
+      providerOrderId: "WEB0123456789AB",
       state: "pending",
     });
     expect(url?.pathname).toBe("/rest/v1/rpc/create_customer_sepay_test_attempt");
-    expect(body).toEqual({ p_account_id: "account-owned", p_order_id: orderId });
+    expect(body).toEqual({
+      p_account_id: "account-owned",
+      p_idempotency_key: "00000000-0000-4000-8000-000000000302",
+      p_order_id: orderId,
+    });
   });
 
   it("resolves expected payment only through the sandbox attempt boundary", async () => {
@@ -85,7 +99,7 @@ describe("SePayTestRepository", () => {
       return jsonResponse([{
         amount: 125000,
         currency: "VND",
-        merchant_reference: "WEB-TEST001",
+        merchant_reference: "WEB0123456789AB",
         provider_environment: "sandbox",
         state: "pending",
       }]);
@@ -98,16 +112,16 @@ describe("SePayTestRepository", () => {
       serviceRoleKey: "not-printed",
     });
 
-    await expect(repository.getExpectedPayment("WEB-TEST001")).resolves.toEqual({
+    await expect(repository.getExpectedPayment("WEB0123456789AB")).resolves.toEqual({
       amount: 125000,
       currency: "VND",
       environment: "sandbox",
-      merchantReference: "WEB-TEST001",
+      merchantReference: "WEB0123456789AB",
       state: "pending",
     });
     expect(url?.searchParams.get("provider")).toBe("eq.sepay");
     expect(url?.searchParams.get("provider_environment")).toBe("eq.sandbox");
-    expect(url?.searchParams.get("merchant_reference")).toBe("eq.WEB-TEST001");
+    expect(url?.searchParams.get("merchant_reference")).toBe("eq.WEB0123456789AB");
   });
 
   it("applies digest-only verified evidence and never sends a raw provider payload", async () => {
@@ -126,7 +140,7 @@ describe("SePayTestRepository", () => {
 
     await expect(repository.applyVerifiedIpn({
       amount: 125000,
-      merchantReference: "WEB-TEST001",
+      merchantReference: "WEB0123456789AB",
       payloadDigest: "b".repeat(64),
       providerEventId: "event-1",
       providerTransactionId: "transaction-1",
@@ -134,7 +148,7 @@ describe("SePayTestRepository", () => {
     })).resolves.toBe("applied");
     expect(body).toEqual({
       p_amount: 125000,
-      p_merchant_reference: "WEB-TEST001",
+      p_merchant_reference: "WEB0123456789AB",
       p_payload_digest: "b".repeat(64),
       p_provider_event_id: "event-1",
       p_provider_transaction_id: "transaction-1",

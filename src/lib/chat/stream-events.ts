@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { RenderSafePublicChatAnswer } from "./resolution";
+import type { PublicChatToolResult } from "./tools/public-tools";
 
 const identifierSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/);
 const textSchema = z.string().min(1).max(1_000).refine((value) => !/<[^>]*>|!\[[^\]]*\]\([^)]*\)|\b(?:https?|ftp):\/\/|\bjavascript:/i.test(value));
@@ -24,6 +25,7 @@ const attributeKeySchema = z.enum([
   "description",
   "designer_description",
 ]);
+type ComparisonAttributeKey = z.infer<typeof attributeKeySchema>;
 const imageSourceSchema = z.string().min(2).max(2_000).refine((value) => {
   if (value.startsWith("/images/") && !value.startsWith("//")) return true;
   try {
@@ -50,6 +52,9 @@ const safeProductSchema = z.object({
   stock: catalogStockSchema.optional(),
   attributes: attributesSchema.optional(),
 }).strict();
+
+export type PublicChatSafeProduct = z.infer<typeof safeProductSchema>;
+
 const safeBlockSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("product_cards"), products: z.array(safeProductSchema).min(1).max(8).readonly() }).strict(),
   z.object({ type: z.literal("comparison"), products: z.array(safeProductSchema).min(2).max(4).readonly(), attributeKeys: z.array(attributeKeySchema).min(1).max(6).readonly() }).strict(),
@@ -68,7 +73,7 @@ export const publicChatRequestSchema = z
 
 const startedEventSchema = z.object({ type: z.literal("message_started"), responseId: responseIdSchema }).strict();
 const deltaEventSchema = z.object({ type: z.literal("text_delta"), responseId: responseIdSchema, text: textSchema }).strict();
-const toolStartedEventSchema = z.object({ type: z.literal("tool_started"), responseId: responseIdSchema, tool: z.enum(["search_catalog", "get_product_details", "compare_products", "get_recommendations", "get_public_page", "create_staff_handoff"]) }).strict();
+const toolStartedEventSchema = z.object({ type: z.literal("tool_started"), responseId: responseIdSchema, tool: z.enum(["search_catalog", "search_catalog_v2", "get_product_details", "compare_products", "get_recommendations", "get_public_page", "create_staff_handoff"]) }).strict();
 const blockEventSchema = z.object({ type: z.literal("block_ready"), responseId: responseIdSchema, block: safeBlockSchema }).strict();
 const evidenceEventSchema = z.object({ type: z.literal("evidence_ready"), responseId: responseIdSchema, sourceId: identifierSchema, label: textSchema }).strict();
 const completedEventSchema = z.object({ type: z.literal("message_completed"), responseId: responseIdSchema }).strict();
@@ -104,6 +109,50 @@ export function encodePublicChatEvent(event: PublicChatEvent): Uint8Array {
     default:
       return assertNever(event);
   }
+}
+
+function catalogRecordToSafeProduct(record: Extract<PublicChatToolResult, { kind: "catalog" | "comparison" }>["records"][number]) {
+  return {
+    variantId: record.variantId,
+    title: record.title,
+    canonicalId: record.canonicalId,
+    canonicalLink: record.canonicalLink,
+    image: record.image.src === undefined
+      ? { canonicalImageId: record.image.id, alt: record.image.alt }
+      : { canonicalImageId: record.image.id, alt: record.image.alt, src: record.image.src },
+    price: record.price,
+    stock: record.stock,
+    attributes: record.attributes,
+  };
+}
+
+/**
+ * Convert already validated server catalog records into the existing public
+ * block contract so the route can stream a verified block before model text.
+ * The UI still owns rendering through its existing ProductCard interface.
+ */
+export function catalogResultEvent(
+  responseId: string,
+  result: PublicChatToolResult,
+): PublicChatEvent | undefined {
+  if (result.kind === "catalog" && result.records.length > 0) {
+    const block = {
+      type: "product_cards" as const,
+      products: result.records.slice(0, 8).map(catalogRecordToSafeProduct),
+    };
+    const parsed = safeBlockSchema.safeParse(block);
+    return parsed.success ? { type: "block_ready", responseId, block: parsed.data } : undefined;
+  }
+  if (result.kind === "comparison" && result.records.length >= 2) {
+    const block = {
+      type: "comparison" as const,
+      products: result.records.slice(0, 4).map(catalogRecordToSafeProduct),
+      attributeKeys: result.attributeKeys.filter((key): key is ComparisonAttributeKey => attributeKeySchema.safeParse(key).success).slice(0, 6),
+    };
+    const parsed = safeBlockSchema.safeParse(block);
+    return parsed.success ? { type: "block_ready", responseId, block: parsed.data } : undefined;
+  }
+  return undefined;
 }
 
 export function answerEvents(responseId: string, answer: RenderSafePublicChatAnswer): readonly PublicChatEvent[] {

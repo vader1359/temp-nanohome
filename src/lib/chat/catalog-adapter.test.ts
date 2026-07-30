@@ -18,8 +18,10 @@ import {
   catalogSearchQueries,
   createPublicCatalogAdapters,
   searchPublicChatCatalogVariants,
+  searchPublicChatCatalogVariantsV2,
   type PublicCatalogAdapterDependencies,
 } from "./catalog-adapter";
+import type { ShoppingCatalogSearchRequest } from "./shopping-intent";
 
 type RpcVariant = Awaited<
   ReturnType<PublicCatalogAdapterDependencies["searchVariants"]>
@@ -183,6 +185,75 @@ describe("live public catalog chat adapter", () => {
     expect(endpoint.searchParams.get("result_limit")).toBe("12");
     expect(init.method).toBeUndefined();
     expect(init.signal).toBe(controller.signal);
+  });
+
+  it("queries v2 with structured filters instead of a free-text alias", async () => {
+    remoteFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify([publicRpcVariant()]), { status: 200 }),
+    );
+    const request: ShoppingCatalogSearchRequest = {
+      searchText: "usm",
+      productFamilies: ["table"],
+      subtypes: ["dining_table"],
+      categoryKeys: ["table"],
+      collectionKeys: [],
+      roomKeys: ["dining"],
+      brandKeys: ["usm"],
+      designerKeys: [],
+      materialKeys: [],
+      colorKeys: [],
+      maxPrice: 100_000_000,
+      availability: "available_only",
+      sort: "price_asc",
+      limit: 8,
+    };
+
+    await searchPublicChatCatalogVariantsV2(request);
+
+    const [input] = remoteFetch.mock.calls[0] as [URL, RequestInit];
+    const endpoint = new URL(input.toString());
+    expect(endpoint.pathname).toBe("/rest/v1/rpc/search_public_chat_catalog_v2");
+    expect(endpoint.searchParams.get("product_family_keys")).toBe("{table}");
+    expect(endpoint.searchParams.get("subtype_keys")).toBe("{dining_table}");
+    expect(endpoint.searchParams.get("collection_keys")).toBe("{}");
+    expect(endpoint.searchParams.get("room_keys")).toBe("{dining}");
+    expect(endpoint.searchParams.get("availability_mode")).toBe("available_only");
+    expect(endpoint.searchParams.get("sort_mode")).toBe("price_asc");
+    expect(endpoint.searchParams.get("result_limit")).toBe("8");
+  });
+
+  it("keeps v2 family and facet filters hard before ranking and limiting", () => {
+    const sql = readFileSync(
+      "supabase/migrations/20260730030000_add_public_chat_catalog_search_v2.sql",
+      "utf8",
+    );
+
+    expect(sql).toContain("create function public.search_public_chat_catalog_v2(");
+    expect(sql).toContain("product_family_keys text[] default '{}'::text[]");
+    expect(sql).toContain("collection_keys text[] default '{}'::text[]");
+    expect(sql).toContain("cardinality(input.family_keys) = 0");
+    expect(sql).toContain("candidate.family_text !~ '(^|[^a-z])(lamp|lamps|light|lights|đèn|den)");
+    expect(sql).toContain("cardinality(input.subtype_keys) = 0");
+    expect(sql).toContain("cardinality(input.collection_keys) = 0");
+    expect(sql).toContain("cardinality(input.room_keys) = 0");
+    expect(sql).toContain("cardinality(input.brand_keys) = 0");
+    expect(sql).toContain("cardinality(input.designer_keys) = 0");
+    expect(sql).toContain("cardinality(input.material_keys) = 0");
+    expect(sql).toContain("cardinality(input.color_keys) = 0");
+    expect(sql).toContain("input.availability <> 'available_only'");
+    expect(sql).toContain("input.sort not in ('price_asc', 'price_desc')");
+    expect(sql).toContain("candidate.eligibility_price_mode = 'fixed'");
+    expect(sql).toContain("candidate.eligibility_price > 1");
+    expect(sql).toContain("create index if not exists variants_public_chat_filter_category_idx");
+    expect(sql).toContain("using gin (filter_room)");
+    expect(sql).toContain("set statement_timeout = '4s'");
+    expect(sql).toContain("word_similarity(input.search_term");
+    expect(sql).toContain("limit (select bounded_limit from input)");
+    expect(sql.indexOf("cardinality(input.family_keys) = 0")).toBeLessThan(
+      sql.indexOf("word_similarity(input.search_term"),
+    );
+    expect(sql).not.toMatch(/\braw\b/iu);
+    expect(sql).toContain("to anon, authenticated, service_role");
   });
 
   it("keeps the public RPC projection allowlisted and filters eligibility before limit", () => {
@@ -446,6 +517,89 @@ describe("live public catalog chat adapter", () => {
     expect(records).toEqual([
       expect.objectContaining({ variantId: "variant-one", eligible: true }),
     ]);
+  });
+
+  it("applies family and subtype guards before returning v2 cards", async () => {
+    const adapter = createPublicCatalogAdapters("en", {
+      ...dependencies(),
+      searchVariantsStructured: vi.fn(async () => [
+        variant({
+          id: "table-variant",
+          product_id: "table-product",
+          name: "Dining Table",
+          name_vi: "Bàn ăn",
+          filter_category: "tables",
+          filter_sub_category: "dining-tables",
+          filter_product_line: "LC",
+          brand_name: "USM",
+          public_price: 50_000_000,
+        }),
+        variant({
+          id: "lamp-variant",
+          product_id: "lamp-product",
+          name: "Table Lamp",
+          name_vi: "Đèn bàn",
+          filter_category: "table-lamps",
+          filter_sub_category: "table-lamps",
+        }),
+      ]),
+    });
+
+    const records = await adapter.searchStructured?.({
+      productFamilies: ["table"],
+      subtypes: ["dining_table"],
+      categoryKeys: ["table"],
+      collectionKeys: ["lc"],
+      roomKeys: [],
+      brandKeys: [],
+      designerKeys: [],
+      materialKeys: [],
+      colorKeys: [],
+      availability: "include_unknown",
+      sort: "relevance",
+      limit: 8,
+    });
+
+    expect(records?.map((record) => record.variantId)).toEqual(["table-variant"]);
+  });
+
+  it("excludes contact-price records from deterministic price ordering", async () => {
+    const adapter = createPublicCatalogAdapters("en", {
+      ...dependencies(),
+      searchVariantsStructured: vi.fn(async () => [
+        variant({
+          id: "fixed-table",
+          name: "Table fixed",
+          filter_category: "tables",
+          public_price: 10,
+          public_price_mode: "fixed",
+        }),
+        variant({
+          id: "contact-table",
+          name: "Table contact",
+          filter_category: "tables",
+          public_price: null,
+          public_price_mode: "contact",
+        }),
+      ]),
+    });
+
+    const records = await adapter.searchStructured?.({
+      productFamilies: ["table"],
+      subtypes: [],
+      categoryKeys: ["table"],
+      collectionKeys: [],
+      roomKeys: [],
+      brandKeys: [],
+      designerKeys: [],
+      materialKeys: [],
+      colorKeys: [],
+      availability: "include_unknown",
+      sort: "price_asc",
+      limit: 8,
+    });
+
+    expect(records?.map((record) => record.variantId)).toEqual(["fixed-table"]);
   });
 
   it("retries one transient RPC read before returning catalog cards", async () => {

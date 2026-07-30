@@ -5,6 +5,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { safeAccountReturnTo } from "@/lib/account/auth-flow";
+import { AUTH_SESSION_INTENTS } from "./session-intent";
+import type { AccountIdentityResolution, FirebaseIdentityResolutionInput } from "@/lib/account/identity-resolution";
 import {
   exchangeFirebaseIdToken,
   FirebaseSessionExchangeError,
@@ -18,6 +20,7 @@ const CSRF_TTL_SECONDS = 300;
 const sessionRequestSchema = z.object({
   csrfToken: z.string().min(32).max(256),
   idToken: z.string().min(128).max(16_384),
+  intent: z.enum(AUTH_SESSION_INTENTS).default("account"),
   locale: z.enum(["vi", "en", "ko"]),
   returnTo: z.string().max(2_048),
 }).strict();
@@ -49,6 +52,7 @@ export type FirebaseSessionRouteDependencies = Readonly<{
   projectId: string;
   sessionTtlSeconds: number;
   createCsrfToken?: () => string;
+  resolveAccount?: (input: FirebaseIdentityResolutionInput) => Promise<AccountIdentityResolution>;
 }>;
 
 export function createFirebaseSessionRouteHandlers(dependencies: FirebaseSessionRouteDependencies) {
@@ -83,6 +87,8 @@ export function createFirebaseSessionRouteHandlers(dependencies: FirebaseSession
           nowSeconds: dependencies.nowSeconds(),
           projectId: dependencies.projectId,
           sessionTtlSeconds: dependencies.sessionTtlSeconds,
+          intent: parsed.intent,
+          resolveAccount: dependencies.resolveAccount,
         });
         const response = NextResponse.json(
           { returnTo: safeAccountReturnTo(parsed.locale, parsed.returnTo) },
@@ -96,7 +102,10 @@ export function createFirebaseSessionRouteHandlers(dependencies: FirebaseSession
         response.cookies.set(FIREBASE_CSRF_COOKIE, "", csrfCookieOptions(0));
         return response;
       } catch (error) {
-        const status = error instanceof FirebaseSessionExchangeError && error.code === "unverified_email" ? 403 : 401;
+        const status = error instanceof FirebaseSessionExchangeError
+          && (error.code === "incomplete_identity" || error.code === "unverified_email")
+          ? 403
+          : 401;
         return NextResponse.json({ error: "Unauthorized" }, { headers: privateHeaders, status });
       }
     },

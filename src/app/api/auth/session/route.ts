@@ -1,5 +1,6 @@
 import { createFirebaseAdminAuth } from "@/lib/auth/firebase-admin.server";
 import { createFirebaseSessionRouteHandlers } from "@/lib/auth/firebase-session-route.server";
+import { getAccountIdentityResolver } from "@/lib/account/account-ports.server";
 import { env } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -18,6 +19,7 @@ function handlers() {
     nowSeconds: () => Math.floor(Date.now() / 1_000),
     projectId,
     sessionTtlSeconds: env.AUTH_SESSION_TTL_SECONDS ?? 432_000,
+    resolveAccount: (input) => getAccountIdentityResolver().resolveOrCreate(input),
   });
 }
 

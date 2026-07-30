@@ -65,6 +65,10 @@ const envSchema = z.object({
   SEPAY_API_BASE_URL: optionalHttpsUrl,
   SEPAY_API_TOKEN: optionalEnvString,
   SEPAY_WEBHOOK_HMAC_SECRET: optionalEnvString,
+  SEPAY_TEST_BANK_ACCOUNT_ID: z.preprocess(
+    (value) => value === "" ? undefined : value,
+    z.string().uuid().optional(),
+  ),
   SEPAY_MERCHANT_ID: optionalEnvString,
   SEPAY_MERCHANT_SECRET: optionalEnvString,
   SEPAY_IPN_SECRET: optionalEnvString,
@@ -83,6 +87,7 @@ const envSchema = z.object({
   AMIS_CUSTOMER_PILOT_ENABLED: envBoolean("false"),
   AMIS_CUSTOMER_PILOT_AUDIT_PATH: optionalEnvString,
   AMIS_CUSTOMER_PILOT_HMAC_SECRET: optionalEnvString,
+  AMIS_CUSTOMER_PRECREATION_HMAC_SECRET: optionalEnvString,
   RECOMMENDATIONS_SHADOW_MODE: envBoolean("true"),
 
   ACCOUNT_CENTER_ENABLED: envBoolean("false"),
@@ -187,12 +192,18 @@ const envSchema = z.object({
 
   if (value.PAYMENT_MODE === "sepay_sandbox") {
     const sandboxValues = [
+      value.SEPAY_API_BASE_URL,
       value.SEPAY_API_TOKEN,
       value.SEPAY_WEBHOOK_HMAC_SECRET,
+      value.SEPAY_TEST_BANK_ACCOUNT_ID,
       value.SEPAY_PAYMENT_METHOD,
+      value.NEXT_PUBLIC_APP_ORIGIN,
     ];
     if (value.SEPAY_ENV !== "sandbox" || sandboxValues.some((entry) => entry === undefined)) {
-      context.addIssue({ code: z.ZodIssueCode.custom, message: "SePay sandbox mode requires complete sandbox-only configuration", path: ["PAYMENT_MODE"] });
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "SePay Test Mode requires complete sandbox-only configuration", path: ["PAYMENT_MODE"] });
+    }
+    if (value.NEXT_PUBLIC_APP_ORIGIN !== "https://staging.nanohome.vn") {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "SePay Test Mode must stay on the staging origin", path: ["NEXT_PUBLIC_APP_ORIGIN"] });
     }
     if (value.SEPAY_API_BASE_URL !== undefined
       && new URL(value.SEPAY_API_BASE_URL).hostname !== "userapi-sandbox.sepay.vn") {

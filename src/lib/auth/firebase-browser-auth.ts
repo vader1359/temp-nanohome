@@ -5,6 +5,7 @@ import {
   RecaptchaVerifier,
   browserSessionPersistence,
   getRedirectResult,
+  linkWithPhoneNumber,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPhoneNumber,
@@ -12,11 +13,13 @@ import {
   signInWithRedirect,
   signOut,
   setPersistence,
+  verifyBeforeUpdateEmail,
   type ConfirmationResult,
   type User,
 } from "firebase/auth";
 
 import { getFirebaseBrowserAuth } from "./firebase-client";
+import type { AuthSessionIntent } from "./session-intent";
 
 const GOOGLE_REDIRECT_MARKER = "nanohome-google-redirect-pending";
 
@@ -32,6 +35,9 @@ export type FirebaseAuthUiErrorCode =
   | "operation_not_allowed"
   | "too_many_requests"
   | "unverified_email"
+  | "account_conflict"
+  | "email_verification_pending"
+  | "recent_sign_in_required"
   | "unauthorized_domain"
   | "unknown";
 
@@ -47,13 +53,15 @@ export type FirebasePhoneConfirmation = Readonly<{
 }>;
 
 export interface FirebaseBrowserAuthPort {
-  readonly requestPhoneCode: (phone: string, recaptchaContainerId: string) => Promise<FirebasePhoneConfirmation>;
+  readonly requestPhoneCode: (phone: string, recaptchaContainerId: string, linkUser?: User) => Promise<FirebasePhoneConfirmation>;
   readonly signInGoogle: () => Promise<User>;
   readonly startGoogleRedirect: () => Promise<void>;
   readonly consumeGoogleRedirect: () => Promise<User | null>;
   readonly signInPassword: (email: string, password: string) => Promise<User>;
   readonly sendPasswordReset: (email: string, locale: string) => Promise<void>;
-  readonly createServerSession: (user: User, locale: string, returnTo: string) => Promise<string>;
+  readonly verifyEmailBeforeUpdate: (user: User, email: string, locale: string, returnTo: string) => Promise<void>;
+  readonly reloadUser: (user: User) => Promise<User>;
+  readonly createServerSession: (user: User, locale: string, returnTo: string, intent?: AuthSessionIntent) => Promise<string>;
   readonly clearPhoneVerifier: () => void;
 }
 
@@ -96,6 +104,12 @@ function mapFirebaseError(error: unknown): FirebaseAuthUiError {
     case "auth/user-not-found":
     case "auth/wrong-password":
       return new FirebaseAuthUiError("invalid_credentials");
+    case "auth/credential-already-in-use":
+    case "auth/email-already-in-use":
+    case "auth/provider-already-linked":
+      return new FirebaseAuthUiError("account_conflict");
+    case "auth/requires-recent-login":
+      return new FirebaseAuthUiError("recent_sign_in_required");
     default:
       return new FirebaseAuthUiError("unknown");
   }
@@ -125,12 +139,14 @@ export function createFirebaseBrowserAuthPort(): FirebaseBrowserAuthPort {
 
   return {
     clearPhoneVerifier,
-    async requestPhoneCode(phone, recaptchaContainerId) {
+    async requestPhoneCode(phone, recaptchaContainerId, linkUser) {
       try {
         const auth = await getFirebaseBrowserAuth();
         clearPhoneVerifier();
         recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerId, { size: "invisible" });
-        const confirmation: ConfirmationResult = await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
+        const confirmation: ConfirmationResult = linkUser === undefined
+          ? await signInWithPhoneNumber(auth, phone, recaptchaVerifier)
+          : await linkWithPhoneNumber(linkUser, phone, recaptchaVerifier);
         return {
           confirm: async (code) => {
             try {
@@ -204,7 +220,25 @@ export function createFirebaseBrowserAuthPort(): FirebaseBrowserAuthPort {
         throw mapFirebaseError(error);
       }
     },
-    async createServerSession(user, locale, returnTo) {
+    async verifyEmailBeforeUpdate(user, email, locale, returnTo) {
+      try {
+        await verifyBeforeUpdateEmail(user, email, {
+          handleCodeInApp: false,
+          url: `${window.location.origin}/${locale}/auth/email-link?returnTo=${encodeURIComponent(returnTo)}`,
+        });
+      } catch (error) {
+        throw mapFirebaseError(error);
+      }
+    },
+    async reloadUser(user) {
+      try {
+        await user.reload();
+        return user;
+      } catch (error) {
+        throw mapFirebaseError(error);
+      }
+    },
+    async createServerSession(user, locale, returnTo, intent = "account") {
       const auth = await getFirebaseBrowserAuth();
       try {
         const csrfResponse = await fetch("/api/auth/session", {
@@ -216,7 +250,7 @@ export function createFirebaseBrowserAuthPort(): FirebaseBrowserAuthPort {
         const csrfToken = parseCsrfResponse(await csrfResponse.json());
         const idToken = await user.getIdToken();
         const sessionResponse = await fetch("/api/auth/session", {
-          body: JSON.stringify({ csrfToken, idToken, locale, returnTo }),
+          body: JSON.stringify({ csrfToken, idToken, intent, locale, returnTo }),
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
           method: "POST",

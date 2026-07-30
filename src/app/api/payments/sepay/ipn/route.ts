@@ -29,6 +29,8 @@ export async function POST(request: Request): Promise<Response> {
   if (!isSePaySandboxRuntimeEnabled()) {
     return Response.json({ error: "payment_disabled", success: false }, { status: 503 });
   }
+  const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+  if (contentType !== "application/json") return rejected("invalid_payload");
 
   let rawBody: string;
   try {

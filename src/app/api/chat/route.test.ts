@@ -9,7 +9,9 @@ vi.mock("@/lib/chat/deepseek/orchestrator", () => ({
 }));
 
 import { publicChatEventSchema } from "@/lib/chat/stream-events";
+import { resetPublicChatWorkCacheForTests } from "@/lib/chat/public-chat-work-cache";
 import { createServerChatDependencies, setServerChatDependenciesProvider } from "@/lib/chat/route-adapters";
+import type { PublicChatToolResult } from "@/lib/chat/tools/public-tools";
 import { sha256Text } from "@/lib/chat/retrieval";
 import { POST } from "./route";
 
@@ -32,6 +34,7 @@ async function events(response: Response): Promise<readonly ReturnType<typeof pu
 }
 
 afterEach(() => {
+  resetPublicChatWorkCacheForTests();
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
   vi.clearAllMocks();
@@ -120,6 +123,95 @@ describe("POST /api/chat", () => {
       sourceId: ready.sourceId,
       label: "Catalog guide",
     });
+  });
+
+  it("emits message_started before a pending provider resolves", async () => {
+    vi.stubEnv("CHAT_ENABLED", "true");
+    vi.stubEnv("DEEPSEEK_API_KEY", "test-key");
+    const ready = readyDependencies();
+    let resolveAnswer: ((value: unknown) => void) | undefined;
+    orchestration.orchestrate.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveAnswer = resolve;
+    }));
+
+    const response = await POST(request({ question: "Show me a sofa", locale: "en", messageRef: "progressive-start" }));
+    const reader = response.body?.getReader();
+    if (reader === undefined) throw new Error("expected NDJSON body");
+    const first = await reader.read();
+    const firstEvent = publicChatEventSchema.parse(JSON.parse(new TextDecoder().decode(first.value)));
+
+    expect(firstEvent.type).toBe("message_started");
+    expect(orchestration.orchestrate).toHaveBeenCalledOnce();
+
+    resolveAnswer?.({ text: "Grounded answer", blocks: [], evidence: [], followUps: [] });
+    while (!(await reader.read()).done) {
+      // Drain the terminal events after the first-chunk assertion.
+    }
+    ready.restore();
+  });
+
+  it("streams a verified catalog block before the final answer and uses it for coalesced callers", async () => {
+    vi.stubEnv("CHAT_ENABLED", "true");
+    vi.stubEnv("DEEPSEEK_API_KEY", "test-key");
+    vi.stubEnv("CATALOG_REVISION", "fixture-revision-1");
+    const ready = readyDependencies();
+    let resolveAnswer: ((value: unknown) => void) | undefined;
+    const catalogResult: PublicChatToolResult = {
+      kind: "catalog",
+      records: [{
+        canonicalId: "sofa",
+        variantId: "sofa-01",
+        title: "Verified sofa",
+        canonicalLink: "/en/products/sofa",
+        image: { id: "sofa-image", alt: "Verified sofa" },
+        price: { mode: "contact" },
+        stock: { state: "unknown" },
+        attributes: { category: "sofa" },
+      }],
+    };
+    orchestration.orchestrate.mockImplementationOnce((input: {
+      readonly onToolStarted?: (name: "search_catalog_v2") => void;
+      readonly onToolResult?: (result: PublicChatToolResult) => void;
+    }) => {
+      input.onToolStarted?.("search_catalog_v2");
+      input.onToolResult?.(catalogResult);
+      return new Promise((resolve) => { resolveAnswer = resolve; });
+    });
+
+    const firstResponse = await POST(request({ question: "Show me a sofa", locale: "en", messageRef: "coalesced-a" }));
+    const secondResponse = await POST(request({ question: "Show me a sofa", locale: "en", messageRef: "coalesced-b" }));
+    expect(orchestration.orchestrate).toHaveBeenCalledOnce();
+
+    const firstReader = firstResponse.body?.getReader();
+    if (firstReader === undefined) throw new Error("expected first NDJSON body");
+    const firstEvents: ReturnType<typeof publicChatEventSchema.parse>[] = [];
+    const decodeChunk = (value: Uint8Array | undefined) => {
+      if (value === undefined) throw new Error("expected NDJSON chunk");
+      return publicChatEventSchema.parse(JSON.parse(new TextDecoder().decode(value)));
+    };
+    for (let index = 0; index < 3; index += 1) {
+      const chunk = await firstReader.read();
+      if (chunk.done) throw new Error("stream ended before verified block");
+      firstEvents.push(decodeChunk(chunk.value));
+    }
+    resolveAnswer?.({ text: "Grounded sofa answer", blocks: [], evidence: [], followUps: [] });
+    while (true) {
+      const chunk = await firstReader.read();
+      if (chunk.done) break;
+      firstEvents.push(decodeChunk(chunk.value));
+    }
+    const secondEvents = await events(secondResponse);
+    ready.restore();
+
+    expect(firstEvents.map((event) => event.type)).toEqual(["message_started", "tool_started", "block_ready", "text_delta", "message_completed"]);
+    expect(secondEvents.map((event) => event.type)).toEqual(["message_started", "tool_started", "block_ready", "text_delta", "message_completed"]);
+    expect(firstEvents[0]?.responseId).not.toBe(secondEvents[0]?.responseId);
+    expect(firstEvents.find((event) => event.type === "block_ready")).toEqual(expect.objectContaining({
+      block: expect.objectContaining({
+        type: "product_cards",
+        products: [expect.objectContaining({ variantId: "sofa-01" })],
+      }),
+    }));
   });
 
   it.each([
@@ -301,7 +393,7 @@ describe("POST /api/chat", () => {
     ready.restore();
 
     // Then
-    expect((await events(firstResponse)).map((event) => event.type)).toEqual(["message_started", "message_failed"]);
+    expect((await events(firstResponse)).map((event) => event.type)).toEqual(["message_started", "tool_started", "message_failed"]);
     expect((await events(secondResponse)).map((event) => event.type)).toEqual(["message_started", "tool_started", "text_delta", "message_completed"]);
     expect(sharedSignal?.aborted).toBe(false);
   });
@@ -339,7 +431,7 @@ describe("POST /api/chat", () => {
     // Then
     expect(toolSignal?.aborted).toBe(true);
     const output = await events(response);
-    expect(output.map((event) => event.type)).toEqual(["message_started", "message_failed"]);
+    expect(output.map((event) => event.type)).toEqual(["message_started", "tool_started", "message_failed"]);
     expect(output).not.toContainEqual(expect.objectContaining({ type: "text_delta", text: "Unsafe model claim" }));
   });
 

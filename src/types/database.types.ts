@@ -3243,6 +3243,7 @@ export type Database = {
           order_id: string | null
           payment_method: string
           provider: string
+          provider_checkout_url: string | null
           provider_order_id: string | null
           provider_transaction_id: string | null
           request_digest: string | null
@@ -3264,6 +3265,7 @@ export type Database = {
           order_id?: string | null
           payment_method: string
           provider: string
+          provider_checkout_url?: string | null
           provider_order_id?: string | null
           provider_transaction_id?: string | null
           request_digest?: string | null
@@ -3285,6 +3287,7 @@ export type Database = {
           order_id?: string | null
           payment_method?: string
           provider?: string
+          provider_checkout_url?: string | null
           provider_order_id?: string | null
           provider_transaction_id?: string | null
           request_digest?: string | null
@@ -5181,6 +5184,72 @@ export type Database = {
         Args: { p_posts: Json; p_stage_id: string }
         Returns: undefined
       }
+      search_public_chat_catalog_v2: {
+        Args: {
+          availability_mode?: string
+          brand_keys?: string[]
+          category_keys?: string[]
+          collection_keys?: string[]
+          color_keys?: string[]
+          designer_keys?: string[]
+          material_keys?: string[]
+          max_price?: number
+          min_price?: number
+          product_family_keys?: string[]
+          result_limit?: number
+          room_keys?: string[]
+          search_text?: string
+          sort_mode?: string
+          subtype_keys?: string[]
+        }
+        Returns: {
+          brand_name: string
+          cldr_media_lifestyle_1: string
+          cldr_media_lifestyle_2: string
+          description: string
+          description_ko: string
+          description_vi: string
+          designer_description: string
+          designer_description_ko: string
+          designer_description_vi: string
+          designer_name: string
+          filter_brand: string
+          filter_category: string
+          filter_product_line: string
+          filter_room: string[]
+          filter_room_ko: string[]
+          filter_room_vi: string[]
+          filter_sub_category: string
+          finish: string
+          finish_ko: string
+          finish_vi: string
+          gallery_urls: string[]
+          id: string
+          is_current: boolean
+          is_recommendable: boolean
+          localized_product_name: string
+          media_closeup: string
+          media_long: string
+          name: string
+          name_ko: string
+          name_vi: string
+          packshot_url: string
+          product_id: string
+          product_line: string
+          product_name: string
+          product_name_denorm: string
+          public_price: number
+          public_price_mode: string
+          public_stock_state: string
+          short_name: string
+          short_name_ko: string
+          short_name_vi: string
+          size: string
+          slug: string
+          slug_ko: string
+          slug_vi: string
+        }[]
+      }
       search_public_chat_catalog: {
         Args: { result_limit?: number; search_query: string }
         Returns: {
@@ -5596,4 +5665,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

@@ -202,6 +202,7 @@ function configuredAmisEnv(): AmisTestEnv {
 function setRouteEnv(amis: AmisTestEnv): void {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test");
+  vi.stubEnv("SUPABASE_PROJECT_REF", "example");
   vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-test");
   vi.stubEnv("CRON_SECRET", "cron-test");
 

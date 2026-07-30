@@ -259,14 +259,26 @@ export function inspectStagingConfiguration(
     sepaySandboxHost = false;
   }
   const sepayHmac = value("SEPAY_WEBHOOK_HMAC_SECRET");
+  const sepayTestBankAccountId = value("SEPAY_TEST_BANK_ACCOUNT_ID");
+  const sepayTestBankAccountConfigured = sepayTestBankAccountId !== undefined
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
+      .test(sepayTestBankAccountId);
   const sepayComplete = value("PAYMENT_MODE") === "sepay_sandbox"
     && value("SEPAY_ENV") === "sandbox"
-    && ["SEPAY_API_BASE_URL", "SEPAY_API_TOKEN", "SEPAY_WEBHOOK_HMAC_SECRET", "SEPAY_PAYMENT_METHOD"]
+    && [
+      "SEPAY_API_BASE_URL",
+      "SEPAY_API_TOKEN",
+      "SEPAY_WEBHOOK_HMAC_SECRET",
+      "SEPAY_TEST_BANK_ACCOUNT_ID",
+      "SEPAY_PAYMENT_METHOD",
+    ]
       .every((key) => value(key) !== undefined);
   const sepaySandboxSafe = sepayComplete
     && sepaySandboxHost
     && sepayHmac !== undefined
-    && Buffer.byteLength(sepayHmac, "utf8") >= 32;
+    && Buffer.byteLength(sepayHmac, "utf8") >= 32
+    && sepayTestBankAccountConfigured
+    && value("NEXT_PUBLIC_APP_ORIGIN") === "https://staging.nanohome.vn";
   checks.sepayConfig = {
     status: sepaySandboxSafe ? "PASS" : "BLOCKED_CONFIG",
     detail: {
@@ -274,6 +286,8 @@ export function inspectStagingConfiguration(
       hmacLongEnough: sepayHmac !== undefined && Buffer.byteLength(sepayHmac, "utf8") >= 32,
       sandboxHost: sepaySandboxHost,
       sandboxOnly: sepaySandboxSafe,
+      stagingOrigin: value("NEXT_PUBLIC_APP_ORIGIN") === "https://staging.nanohome.vn",
+      testBankAccountConfigured: sepayTestBankAccountConfigured,
     },
   };
 

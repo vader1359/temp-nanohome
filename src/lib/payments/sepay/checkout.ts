@@ -1,30 +1,40 @@
-export const SEPAY_SANDBOX_API_BASE_URL = "https://userapi-sandbox.sepay.vn/v2";
+export const SEPAY_TEST_VIETQR_URL = "https://vietqr.app/img";
+export const SEPAY_TEST_PAYMENT_REFERENCE_PATTERN = /^WEB[A-Z0-9]{12}$/u;
 
-export type SePayTestPaymentInstruction = Readonly<{
-  readonly amount: number;
-  readonly currency: "VND";
-  readonly environment: "sandbox";
-  readonly merchantReference: string;
-  readonly paymentState: "pending" | "paid";
-}>;
+export function isSePayTestPaymentReference(value: string): boolean {
+  return SEPAY_TEST_PAYMENT_REFERENCE_PATTERN.test(value);
+}
 
-export function buildSePayTestPaymentInstruction(input: Readonly<{
-  readonly amount: number;
-  readonly currency: "VND";
-  readonly merchantReference: string;
-  readonly paymentState: "pending" | "paid";
-}>): SePayTestPaymentInstruction {
-  if (!Number.isSafeInteger(input.amount) || input.amount <= 0) {
-    throw new Error("SePay Test VND amounts must be positive safe integers");
+export function isExpectedSePayTestVietQrUrl(
+  value: string,
+  expected: Readonly<{ amount: number; merchantReference: string }>,
+): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
   }
-  if (!/^WEB-[A-Z0-9_-]+$/.test(input.merchantReference)) {
-    throw new Error("SePay Test requires a canonical server merchant reference");
-  }
-  return {
-    amount: input.amount,
-    currency: input.currency,
-    environment: "sandbox",
-    merchantReference: input.merchantReference,
-    paymentState: input.paymentState,
-  };
+  const allowedParameters = [
+    "acc",
+    "amount",
+    "bank",
+    "des",
+    "fullacc",
+    "showinfo",
+    "template",
+  ];
+  return `${url.origin}${url.pathname}` === SEPAY_TEST_VIETQR_URL
+    && url.username === ""
+    && url.password === ""
+    && url.hash === ""
+    && [...url.searchParams.keys()].every((key) => allowedParameters.includes(key))
+    && allowedParameters.every((key) => url.searchParams.has(key))
+    && url.searchParams.get("acc") !== ""
+    && /^[A-Z0-9]+$/u.test(url.searchParams.get("bank") ?? "")
+    && url.searchParams.get("amount") === String(expected.amount)
+    && url.searchParams.get("des") === expected.merchantReference
+    && url.searchParams.get("template") === "compact"
+    && url.searchParams.get("showinfo") === "true"
+    && url.searchParams.get("fullacc") === "true";
 }

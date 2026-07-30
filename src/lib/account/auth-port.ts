@@ -1,5 +1,8 @@
 import "server-only";
 
+import { normalizeEmail } from "@/lib/auth/email-normalization";
+import { isE164Phone } from "@/lib/auth/phone-e164";
+
 export type AccountIdentityProvider = "email" | "google" | "phone";
 
 export type AccountIdentity = Readonly<{
@@ -19,6 +22,8 @@ export interface AccountAuthPort {
   readonly getAuthenticatedAccount: () => Promise<AuthenticatedAccount | null>;
 }
 
+type VerifiedContactKind = "email" | "phone";
+
 export type FirebaseAccountClaims = Readonly<{
   readonly uid: string;
   readonly email?: string;
@@ -34,6 +39,7 @@ export function createFirebaseAccountAuthPort(input: Readonly<{
   readonly getClaims: () => Promise<FirebaseAccountClaims | null>;
   readonly getLocale: () => Promise<string>;
   readonly resolveAccountId: (firebaseUid: string) => Promise<string | null>;
+  readonly resolveVerifiedContactKinds?: (accountId: string) => Promise<readonly VerifiedContactKind[]>;
 }>): AccountAuthPort {
   return {
     async getAuthenticatedAccount() {
@@ -44,14 +50,15 @@ export function createFirebaseAccountAuthPort(input: Readonly<{
       if (accountId === null) return null;
 
       const identities: AccountIdentity[] = [];
-      if (typeof claims.email === "string" && claims.email.length > 0) {
+      const normalizedEmail = typeof claims.email === "string" ? normalizeEmail(claims.email) : null;
+      if (normalizedEmail !== null) {
         identities.push({
-          identifier: claims.email,
+          identifier: normalizedEmail,
           provider: "email",
           verified: claims.email_verified === true,
         });
       }
-      if (typeof claims.phone_number === "string" && claims.phone_number.length > 0) {
+      if (isE164Phone(claims.phone_number)) {
         identities.push({
           identifier: claims.phone_number,
           provider: "phone",
@@ -63,16 +70,24 @@ export function createFirebaseAccountAuthPort(input: Readonly<{
         || Object.prototype.hasOwnProperty.call(claims.firebase?.identities ?? {}, "google.com");
       if (hasGoogleIdentity) {
         identities.push({
-          identifier: claims.email ?? "Google",
+          identifier: normalizedEmail ?? "Google",
           provider: "google",
-          verified: claims.email_verified === true,
+          verified: claims.email_verified === true && normalizedEmail !== null,
         });
       }
+
+      const canonicalContactKinds = input.resolveVerifiedContactKinds === undefined
+        ? null
+        : new Set(await input.resolveVerifiedContactKinds(accountId));
+      const presentedIdentities = canonicalContactKinds === null
+        ? identities
+        : identities.filter((identity) => identity.provider === "google"
+          || canonicalContactKinds.has(identity.provider as VerifiedContactKind));
 
       return {
         accountId,
         firebaseUid: claims.uid,
-        identities,
+        identities: presentedIdentities,
         locale: await input.getLocale(),
       };
     },

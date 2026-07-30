@@ -1,11 +1,19 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ReactElement, ReactNode } from "react";
 
+import { WishlistProvider } from "@/components/wishlist/wishlist-context";
 import { PublicChatWidget, readPublicChatEvents } from "./public-chat-widget";
 
 vi.mock("next/image", () => ({
   default: ({ alt, src }: Readonly<{ alt: string; src: string }>) => (
     <span aria-label={alt} data-image-src={src} role="img" />
+  ),
+}));
+
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ children, href, className, ...props }: Readonly<{ children: ReactNode; href: string; className?: string; "aria-label"?: string }>) => (
+    <a aria-label={props["aria-label"]} className={className} href={href}>{children}</a>
   ),
 }));
 
@@ -29,6 +37,10 @@ function ndjsonResponse(lines: readonly string[], split = false): Response {
 
 function event(value: object): string {
   return JSON.stringify({ responseId, ...value });
+}
+
+function renderWithWishlist(ui: ReactElement) {
+  return render(<WishlistProvider>{ui}</WishlistProvider>);
 }
 
 afterEach(() => vi.unstubAllGlobals());
@@ -101,7 +113,7 @@ describe("PublicChatWidget", () => {
               alt: "Ghế cần liên hệ",
               src: "https://res.cloudinary.com/nanohome-web/image/upload/products/contact-chair",
             },
-            price: { mode: "fixed", amount: 0, currency: "VND" },
+            price: { mode: "contact" },
             stock: { state: "unknown" },
             attributes: { brand: "Brand" },
           }],
@@ -126,7 +138,7 @@ describe("PublicChatWidget", () => {
       return { width: this.classList.contains("snap-start") ? 100 : 200 } as DOMRect;
     });
     vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
-    render(<PublicChatWidget locale="vi" />);
+    renderWithWishlist(<PublicChatWidget locale="vi" />);
 
     const launcher = screen.getByRole("button", { name: "Mở trợ lý nanoHome" });
     fireEvent.click(launcher);
@@ -151,11 +163,12 @@ describe("PublicChatWidget", () => {
       "data-image-src",
       "https://res.cloudinary.com/nanohome-web/image/upload/products/chair",
     );
-    expect(screen.getByRole("link", { name: "Xem sản phẩm: Ghế Việt" })).toHaveAttribute("href", "/vi/products/ghe-viet");
+    expect(screen.getByRole("link", { name: "Xem chi tiết Ghế Việt" })).toHaveAttribute("href", "/vi/products/ghe-viet");
     expect(screen.getByText(/12[.\s]500[.\s]000/)).toBeInTheDocument();
-    expect(screen.getByText("Liên hệ để biết giá")).toBeInTheDocument();
+    expect(screen.getByText("Liên hệ")).toBeInTheDocument();
     expect(screen.queryByText(/^0(?:[.\s]0+)?\s*₫$/u)).not.toBeInTheDocument();
-    expect(screen.getByText("Có sẵn theo dữ liệu hiện tại")).toBeInTheDocument();
+    expect(screen.getByText("CÓ SẴN")).toBeInTheDocument();
+    expect(screen.getByText("CẦN XÁC NHẬN")).toBeInTheDocument();
     expect(screen.getByText(/Danh mục công khai/u)).toBeInTheDocument();
     expect(document.querySelector("script")).toBeNull();
   });

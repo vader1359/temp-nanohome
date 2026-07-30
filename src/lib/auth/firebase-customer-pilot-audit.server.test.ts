@@ -82,7 +82,6 @@ function buildMappings(): FirebasePilotMapping[] {
     environment: FIREBASE_CUSTOMER_PILOT_PROJECT,
     ordinal: index + 1,
     customerId: String(index + 1),
-    contactId: null,
     firebaseUid: `nh-pilot-${String(index + 1).padStart(40, "a")}`,
     phoneDigest: String(index + 1).padStart(64, "b"),
     sourceDigest: String(index + 1).padStart(64, "c"),

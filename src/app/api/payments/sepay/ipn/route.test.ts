@@ -24,8 +24,8 @@ import { POST } from "./route";
 
 const rawBody = JSON.stringify({
   accountNumber: "SANITIZED-TEST",
-  code: "WEB-TEST001",
-  content: "WEB-TEST001 sanitized staging payment",
+  code: "WEB0123456789AB",
+  content: "WEB0123456789AB sanitized staging payment",
   gateway: "TestBank",
   id: 12345,
   referenceCode: "TEST-TRANSACTION-001",
@@ -62,7 +62,7 @@ describe("SePay Test IPN route", () => {
       amount: 125000,
       currency: "VND",
       environment: "sandbox",
-      merchantReference: "WEB-TEST001",
+      merchantReference: "WEB0123456789AB",
       state: "pending",
     });
   });
@@ -77,7 +77,7 @@ describe("SePay Test IPN route", () => {
     await expect(accepted.json()).resolves.toEqual({ success: true });
     expect(mocks.applyVerifiedIpn).toHaveBeenCalledWith(expect.objectContaining({
       amount: 125000,
-      merchantReference: "WEB-TEST001",
+      merchantReference: "WEB0123456789AB",
       payloadDigest: expect.stringMatching(/^[0-9a-f]{64}$/),
       providerEventId: "12345",
       providerTransactionId: "TEST-TRANSACTION-001",
@@ -101,7 +101,7 @@ describe("SePay Test IPN route", () => {
       amount: 1,
       currency: "VND",
       environment: "sandbox",
-      merchantReference: "WEB-TEST001",
+      merchantReference: "WEB0123456789AB",
       state: "pending",
     });
     expect((await POST(request())).status).toBe(400);

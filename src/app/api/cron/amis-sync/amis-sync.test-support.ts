@@ -73,6 +73,7 @@ export function resetState(state: SupabaseState): void {
 export function setRouteEnv(): void {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test");
+  vi.stubEnv("SUPABASE_PROJECT_REF", "example");
   vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-test");
   vi.stubEnv("CRON_SECRET", "cron-test");
   vi.stubEnv("AMIS_API_BASE_URL", "https://crmconnect.misa.vn");

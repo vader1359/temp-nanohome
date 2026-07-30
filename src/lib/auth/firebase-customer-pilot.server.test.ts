@@ -143,7 +143,6 @@ function buildSelected(): SelectedPilotCustomer[] {
   return Array.from({ length: 10 }, (_, index) => ({
     ordinal: index + 1,
     customerId: String(index + 1),
-    contactId: null,
     phoneE164: `+8490${String(1_000_001 + index).slice(-7)}`,
     phoneDigest: String(index + 1).padStart(64, "a"),
     emailDigest: null,

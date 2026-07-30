@@ -12,7 +12,7 @@ describe("customer repository", () => {
 
     expect(result).toEqual({ identity: { visitorId: "visitor-db", sessionId: "session-db" }, status: "active" });
     expect(fetcher).toHaveBeenCalledWith(
-      "https://supabase.test/rest/v1/rpc/resolve_customer_identity_v2",
+      "https://test-project.supabase.co/rest/v1/rpc/resolve_customer_identity_v2",
       expect.objectContaining({ method: "POST" }),
     );
     const body = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;

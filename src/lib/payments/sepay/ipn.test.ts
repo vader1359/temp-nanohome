@@ -8,8 +8,8 @@ const secret = "staging-only-test-secret";
 const timestamp = 1_800_000_000;
 const payload = JSON.stringify({
   accountNumber: "SANITIZED-TEST",
-  code: "WEB-TEST001",
-  content: "WEB-TEST001 sanitized staging payment",
+  code: "WEB0123456789AB",
+  content: "WEB0123456789AB sanitized staging payment",
   gateway: "TestBank",
   id: 12345,
   referenceCode: "TEST-TRANSACTION-001",
@@ -20,7 +20,7 @@ const expected = {
   amount: 125000,
   currency: "VND" as const,
   environment: "sandbox" as const,
-  merchantReference: "WEB-TEST001",
+  merchantReference: "WEB0123456789AB",
 };
 
 function signature(rawBody = payload, signingTimestamp = timestamp): string {
@@ -47,7 +47,7 @@ describe("verifySePayIpn", () => {
       evidence: expect.objectContaining({
         amount: 125000,
         currency: "VND",
-        merchantReference: "WEB-TEST001",
+        merchantReference: "WEB0123456789AB",
         providerTransactionId: "TEST-TRANSACTION-001",
       }),
       kind: "verified",
@@ -78,7 +78,7 @@ describe("verifySePayIpn", () => {
 
   it.each([
     ["wrong amount", { ...expected, amount: 1 }],
-    ["wrong reference", { ...expected, merchantReference: "WEB-OTHER" }],
+    ["wrong reference", { ...expected, merchantReference: "WEBFFFFFFFFFFFF" }],
   ])("rejects %s after authentication", (_name, mismatchedExpected) => {
     expect(verify({ expected: mismatchedExpected })).toEqual({
       kind: "rejected",
@@ -89,7 +89,7 @@ describe("verifySePayIpn", () => {
   it.each([
     ["outbound direction", payload.replace('"in"', '"out"')],
     ["fractional VND", payload.replace("125000", "125000.5")],
-    ["missing payment code", payload.replace('"WEB-TEST001"', '""')],
+    ["missing payment code", payload.replace('"WEB0123456789AB"', '""')],
   ])("rejects malformed or unsafe payload: %s", (_name, rawBody) => {
     expect(verify({
       rawBody,

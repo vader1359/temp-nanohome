@@ -4,10 +4,12 @@ import Image from "next/image";
 import { Heart } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { type ProductGridItem, type ProductStatusKind } from "@/components/products/ProductGrid";
+import { type ProductGridItem, type ProductStatusKind } from "@/components/products/product-grid-item";
 import { type WishlistItem } from "@/components/wishlist/wishlist-context";
 
-export type { ProductGridItem } from "@/components/products/ProductGrid";
+export type { ProductGridItem } from "@/components/products/product-grid-item";
+
+export type ProductCardLocale = "vi" | "en" | "ko";
 
 export function toWishlistItem(product: ProductGridItem): WishlistItem {
   return {
@@ -24,10 +26,37 @@ export function toWishlistItem(product: ProductGridItem): WishlistItem {
   };
 }
 
-const STATUS_LABEL: Record<ProductStatusKind, string> = {
-  in_stock: "CÓ SẴN",
-  out_of_stock: "HẾT HÀNG",
-  sale: "SALE",
+const STATUS_LABEL: Record<ProductCardLocale, Record<ProductStatusKind, string>> = {
+  vi: {
+    in_stock: "CÓ SẴN",
+    out_of_stock: "HẾT HÀNG",
+    sale: "SALE",
+    unknown: "CẦN XÁC NHẬN",
+  },
+  en: {
+    in_stock: "IN STOCK",
+    out_of_stock: "OUT OF STOCK",
+    sale: "SALE",
+    unknown: "NEEDS CONFIRMATION",
+  },
+  ko: {
+    in_stock: "재고 있음",
+    out_of_stock: "품절",
+    sale: "세일",
+    unknown: "확인 필요",
+  },
+};
+
+const FAVORITE_LABEL: Record<ProductCardLocale, (name: string) => string> = {
+  vi: (name) => `Yêu thích ${name}`,
+  en: (name) => `Add ${name} to favorites`,
+  ko: (name) => `${name} 위시리스트에 추가`,
+};
+
+const DETAIL_LABEL: Record<ProductCardLocale, (name: string) => string> = {
+  vi: (name) => `Xem chi tiết ${name}`,
+  en: (name) => `View ${name} details`,
+  ko: (name) => `${name} 상세 보기`,
 };
 
 function getStatusClass(status: ProductStatusKind) {
@@ -47,11 +76,13 @@ export function ProductCard({
   isFavorite,
   onToggleFavorite,
   fetchPriority = "auto",
+  locale = "vi",
 }: Readonly<{
   product: ProductGridItem;
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
   fetchPriority?: "auto" | "high";
+  locale?: ProductCardLocale;
 }>) {
   const sale = product.status === "sale";
 
@@ -59,10 +90,10 @@ export function ProductCard({
     <article className="group flex min-w-0 flex-col gap-3 bg-white p-2 sm:gap-4 sm:p-4">
       <div className="relative flex aspect-[4/5] w-full items-end justify-center bg-white px-6 pb-8 pt-14 sm:px-5 sm:pb-7 sm:pt-10">
         <button
-          className="absolute right-1 top-1 z-10 flex h-4 w-4 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 sm:right-1.5 sm:top-1.5 sm:h-5 sm:w-5"
+          className="absolute right-1 top-1 z-10 flex h-4 w-4 items-center justify-center bg-transparent opacity-100 transition-opacity duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent sm:right-1.5 sm:top-1.5 sm:h-5 sm:w-5"
           type="button"
           onClick={() => onToggleFavorite(product.id)}
-          aria-label={`Yêu thích ${product.name}`}
+          aria-label={FAVORITE_LABEL[locale](product.name)}
         >
           <Heart
             className={cn(
@@ -77,15 +108,15 @@ export function ProductCard({
             getStatusClass(product.status),
           )}
         >
-          {STATUS_LABEL[product.status]}
+          {STATUS_LABEL[locale][product.status]}
         </span>
         <Link
-          aria-label={`Xem chi tiết ${product.name}`}
-          className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[6px] transition-transform duration-300 group-hover:scale-[1.03]"
+          aria-label={DETAIL_LABEL[locale](product.name)}
+          className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[6px] transition-transform duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent group-hover:scale-[1.03]"
           href={product.href}
         >
           <Image
-            alt={product.name}
+            alt={product.imageAlt ?? product.name}
             className={cn(
               "object-contain object-bottom",
               product.status === "out_of_stock" &&
@@ -126,7 +157,7 @@ export function ProductCard({
           </div>
         )}
         <h3 className="line-clamp-2 min-h-8 text-[9px] font-light leading-4 text-nh-ink sm:min-h-9 sm:text-[12px] sm:leading-[18px] md:min-h-10 md:text-sm md:leading-5">
-          <Link className="transition-colors hover:text-nh-red" href={product.href}>
+          <Link className="transition-colors hover:text-nh-red focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nh-accent" href={product.href}>
             {product.name}
           </Link>
         </h3>

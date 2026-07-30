@@ -31,7 +31,7 @@ values
   ('00000000-0000-4000-8000-000000000511'),
   ('00000000-0000-4000-8000-000000000512');
 
-select plan(31);
+select plan(33);
 
 select is(
   has_function_privilege(
@@ -45,7 +45,7 @@ select is(
 select is(
   has_function_privilege(
     'authenticated',
-    'public.create_customer_sepay_test_attempt(uuid,uuid)',
+    'public.create_customer_sepay_test_attempt(uuid,uuid,text)',
     'execute'
   ),
   false,
@@ -198,7 +198,8 @@ create temporary table first_sepay_attempt as
 select *
 from public.create_customer_sepay_test_attempt(
   '00000000-0000-4000-8000-000000000511',
-  (select order_id from captured_sepay_order)
+  (select order_id from captured_sepay_order),
+  '00000000-0000-4000-8000-000000000521'
 );
 
 select is(
@@ -220,12 +221,28 @@ select is(
   'sandbox',
   'the attempt is explicitly bound to SePay sandbox'
 );
+select is(
+  (
+    select attempt.provider_checkout_url
+    from public.payment_attempts attempt
+    where attempt.id = (select attempt_id from first_sepay_attempt)
+  ),
+  'https://vietqr.app/img',
+  'the attempt exposes only the server-owned Test Mode VietQR URL'
+);
+
+select matches(
+  (select merchant_reference from first_sepay_attempt),
+  '^WEB[A-Z0-9]{12}$',
+  'the payment attempt uses the VCB-compatible WEB plus 12 alphanumeric code'
+);
 
 create temporary table replayed_sepay_attempt as
 select *
 from public.create_customer_sepay_test_attempt(
   '00000000-0000-4000-8000-000000000511',
-  (select order_id from captured_sepay_order)
+  (select order_id from captured_sepay_order),
+  '00000000-0000-4000-8000-000000000521'
 );
 
 select is(
@@ -368,9 +385,10 @@ select is(
 
 select throws_ok(
   format(
-    'select * from public.create_customer_sepay_test_attempt(%L, %L)',
+    'select * from public.create_customer_sepay_test_attempt(%L, %L, %L)',
     '00000000-0000-4000-8000-000000000512',
-    (select order_id::text from captured_sepay_order)
+    (select order_id::text from captured_sepay_order),
+    '00000000-0000-4000-8000-000000000522'
   ),
   'P0001',
   'sepay_test_order_not_found',

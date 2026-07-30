@@ -32,3 +32,16 @@ export type {
   PublicChatToolResult,
   PublicSitePage,
 } from "./tools/public-tools";
+export {
+  parseShoppingIntent,
+  shoppingCatalogSearchRequestSchema,
+  shoppingIntentFingerprint,
+  shoppingIntentSchema,
+  shoppingIntentToCatalogRequest,
+} from "./shopping-intent";
+export type {
+  ProductFamily,
+  ShoppingCatalogSearchRequest,
+  ShoppingIntent,
+  ShoppingLocale,
+} from "./shopping-intent";

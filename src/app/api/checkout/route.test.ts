@@ -19,16 +19,21 @@ import { POST } from "./route";
 const account = {
   accountId: "account-owned",
   firebaseUid: "firebase-owned",
-  identities: [],
+  identities: [
+    { identifier: "Customer@Example.test", provider: "email", verified: true },
+    { identifier: "+84 901 234 567", provider: "phone", verified: true },
+  ],
   locale: "vi",
 } as const;
 const idempotencyKey = "00000000-0000-4000-8000-000000000201";
 const validBody = {
-  address: "1 Test Street",
-  email: "customer@example.test",
-  fullName: "Test Customer",
   idempotencyKey,
-  phone: "0900000000",
+  delivery: {
+    address: "1 Test Street",
+    addressId: null,
+    fullName: "Test Customer",
+  },
+  vat: null,
 };
 
 function request(body: unknown, origin = "https://staging.nanohome.vn"): Request {
@@ -72,11 +77,35 @@ describe("POST /api/checkout", () => {
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({
+      next: "initialize_payment",
       orderId: "00000000-0000-4000-8000-000000000301",
       orderNumber: "ORD-TEST001",
       replayed: false,
     });
-    expect(mocks.captureOrder).toHaveBeenCalledWith(account.accountId, validBody);
+    expect(mocks.captureOrder).toHaveBeenCalledWith(account.accountId, expect.objectContaining({
+      address: "1 Test Street",
+      fullName: "Test Customer",
+      idempotencyKey,
+      email: "customer@example.test",
+      phone: "+84901234567",
+    }));
+  });
+
+  it("requires both verified email and normalized E.164 phone before capture", async () => {
+    mocks.getAuthenticatedAccount.mockResolvedValue({
+      ...account,
+      identities: [{ identifier: "Customer@Example.test", provider: "email", verified: true }],
+    });
+
+    const response = await POST(request(validBody));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "identity_required",
+      missing: ["phone"],
+      returnTo: "/vi/checkout",
+    });
+    expect(mocks.captureOrder).not.toHaveBeenCalled();
   });
 
   it("rejects browser cart, price, state, and owner fields at the boundary", async () => {
@@ -84,7 +113,9 @@ describe("POST /api/checkout", () => {
     const response = await POST(request({
       ...validBody,
       accountId: "account-other",
+      email: "attacker@example.test",
       paymentStatus: "paid",
+      phone: "+84900000000",
       total: 1,
     }));
     expect(response.status).toBe(400);

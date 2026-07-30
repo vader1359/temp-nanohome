@@ -2,32 +2,18 @@
 
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, LoaderCircle, MessageCircle, Send, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
+import { toWishlistItem, type ProductGridItem } from "@/components/products/product-card";
+import { useWishlist } from "@/components/wishlist/wishlist-context";
 import type { PublicChatLocale } from "@/lib/chat/contracts";
+import { adaptChatProducts } from "./chat-product-card-adapter";
+import { ProductCardCarousel, type ProductCardCarouselTelemetry } from "./product-card-carousel";
 import {
   publicChatEventSchema,
   type PublicChatEvent,
 } from "@/lib/chat/stream-events";
-
-type ChatProduct = Readonly<{
-  variantId: string;
-  title: string;
-  canonicalId?: string;
-  canonicalLink?: string;
-  image?: Readonly<{
-    canonicalImageId: string;
-    alt: string;
-    src?: string;
-  }>;
-  price?:
-    | Readonly<{ mode: "fixed"; amount: number; currency: string }>
-    | Readonly<{ mode: "contact" }>
-    | Readonly<{ mode: "unavailable" }>;
-  stock?: Readonly<{ state: "available" | "unavailable" | "unknown" }>;
-  attributes?: Readonly<Record<string, string>>;
-}>;
 
 type ChatImage = Readonly<{
   canonicalImageId: string;
@@ -39,7 +25,10 @@ type TranscriptEntry = Readonly<{
   id: string;
   role: "assistant" | "user";
   text: string;
-  products: readonly ChatProduct[];
+  responseId?: string;
+  productBlockType?: "product_cards" | "comparison";
+  products: readonly ProductGridItem[];
+  skippedProductCount: number;
   images: readonly ChatImage[];
   sources: readonly string[];
   handoff: boolean;
@@ -60,14 +49,9 @@ const labels = {
     working: "Đang kiểm tra thông tin đã xác thực…",
     error: "Không thể hoàn tất câu trả lời. Vui lòng thử lại.",
     retry: "Thử lại",
-    contactPrice: "Liên hệ để biết giá",
-    unavailablePrice: "Chưa có giá công khai",
-    available: "Có sẵn theo dữ liệu hiện tại",
-    unavailable: "Hiện không có sẵn",
-    unknownStock: "Cần xác nhận tồn kho",
-    view: "Xem sản phẩm",
     handoff: "Cần nhân viên nanoHome xác nhận thêm.",
     productRegion: "Sản phẩm đã xác thực",
+    comparisonRegion: "Sản phẩm so sánh đã xác thực",
     imageRegion: "Hình ảnh đã xác thực",
     previous: "Cuộn về trước",
     next: "Cuộn tiếp",
@@ -86,14 +70,9 @@ const labels = {
     working: "Checking verified information…",
     error: "The answer could not be completed. Please try again.",
     retry: "Try again",
-    contactPrice: "Contact for price",
-    unavailablePrice: "No public price",
-    available: "Available in current data",
-    unavailable: "Currently unavailable",
-    unknownStock: "Availability needs confirmation",
-    view: "View product",
     handoff: "A nanoHome team member needs to confirm this.",
     productRegion: "Verified products",
+    comparisonRegion: "Verified comparison products",
     imageRegion: "Verified images",
     previous: "Scroll back",
     next: "Scroll forward",
@@ -112,14 +91,9 @@ const labels = {
     working: "검증된 정보를 확인하고 있습니다…",
     error: "답변을 완료하지 못했습니다. 다시 시도해 주세요.",
     retry: "다시 시도",
-    contactPrice: "가격 문의",
-    unavailablePrice: "공개 가격 없음",
-    available: "현재 데이터상 재고 있음",
-    unavailable: "현재 구매 불가",
-    unknownStock: "재고 확인 필요",
-    view: "제품 보기",
     handoff: "nanoHome 담당자의 추가 확인이 필요합니다.",
     productRegion: "검증된 제품",
+    comparisonRegion: "검증된 비교 제품",
     imageRegion: "검증된 이미지",
     previous: "이전으로 스크롤",
     next: "다음으로 스크롤",
@@ -202,77 +176,6 @@ function uniqueBy<T>(
   ];
 }
 
-function priceLabel(product: ChatProduct, locale: PublicChatLocale): string {
-  const text = labels[locale];
-  if (product.price?.mode === "fixed" && product.price.amount > 1) {
-    const numberLocale = locale === "vi" ? "vi-VN" : locale === "ko" ? "ko-KR" : "en-US";
-    try {
-      return new Intl.NumberFormat(numberLocale, {
-        style: "currency",
-        currency: product.price.currency,
-        maximumFractionDigits: 0,
-      }).format(product.price.amount);
-    } catch {
-      return `${product.price.amount.toLocaleString(numberLocale)} ${product.price.currency}`;
-    }
-  }
-  return product.price?.mode === "contact" ||
-    (product.price?.mode === "fixed" && product.price.amount <= 1)
-    ? text.contactPrice
-    : text.unavailablePrice;
-}
-
-function stockLabel(product: ChatProduct, locale: PublicChatLocale): string {
-  const text = labels[locale];
-  if (product.stock?.state === "available") return text.available;
-  if (product.stock?.state === "unavailable") return text.unavailable;
-  return text.unknownStock;
-}
-
-function ProductCard({ product, locale }: Readonly<{ product: ChatProduct; locale: PublicChatLocale }>) {
-  const text = labels[locale];
-  const brand = product.attributes?.brand;
-  const subtitle = [product.attributes?.designer, product.attributes?.collection]
-    .filter((value): value is string => typeof value === "string" && value.length > 0)
-    .join(" · ");
-  const content = (
-    <>
-      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-md bg-nh-surface-warm">
-        {product.image?.src ? (
-          <Image
-            alt={product.image.alt}
-            className="object-contain p-3"
-            fill
-            sizes="(max-width: 640px) 42vw, 170px"
-            src={product.image.src}
-          />
-        ) : (
-          <div aria-hidden="true" className="h-full w-full bg-nh-surface-muted" />
-        )}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-3">
-        {brand ? <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-nh-muted">{brand}</p> : null}
-        <h3 className="line-clamp-2 text-sm font-medium leading-5 text-nh-ink">{product.title}</h3>
-        {subtitle ? <p className="line-clamp-2 text-xs leading-4 text-nh-muted">{subtitle}</p> : null}
-        <p className="mt-auto pt-1 text-sm font-semibold text-nh-ink">{priceLabel(product, locale)}</p>
-        <p className={product.stock?.state === "available" ? "text-[11px] font-medium text-nh-green" : "text-[11px] text-nh-muted"}>
-          {stockLabel(product, locale)}
-        </p>
-        {product.canonicalLink ? <span className="pt-1 text-xs font-medium text-nh-accent underline underline-offset-4">{text.view}</span> : null}
-      </div>
-    </>
-  );
-
-  const className = "flex w-[78vw] max-w-[17rem] shrink-0 snap-start flex-col rounded-lg border border-nh-border bg-white p-2 text-left transition-colors hover:border-nh-accent sm:w-48 sm:max-w-none";
-  return product.canonicalLink ? (
-    <a aria-label={`${text.view}: ${product.title}`} className={className} href={product.canonicalLink}>
-      {content}
-    </a>
-  ) : (
-    <article className={className}>{content}</article>
-  );
-}
-
 function ChatCarousel({
   label,
   count,
@@ -331,10 +234,63 @@ function ChatCarousel({
   );
 }
 
-function TranscriptMessage({ entry, locale, onRetry }: Readonly<{
+type ProductCardSkipTelemetry = Readonly<{
+  type: "skipped";
+  reason: "missing_brand" | "missing_image" | "missing_link" | "invalid_price" | "invalid_stock";
+}>;
+
+function ConnectedProductCardCarousel({
+  entry,
+  locale,
+  text,
+  onTelemetry,
+}: Readonly<{
+  entry: TranscriptEntry;
+  locale: PublicChatLocale;
+  text: (typeof labels)[PublicChatLocale];
+  onTelemetry: (event: ProductCardCarouselTelemetry) => void;
+}>) {
+  const { hasItem, toggleItem } = useWishlist();
+  const toggleFavorite = useCallback((product: ProductGridItem) => {
+    toggleItem(toWishlistItem(product));
+  }, [toggleItem]);
+
+  return (
+    <ProductCardCarousel
+      countLabel={text.itemCount(Math.min(entry.products.length, 8))}
+      isFavorite={hasItem}
+      label={entry.productBlockType === "comparison" ? text.comparisonRegion : text.productRegion}
+      locale={locale}
+      next={text.next}
+      onTelemetry={onTelemetry}
+      onToggleFavorite={toggleFavorite}
+      previous={text.previous}
+      products={entry.products}
+      skippedCount={entry.skippedProductCount}
+    />
+  );
+}
+
+function telemetryName(event: ProductCardCarouselTelemetry | ProductCardSkipTelemetry): string {
+  switch (event.type) {
+    case "rendered":
+      return "ai_product_carousel_rendered";
+    case "scrolled":
+      return "ai_product_carousel_scrolled";
+    case "detail_clicked":
+      return "ai_product_card_detail_clicked";
+    case "wishlist_toggled":
+      return "ai_product_card_wishlist_toggled";
+    case "skipped":
+      return "ai_product_card_skipped";
+  }
+}
+
+function TranscriptMessage({ entry, locale, onRetry, onTelemetry }: Readonly<{
   entry: TranscriptEntry;
   locale: PublicChatLocale;
   onRetry: () => void;
+  onTelemetry: (event: ProductCardCarouselTelemetry) => void;
 }>) {
   const text = labels[locale];
   const assistant = entry.role === "assistant";
@@ -351,10 +307,8 @@ function TranscriptMessage({ entry, locale, onRetry }: Readonly<{
         ) : null}
       </div>
       {entry.products.length > 0 ? (
-        <div className="mt-2" data-testid="chat-product-carousel">
-          <ChatCarousel count={Math.min(entry.products.length, 8)} countLabel={text.itemCount(Math.min(entry.products.length, 8))} label={text.productRegion} next={text.next} previous={text.previous}>
-            {entry.products.slice(0, 8).map((product) => <ProductCard key={product.variantId} locale={locale} product={product} />)}
-          </ChatCarousel>
+        <div className="mt-2">
+          <ConnectedProductCardCarousel entry={entry} locale={locale} onTelemetry={onTelemetry} text={text} />
         </div>
       ) : null}
       {renderableImages.length > 0 ? (
@@ -390,6 +344,12 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeControllerRef = useRef<AbortController | null>(null);
+  const emitProductTelemetry = useCallback((responseId: string | undefined, event: ProductCardCarouselTelemetry | ProductCardSkipTelemetry) => {
+    const payload = Object.fromEntries(Object.entries(event).filter(([key]) => key !== "type"));
+    window.dispatchEvent(new CustomEvent(telemetryName(event), {
+      detail: responseId === undefined ? payload : { responseId, ...payload },
+    }));
+  }, []);
 
   useEffect(() => () => activeControllerRef.current?.abort(), []);
   useEffect(() => {
@@ -442,7 +402,10 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
       id: assistantId,
       role: "assistant",
       text: "",
+      responseId: undefined,
+      productBlockType: undefined,
       products: [],
+      skippedProductCount: 0,
       images: [],
       sources: [],
       handoff: false,
@@ -480,7 +443,15 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
             break;
           case "block_ready":
             if (event.block.type === "product_cards" || event.block.type === "comparison") {
-              draft = { ...draft, products: uniqueBy(draft.products, event.block.products, (product) => product.variantId) };
+              const adapted = adaptChatProducts(event.block.products, locale);
+              adapted.skipped.forEach((skipped) => emitProductTelemetry(event.responseId, { type: "skipped", reason: skipped.reason }));
+              draft = {
+                ...draft,
+                productBlockType: event.block.type,
+                products: uniqueBy(draft.products, adapted.products, (product) => product.id),
+                responseId: event.responseId,
+                skippedProductCount: draft.skippedProductCount + adapted.skipped.length,
+              };
             } else if (event.block.type === "image_gallery") {
               draft = { ...draft, images: uniqueBy(draft.images, event.block.images, (image) => image.canonicalImageId) };
             } else if (event.block.type === "staff_handoff") {
@@ -498,6 +469,8 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
             setStatus("");
             break;
           case "message_started":
+            draft = { ...draft, responseId: event.responseId };
+            syncDraft();
             break;
         }
       }, controller.signal);
@@ -554,7 +527,13 @@ export function PublicChatWidget({ locale }: Readonly<{ locale: PublicChatLocale
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4" ref={scrollRef}>
             {entries.length === 0 ? <p className="rounded-2xl rounded-tl-sm bg-nh-surface-warm px-3 py-2.5 text-sm leading-5 text-nh-muted">{text.empty}</p> : null}
             {entries.map((entry) => (
-              <TranscriptMessage entry={entry} key={entry.id} locale={locale} onRetry={() => void submit(lastQuestion)} />
+              <TranscriptMessage
+                entry={entry}
+                key={entry.id}
+                locale={locale}
+                onRetry={() => void submit(lastQuestion)}
+                onTelemetry={(event) => emitProductTelemetry(entry.responseId, event)}
+              />
             ))}
             {pending && status ? (
               <div className="mr-7 flex items-center gap-2 rounded-2xl rounded-tl-sm bg-nh-surface-warm px-3 py-2.5 text-xs text-nh-muted">

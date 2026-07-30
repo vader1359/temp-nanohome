@@ -63,4 +63,23 @@ describe("createFirebaseAccountAuthPort", () => {
       ],
     });
   });
+
+  it("presents only contact kinds confirmed by the server canonical contact rows", async () => {
+    const port = createFirebaseAccountAuthPort({
+      getClaims: async () => ({
+        uid: "firebase-owned",
+        email: "owner@example.test",
+        email_verified: true,
+        phone_number: "+84901234567",
+        firebase: { sign_in_provider: "password" },
+      }),
+      getLocale: async () => "vi",
+      resolveAccountId: async () => "account-owned",
+      resolveVerifiedContactKinds: async () => ["email"],
+    });
+
+    await expect(port.getAuthenticatedAccount()).resolves.toMatchObject({
+      identities: [{ identifier: "owner@example.test", provider: "email", verified: true }],
+    });
+  });
 });

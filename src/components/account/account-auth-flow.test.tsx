@@ -11,7 +11,29 @@ import {
 } from "@/lib/auth/firebase-browser-auth";
 import { AccountAuthFlow } from "./account-auth-flow";
 
-const firebaseUser = { getIdToken: vi.fn() } as unknown as User;
+const firebaseUser = {
+  email: "person@example.test",
+  emailVerified: true,
+  getIdToken: vi.fn(),
+  phoneNumber: "+84901234567",
+  uid: "firebase-user",
+} as unknown as User;
+
+const phoneOnlyUser = {
+  email: null,
+  emailVerified: false,
+  getIdToken: vi.fn(),
+  phoneNumber: "+84901234567",
+  uid: "phone-only-user",
+} as unknown as User;
+
+const emailOnlyUser = {
+  email: "person@example.test",
+  emailVerified: true,
+  getIdToken: vi.fn(),
+  phoneNumber: null,
+  uid: "email-only-user",
+} as unknown as User;
 
 function createAuthPort() {
   const confirmation: FirebasePhoneConfirmation = {
@@ -26,17 +48,20 @@ function createAuthPort() {
     signInGoogle: vi.fn(async () => firebaseUser),
     signInPassword: vi.fn(async () => firebaseUser),
     startGoogleRedirect: vi.fn(async () => undefined),
+    verifyEmailBeforeUpdate: vi.fn(async () => undefined),
+    reloadUser: vi.fn(async (user) => user),
   };
   return { confirmation, port };
 }
 
-function renderAuthFlow(port: FirebaseBrowserAuthPort, navigate = vi.fn()) {
+function renderAuthFlow(port: FirebaseBrowserAuthPort, navigate = vi.fn(), intent: "account" | "checkout" = "account") {
   return {
     navigate,
     ...render(
       <NextIntlClientProvider locale="en" messages={enMessages}>
         <AccountAuthFlow
           authPort={port}
+          intent={intent}
           locale="en"
           navigate={navigate}
           returnTo="/en/products?auth=login"
@@ -60,7 +85,7 @@ describe("AccountAuthFlow", () => {
     expect(screen.getByRole("button", { name: "Email" })).toBeInTheDocument();
     expect(screen.queryByText(/Kakao/iu)).not.toBeInTheDocument();
     expect(screen.queryByText(/Magic link/iu)).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Phone number")).toHaveAttribute("autocomplete", "tel");
+    expect(screen.getByLabelText("Phone number")).toHaveAttribute("autocomplete", "tel-national");
   });
 
   it("normalizes a Vietnamese phone, keeps OTP in memory, and exchanges only the Firebase user", async () => {
@@ -79,7 +104,7 @@ describe("AccountAuthFlow", () => {
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/en/products"));
     expect(confirmation.confirm).toHaveBeenCalledWith("123456");
-    expect(port.createServerSession).toHaveBeenCalledWith(firebaseUser, "en", "/en/products?auth=login");
+    expect(port.createServerSession).toHaveBeenCalledWith(firebaseUser, "en", "/en/products?auth=login", "account");
     expect(storageSpy).not.toHaveBeenCalled();
     storageSpy.mockRestore();
   });
@@ -100,6 +125,26 @@ describe("AccountAuthFlow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change phone" }));
     expect(screen.getByLabelText("Phone number")).toBeInTheDocument();
     expect(port.clearPhoneVerifier).toHaveBeenCalled();
+  });
+
+  it("carries checkout intent through OTP completion without changing the safe destination", async () => {
+    const { confirmation, port } = createAuthPort();
+    const navigate = vi.fn();
+    renderAuthFlow(port, navigate, "checkout");
+
+    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "0901234567" } });
+    fireEvent.click(screen.getByRole("button", { name: "Get OTP" }));
+    fireEvent.change(await screen.findByLabelText("Six-digit OTP"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Verify code" }));
+
+    await waitFor(() => expect(port.createServerSession).toHaveBeenCalledWith(
+      firebaseUser,
+      "en",
+      "/en/products?auth=login",
+      "checkout",
+    ));
+    expect(navigate).toHaveBeenCalledWith("/en/products");
+    expect(confirmation.confirm).toHaveBeenCalledWith("123456");
   });
 
   it("completes Google sign-in through the provider and server-session boundary", async () => {
@@ -127,5 +172,78 @@ describe("AccountAuthFlow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Forgot password" }));
     await waitFor(() => expect(port.sendPasswordReset).toHaveBeenCalledWith("person@example.test", "en"));
     expect(screen.getByRole("status")).toHaveTextContent("secure password-reset instructions");
+  });
+
+  it("links a phone to an existing verified email identity before a checkout session", async () => {
+    const { port } = createAuthPort();
+    vi.mocked(port.signInPassword).mockResolvedValueOnce(emailOnlyUser);
+    const { navigate } = renderAuthFlow(port, vi.fn(), "checkout");
+
+    fireEvent.click(screen.getByRole("button", { name: "Email" }));
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "person@example.test" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "correct horse" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with email" }));
+
+    const phoneInput = await screen.findByLabelText("Phone number");
+    expect(screen.getByText(/Add this phone/iu)).toBeInTheDocument();
+    fireEvent.change(phoneInput, { target: { value: "0901234567" } });
+    fireEvent.click(screen.getByRole("button", { name: "Link phone" }));
+    await screen.findByLabelText("Six-digit OTP");
+    expect(port.requestPhoneCode).toHaveBeenCalledWith(
+      "+84901234567",
+      "nanohome-phone-recaptcha",
+      emailOnlyUser,
+    );
+    fireEvent.change(screen.getByLabelText("Six-digit OTP"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Verify code" }));
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/en/products"));
+  });
+
+  it("requires an email verification step after phone sign-in for checkout and retries safely", async () => {
+    const { confirmation, port } = createAuthPort();
+    vi.mocked(confirmation.confirm).mockResolvedValueOnce(phoneOnlyUser);
+    vi.mocked(port.reloadUser).mockResolvedValueOnce(phoneOnlyUser).mockResolvedValueOnce(firebaseUser);
+    renderAuthFlow(port, vi.fn(), "checkout");
+
+    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "0901234567" } });
+    fireEvent.click(screen.getByRole("button", { name: "Get OTP" }));
+    fireEvent.change(await screen.findByLabelText("Six-digit OTP"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Verify code" }));
+
+    const emailInput = await screen.findByLabelText("Email");
+    fireEvent.change(emailInput, { target: { value: "person@example.test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send verification email" }));
+    await waitFor(() => expect(port.verifyEmailBeforeUpdate).toHaveBeenCalledWith(
+      phoneOnlyUser,
+      "person@example.test",
+      "en",
+      "/en/products?auth=login",
+    ));
+    expect(screen.getByRole("status")).toHaveTextContent("person@example.test");
+
+    fireEvent.click(screen.getByRole("button", { name: "I verified my email" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("not verified yet"));
+    fireEvent.click(screen.getByRole("button", { name: "I verified my email" }));
+    await waitFor(() => expect(port.createServerSession).toHaveBeenCalledWith(firebaseUser, "en", "/en/products?auth=login", "checkout"));
+  });
+
+  it("creates a regular account session after one verified factor", async () => {
+    const { confirmation, port } = createAuthPort();
+    vi.mocked(confirmation.confirm).mockResolvedValueOnce(phoneOnlyUser);
+    renderAuthFlow(port);
+
+    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "0901234567" } });
+    fireEvent.click(screen.getByRole("button", { name: "Get OTP" }));
+    fireEvent.change(await screen.findByLabelText("Six-digit OTP"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Verify code" }));
+
+    await waitFor(() => expect(port.createServerSession).toHaveBeenCalledWith(
+      phoneOnlyUser,
+      "en",
+      "/en/products?auth=login",
+      "account",
+    ));
+    expect(screen.queryByText("Add a verified email")).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-export type ProductStatusKind = "in_stock" | "out_of_stock" | "sale";
+export type ProductStatusKind = "in_stock" | "out_of_stock" | "sale" | "unknown";
 
 export type ProductGridItem = Readonly<{
   id: string;
@@ -13,6 +13,7 @@ export type ProductGridItem = Readonly<{
   subtitle: string;
   status: ProductStatusKind;
   imageUrl: string;
+  imageAlt?: string;
   href: string;
   oldPrice: string | null;
   discount: string | null;

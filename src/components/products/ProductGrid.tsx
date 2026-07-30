@@ -11,10 +11,11 @@ import { cn } from "@/lib/utils";
 
 export type { ProductGridItem, ProductStatusKind } from "./product-grid-item";
 
-const STATUS_LABEL_KEY: Record<ProductStatusKind, "inStock" | "outOfStock" | "saleLabel"> = {
+const STATUS_LABEL_KEY: Record<ProductStatusKind, "inStock" | "outOfStock" | "saleLabel" | "unknownStatus"> = {
   in_stock: "inStock",
   out_of_stock: "outOfStock",
   sale: "saleLabel",
+  unknown: "unknownStatus",
 };
 
 interface ProductGridProps {
@@ -42,7 +43,7 @@ function toWishlistItem(product: ProductGridItem): WishlistItem {
     price: product.price,
     originalPrice: product.oldPrice,
     discount: product.discount,
-    badge: product.status === "sale" ? "Sale" : product.status === "in_stock" ? "Còn hàng" : "Hết hàng",
+    badge: product.status === "sale" ? "Sale" : product.status === "in_stock" ? "Còn hàng" : product.status === "unknown" ? "Cần xác nhận" : "Hết hàng",
     badgeTone: product.status === "sale" ? "sale" : product.status === "in_stock" ? "stock" : "out",
     image: product.imageUrl,
     href: product.href,

@@ -8,6 +8,7 @@ import { variantDetailHref } from "@/lib/queries/variant-url";
 import { supabaseReadOnlyFetch } from "@/lib/remote-read-only";
 
 import type { PublicChatLocale } from "./contracts";
+import type { ShoppingCatalogSearchRequest } from "./shopping-intent";
 import type {
   PublicCatalogAdapters,
   PublicCatalogRecord,
@@ -47,6 +48,11 @@ const publicChatCatalogVariantSchema = z.object({
   designer_name: nullableCatalogTextSchema,
   filter_category: nullableCatalogTextSchema,
   filter_product_line: nullableCatalogTextSchema,
+  filter_sub_category: nullableCatalogTextSchema.optional(),
+  filter_brand: nullableCatalogTextSchema.optional(),
+  filter_room: z.array(z.string()).optional(),
+  filter_room_vi: z.array(z.string()).optional(),
+  filter_room_ko: z.array(z.string()).optional(),
   cldr_media_lifestyle_1: nullableCatalogTextSchema,
   cldr_media_lifestyle_2: nullableCatalogTextSchema,
   media_long: nullableCatalogTextSchema,
@@ -70,10 +76,15 @@ export type PublicCatalogAdapterDependencies = Readonly<{
     limit: number,
     signal?: AbortSignal,
   ) => Promise<readonly PublicChatCatalogVariant[]>;
+  searchVariantsStructured?: (
+    request: ShoppingCatalogSearchRequest,
+    signal?: AbortSignal,
+  ) => Promise<readonly PublicChatCatalogVariant[]>;
 }>;
 
 const defaultDependencies: PublicCatalogAdapterDependencies = {
   searchVariants: searchPublicChatCatalogVariants,
+  searchVariantsStructured: searchPublicChatCatalogVariantsV2,
 };
 
 const searchAliases: readonly Readonly<{ readonly pattern: RegExp; readonly query: string }>[] = [
@@ -121,6 +132,45 @@ export async function searchPublicChatCatalogVariants(
   );
   endpoint.searchParams.set("search_query", normalizedQuery);
   endpoint.searchParams.set("result_limit", String(boundedLimit));
+
+  return fetchCatalogVariants(endpoint, signal);
+}
+
+function arrayQueryValue(values: readonly string[]): string {
+  return `{${values.join(",")}}`;
+}
+
+export async function searchPublicChatCatalogVariantsV2(
+  request: ShoppingCatalogSearchRequest,
+  signal?: AbortSignal,
+): Promise<readonly PublicChatCatalogVariant[]> {
+  const endpoint = new URL(
+    "/rest/v1/rpc/search_public_chat_catalog_v2",
+    env.NEXT_PUBLIC_SUPABASE_URL,
+  );
+  endpoint.searchParams.set("search_text", request.searchText ?? "");
+  endpoint.searchParams.set("product_family_keys", arrayQueryValue(request.productFamilies));
+  endpoint.searchParams.set("subtype_keys", arrayQueryValue(request.subtypes));
+  endpoint.searchParams.set("category_keys", arrayQueryValue(request.categoryKeys));
+  endpoint.searchParams.set("collection_keys", arrayQueryValue(request.collectionKeys));
+  endpoint.searchParams.set("room_keys", arrayQueryValue(request.roomKeys));
+  endpoint.searchParams.set("brand_keys", arrayQueryValue(request.brandKeys));
+  endpoint.searchParams.set("designer_keys", arrayQueryValue(request.designerKeys));
+  endpoint.searchParams.set("material_keys", arrayQueryValue(request.materialKeys));
+  endpoint.searchParams.set("color_keys", arrayQueryValue(request.colorKeys));
+  if (request.minPrice !== undefined) endpoint.searchParams.set("min_price", String(request.minPrice));
+  if (request.maxPrice !== undefined) endpoint.searchParams.set("max_price", String(request.maxPrice));
+  endpoint.searchParams.set("availability_mode", request.availability);
+  endpoint.searchParams.set("sort_mode", request.sort);
+  endpoint.searchParams.set("result_limit", String(request.limit));
+
+  return fetchCatalogVariants(endpoint, signal);
+}
+
+async function fetchCatalogVariants(
+  endpoint: URL,
+  signal?: AbortSignal,
+): Promise<readonly PublicChatCatalogVariant[]> {
 
   const response = await supabaseReadOnlyFetch(endpoint, {
     headers: {
@@ -324,6 +374,168 @@ async function loadExactCatalogRecords(
   return recordsByRequestedId.flatMap((record) => record === undefined ? [] : [record]);
 }
 
+function normalizedFacetText(values: readonly (string | null | undefined)[]): string {
+  return values
+    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .join(" ")
+    .normalize("NFKD")
+    .toLocaleLowerCase()
+    .replace(/\p{M}/gu, "")
+    .replace(/đ/gu, "d")
+    .replace(/[_-]/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+function containsFacet(text: string, value: string): boolean {
+  const normalized = normalizedFacetText([value]);
+  if (normalized.length === 0) return false;
+  if (normalized.includes(" ")) return text.includes(normalized);
+  return new Set(text.split(" ")).has(normalized);
+}
+
+function hasAnyFacet(text: string, values: readonly string[]): boolean {
+  return values.some((value) => containsFacet(text, value));
+}
+
+function variantFacetText(variant: PublicChatCatalogVariant): string {
+  return normalizedFacetText([
+    variant.name,
+    variant.name_vi,
+    variant.name_ko,
+    variant.short_name,
+    variant.short_name_vi,
+    variant.short_name_ko,
+    variant.product_name,
+    variant.product_name_denorm,
+    variant.localized_product_name,
+    variant.filter_category,
+    variant.filter_sub_category,
+    variant.filter_product_line,
+    variant.product_line,
+    variant.finish,
+    variant.finish_vi,
+    variant.finish_ko,
+    variant.description,
+    variant.description_vi,
+    variant.description_ko,
+  ]);
+}
+
+function variantRoomText(variant: PublicChatCatalogVariant): string {
+  return normalizedFacetText([
+    ...(variant.filter_room ?? []),
+    ...(variant.filter_room_vi ?? []),
+    ...(variant.filter_room_ko ?? []),
+  ]);
+}
+
+const familyAliases: Readonly<Record<string, readonly string[]>> = {
+  table: ["table", "tables", "ban", "ban an", "coffee table", "side table", "console table"],
+  desk: ["desk", "work desk", "ban lam viec"],
+  lamp: ["lamp", "lamps", "light", "lights", "den", "den chieu sang"],
+  chair: ["chair", "chairs", "ghe"],
+  sofa: ["sofa", "sofas"],
+  bed: ["bed", "beds", "giuong"],
+  cabinet: ["cabinet", "cabinets", "storage", "tu", "tu do"],
+  mirror: ["mirror", "mirrors", "guong"],
+  vase: ["vase", "vases", "binh hoa"],
+  rug: ["rug", "rugs", "tham"],
+  cushion: ["cushion", "cushions", "goi"],
+  accessory: ["accessory", "accessories", "phu kien", "nen"],
+};
+
+function matchesFamily(variant: PublicChatCatalogVariant, family: string): boolean {
+  const text = variantFacetText(variant);
+  const aliases = familyAliases[family] ?? [family];
+  if (family === "table" && hasAnyFacet(text, ["lamp", "light", "den lamp", "table lamp"])) return false;
+  if (family === "desk" && hasAnyFacet(text, ["table lamp", "dining table"])) return false;
+  return hasAnyFacet(text, aliases);
+}
+
+const subtypeAliases: Readonly<Record<string, readonly string[]>> = {
+  dining_table: ["dining table", "dining tables", "ban an", "dining"],
+  coffee_table: ["coffee table", "ban cafe"],
+  side_table: ["side table", "ban ben"],
+  console_table: ["console table", "ban console"],
+  work_desk: ["work desk", "desk", "ban lam viec"],
+  table_lamp: ["table lamp", "den ban"],
+  dining_chair: ["dining chair", "ghe ban an", "dining"],
+  lounge_chair: ["lounge chair", "ghe lounge", "lounge"],
+};
+
+function matchesSubtype(variant: PublicChatCatalogVariant, subtype: string): boolean {
+  return hasAnyFacet(variantFacetText(variant), subtypeAliases[subtype] ?? [subtype]);
+}
+
+const roomAliases: Readonly<Record<string, readonly string[]>> = {
+  living: ["living", "living room", "living-room", "phong khach"],
+  dining: ["dining", "dining room", "dining-room", "phong an"],
+  bedroom: ["bedroom", "bed room", "phong ngu"],
+  office: ["office", "workspace", "phong lam viec"],
+  outdoor: ["outdoor", "balcony", "ban cong", "ngoai troi"],
+};
+
+const categoryAliases: Readonly<Record<string, readonly string[]>> = {
+  table: ["table", "tables"],
+  desk: ["desk", "desks"],
+  lamp: ["lamp", "lamps", "lighting", "lights"],
+  chair: ["chair", "chairs"],
+  sofa: ["sofa", "sofas"],
+  bed: ["bed", "beds"],
+  cabinet: ["cabinet", "cabinets", "storage"],
+  mirror: ["mirror", "mirrors"],
+  vase: ["vase", "vases"],
+  rug: ["rug", "rugs"],
+  cushion: ["cushion", "cushions"],
+  accessory: ["accessory", "accessories"],
+};
+
+function matchesKeyList(text: string, keys: readonly string[], aliases: Readonly<Record<string, readonly string[]>> = {}): boolean {
+  return keys.length === 0 || keys.some((key) => hasAnyFacet(text, aliases[key] ?? [key]));
+}
+
+function matchesStructuredRequest(
+  variant: PublicChatCatalogVariant,
+  request: ShoppingCatalogSearchRequest,
+): boolean {
+  if (request.productFamilies.length > 0 && !request.productFamilies.some((family) => matchesFamily(variant, family))) return false;
+  if (request.subtypes.length > 0 && !request.subtypes.some((subtype) => matchesSubtype(variant, subtype))) return false;
+  const categoryText = normalizedFacetText([variant.filter_category, variant.filter_sub_category, variant.filter_product_line]);
+  if (!matchesKeyList(categoryText, request.categoryKeys, categoryAliases)) return false;
+  if (!matchesKeyList(variantFacetText(variant), request.collectionKeys, { lc: ["lc", "lc collection"] })) return false;
+  if (!matchesKeyList(variantRoomText(variant), request.roomKeys, roomAliases)) return false;
+  const brandText = normalizedFacetText([variant.filter_brand, variant.brand_name]);
+  if (!matchesKeyList(brandText, request.brandKeys)) return false;
+  const designerText = normalizedFacetText([variant.designer_name]);
+  if (!matchesKeyList(designerText, request.designerKeys, { le_corbusier: ["le corbusier", "lecorbusier"] })) return false;
+  const fullText = variantFacetText(variant);
+  if (!matchesKeyList(fullText, request.materialKeys, { leather: ["leather", "da"], wood: ["wood", "go", "oak"] })) return false;
+  if (!matchesKeyList(fullText, request.colorKeys, { black: ["black", "mau den"] })) return false;
+  if (request.availability === "available_only" && variant.public_stock_state !== "available") return false;
+  if (request.minPrice !== undefined || request.maxPrice !== undefined) {
+    if (variant.public_price_mode !== "fixed" || variant.public_price === null) return false;
+    if (request.minPrice !== undefined && variant.public_price < request.minPrice) return false;
+    if (request.maxPrice !== undefined && variant.public_price > request.maxPrice) return false;
+  }
+  return true;
+}
+
+function sortStructuredRecords(
+  records: readonly CatalogAdapterRecord[],
+  request: ShoppingCatalogSearchRequest,
+): readonly CatalogAdapterRecord[] {
+  if (request.sort === "relevance" || request.sort === "priority") return records;
+  const sortableRecords = records.filter((record) => record.price.mode === "fixed");
+  const direction = request.sort === "price_asc" ? 1 : -1;
+  return [...sortableRecords].sort((left, right) => {
+    const leftPrice = left.price.mode === "fixed" ? left.price.amount : 0;
+    const rightPrice = right.price.mode === "fixed" ? right.price.amount : 0;
+    if (leftPrice !== rightPrice) return (leftPrice - rightPrice) * direction;
+    return left.variantId.localeCompare(right.variantId);
+  });
+}
+
 export function createPublicCatalogAdapters(
   locale: PublicChatLocale,
   dependencies: PublicCatalogAdapterDependencies = defaultDependencies,
@@ -362,6 +574,22 @@ export function createPublicCatalogAdapters(
         return record === undefined ? [] : [record];
       });
       return variantRecords.slice(0, limit);
+    },
+    searchStructured: async (request, signal) => {
+      throwIfAborted(signal);
+      const searchVariants = dependencies.searchVariantsStructured ?? searchPublicChatCatalogVariantsV2;
+      const variants = await retryCatalogRead(
+        () => searchVariants(request, signal),
+        signal,
+      );
+      const seenVariantIds = new Set<string>();
+      const records = variants.flatMap((variant) => {
+        if (seenVariantIds.has(variant.id) || !matchesStructuredRequest(variant, request)) return [];
+        seenVariantIds.add(variant.id);
+        const record = toCatalogRecord(variant, locale);
+        return record === undefined || !record.eligible || !record.current ? [] : [record];
+      });
+      return sortStructuredRecords(records, request).slice(0, request.limit);
     },
     details: (canonicalIds, signal) =>
       loadExactCatalogRecords(canonicalIds, "canonicalId", locale, dependencies, signal),

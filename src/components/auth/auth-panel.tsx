@@ -129,7 +129,12 @@ export function AuthPanel({ redirectTo }: AuthPanelProps) {
 
         <div className="mt-12 flex-1 min-h-0">
           {view === "login" && (
-            <AccountAuthFlow embedded locale={locale} returnTo={redirectTo} />
+            <AccountAuthFlow
+              embedded
+              intent={/(?:^|\/)checkout(?:[/?#]|$)/u.test(redirectTo) ? "checkout" : "account"}
+              locale={locale}
+              returnTo={redirectTo}
+            />
           )}
           {view === "register" && (
             <RegisterForm onSwitchView={switchAuthView} authError={authError ?? undefined} redirectTo={redirectTo} />

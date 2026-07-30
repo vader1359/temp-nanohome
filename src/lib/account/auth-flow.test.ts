@@ -13,8 +13,15 @@ describe("safeAccountReturnTo", () => {
     "//attacker.test/steal",
     "/en/account",
     "/video",
+    "/vi\\@attacker.test",
+    "/vi/%00/unsafe",
     undefined,
   ])("rejects an external, cross-locale, or prefix-confused path %#", (candidate) => {
     expect(safeAccountReturnTo("vi", candidate)).toBe("/vi");
+  });
+
+  it("preserves checkout intent and removes auth query noise", () => {
+    expect(safeAccountReturnTo("vi", "/vi/checkout?step=contact&auth=login"))
+      .toBe("/vi/checkout?step=contact");
   });
 });

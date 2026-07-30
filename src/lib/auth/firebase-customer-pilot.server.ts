@@ -5,7 +5,7 @@ import { createHmac } from "node:crypto";
 import type { SelectedPilotCustomer } from "@/lib/amis/customer-pilot.server";
 
 export const FIREBASE_CUSTOMER_PILOT_PROJECT = "temp-nanohome";
-export const FIREBASE_CUSTOMER_PILOT_VERSION = "ai-commerce-staging-pilot-v1";
+export const FIREBASE_CUSTOMER_PILOT_VERSION = "ai-commerce-staging-pilot-v2";
 
 export type FirebasePilotCapabilityProof = Readonly<{
   projectId: string;
@@ -53,7 +53,6 @@ export type FirebasePilotMapping = Readonly<{
   environment: typeof FIREBASE_CUSTOMER_PILOT_PROJECT;
   ordinal: number;
   customerId: string;
-  contactId: string | null;
   firebaseUid: string;
   phoneDigest: string;
   sourceDigest: string;
@@ -124,7 +123,6 @@ export async function preprovisionDisabledFirebasePilot(input: Readonly<{
       environment: FIREBASE_CUSTOMER_PILOT_PROJECT,
       ordinal: candidate.ordinal,
       customerId: candidate.customerId,
-      contactId: candidate.contactId,
       firebaseUid: expectedUid,
       phoneDigest: candidate.phoneDigest,
       sourceDigest: candidate.sourceDigest,

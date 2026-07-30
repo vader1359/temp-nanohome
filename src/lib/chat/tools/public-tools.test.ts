@@ -56,6 +56,41 @@ describe("public chat tool boundary", () => {
     expect(result.kind === "catalog" && result.records[0]).not.toHaveProperty("current");
   });
 
+  it("executes structured catalog search through the v2 adapter", async () => {
+    let observedRequest: unknown;
+    const structuredAdapters: PublicChatToolAdapters = {
+      ...adapters,
+      catalog: {
+        ...adapters.catalog,
+        searchStructured: async (request) => {
+          observedRequest = request;
+          return [productRecord];
+        },
+      },
+    };
+
+    const result = await executePublicChatTool({
+      name: "search_catalog_v2",
+      arguments: {
+        productFamilies: ["table"],
+        subtypes: [],
+        categoryKeys: ["table"],
+        collectionKeys: [],
+        roomKeys: [],
+        brandKeys: [],
+        designerKeys: [],
+        materialKeys: [],
+        colorKeys: [],
+        availability: "include_unknown",
+        sort: "relevance",
+        limit: 8,
+      },
+    }, structuredAdapters);
+
+    expect(observedRequest).toEqual(expect.objectContaining({ productFamilies: ["table"], limit: 8 }));
+    expect(result).toEqual({ kind: "catalog", records: [expect.objectContaining({ variantId: "variant-one" })] });
+  });
+
   it("rejects out-of-range limits, comparison widths, and unsupported attributes", async () => {
     expect((await executePublicChatTool({ name: "search_catalog", arguments: { query: "chair", limit: 13 } }, adapters))).toEqual({ kind: "invalid_request" });
     expect(

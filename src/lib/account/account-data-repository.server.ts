@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { ProfilePatch } from "./profile-schema";
+import type { AccountIdentityRepositoryInput, AccountIdentityResolution } from "./identity-resolution";
 
 const READ_METHODS = new Set(["GET", "HEAD"]);
 
@@ -11,6 +12,8 @@ export type StoredAccountProfile = Readonly<{
   readonly formOfAddress: string | null;
   readonly locale: string | null;
 }>;
+
+export type StoredVerifiedContactKind = "email" | "phone";
 
 export type StoredWishlistItem = Readonly<{
   readonly available: boolean;
@@ -70,6 +73,7 @@ export interface AccountDataRepository {
   readonly getCart: (accountId: string) => Promise<StoredAccountCart>;
   readonly getOrder: (accountId: string, orderId: string) => Promise<StoredAccountOrder | null>;
   readonly getProfile: (accountId: string) => Promise<StoredAccountProfile | null>;
+  readonly getVerifiedContactKinds: (accountId: string) => Promise<readonly StoredVerifiedContactKind[]>;
   readonly listOrders: (
     accountId: string,
     page: Readonly<{ limit: number; offset: number }>,
@@ -97,6 +101,7 @@ export interface AccountDataRepository {
   readonly patchProfile: (accountId: string, patch: ProfilePatch) => Promise<StoredAccountProfile>;
   readonly removeWishlistItem: (accountId: string, variantId: string) => Promise<void>;
   readonly resolveAccountId: (firebaseUid: string) => Promise<string | null>;
+  readonly resolveOrCreateAccount: (input: AccountIdentityRepositoryInput) => Promise<AccountIdentityResolution>;
 }
 
 type AccountDataRepositoryOptions = Readonly<{
@@ -222,6 +227,19 @@ export function createAccountDataRepository(
     return rows[0] === undefined ? null : presentProfile(rows[0]);
   }
 
+  async function getVerifiedContactKinds(accountId: string): Promise<readonly StoredVerifiedContactKind[]> {
+    const rows = await requestRows<Readonly<{ kind: string }>>("customer_account_verified_identities", {
+      account_id: `eq.${accountId}`,
+      kind: "in.(email,phone)",
+      select: "kind",
+      status: "eq.active",
+    });
+    return [...new Set(rows.flatMap((row): StoredVerifiedContactKind[] => {
+      if (row.kind === "email" || row.kind === "phone") return [row.kind];
+      return [];
+    }))];
+  }
+
   async function getOrderRows(
     accountId: string,
     extra: Readonly<Record<string, string>>,
@@ -323,7 +341,32 @@ export function createAccountDataRepository(
       });
       return accounts[0]?.id ?? null;
     },
+    async resolveOrCreateAccount(input) {
+      const rows = await requestRows<Readonly<{
+        account_id: string;
+        outcome: "created" | "existing_principal";
+      }>>("rpc/resolve_or_create_account", {}, {
+        body: {
+          p_email_digest: input.emailDigest,
+          p_firebase_uid: input.firebaseUid,
+          p_idempotency_key: input.idempotencyKey,
+          p_phone_digest: input.phoneDigest,
+          p_policy_versions: input.policyVersions,
+        },
+        method: "POST",
+      });
+      const row = rows[0];
+      if (
+        row === undefined
+        || row.account_id.trim() === ""
+        || !["created", "existing_principal"].includes(row.outcome)
+      ) {
+        throw new AccountDataRepositoryError("request_failed");
+      }
+      return { accountId: row.account_id, outcome: row.outcome };
+    },
     getProfile,
+    getVerifiedContactKinds,
     async patchProfile(accountId, patch) {
       const body = {
         account_id: accountId,

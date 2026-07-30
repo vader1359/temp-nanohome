@@ -71,10 +71,10 @@ describe("GET /api/customer/context", () => {
     expect(setCookie).not.toContain("a".repeat(64));
     expect(setCookie).not.toContain("b".repeat(64));
     expect(fetcher.mock.calls.map(([url]) => String(url))).toEqual([
-      "https://supabase.test/rest/v1/rpc/resolve_customer_identity_v2",
-      "https://supabase.test/rest/v1/rpc/bootstrap_customer_identity_v2",
-      "https://supabase.test/rest/v1/rpc/clear_verified_customer_identity",
-      "https://supabase.test/rest/v1/rpc/current_customer_consent",
+      "https://test-project.supabase.co/rest/v1/rpc/resolve_customer_identity_v2",
+      "https://test-project.supabase.co/rest/v1/rpc/bootstrap_customer_identity_v2",
+      "https://test-project.supabase.co/rest/v1/rpc/clear_verified_customer_identity",
+      "https://test-project.supabase.co/rest/v1/rpc/current_customer_consent",
     ]);
     expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
     expect((await response.json()).consent.version).toBe("none");
