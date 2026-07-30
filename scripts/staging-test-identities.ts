@@ -216,7 +216,7 @@ async function main() {
     const existingTestPhones = config.signIn.phoneNumber.testPhoneNumbers ?? {};
     let phone = "";
     for (let attempt = 0; attempt < 20; attempt += 1) {
-      const candidate = `+165055501${String(randomInt(0, 100)).padStart(2, "0")}`;
+      const candidate = `+8490${String(randomInt(0, 10_000_000)).padStart(7, "0")}`;
       if (!Object.hasOwn(existingTestPhones, candidate)) {
         phone = candidate;
         break;
