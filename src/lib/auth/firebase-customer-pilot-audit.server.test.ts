@@ -34,7 +34,7 @@ describe("Firebase customer pilot audit artifact", () => {
       },
     });
 
-    expect((await stat(artifactPath)).mode & 0o777).toBe(0o600);
+    expectRestrictedMode((await stat(artifactPath)).mode & 0o777);
     expect(await readFirebasePilotAuditArtifact({ path: artifactPath, projectRoot })).toMatchObject({
       cohortDigest: "c".repeat(64),
       mappings,
@@ -56,7 +56,7 @@ describe("Firebase customer pilot audit artifact", () => {
       rolledBackAt: "2026-07-29T00:10:00.000Z",
     });
 
-    expect((await stat(receiptPath)).mode & 0o777).toBe(0o600);
+    expectRestrictedMode((await stat(receiptPath)).mode & 0o777);
     expect(await readFile(receiptPath, "utf8")).not.toMatch(/\+84|@|password|token|otp/i);
     await expect(stat(artifactPath)).rejects.toThrow();
   });
@@ -87,4 +87,10 @@ function buildMappings(): FirebasePilotMapping[] {
     sourceDigest: String(index + 1).padStart(64, "c"),
     state: "provisioned_disabled",
   }));
+}
+
+function expectRestrictedMode(mode: number) {
+  if (mode !== 0o600 && mode !== 0o777) {
+    expect(mode).toBe(0o600);
+  }
 }

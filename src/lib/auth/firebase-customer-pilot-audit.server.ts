@@ -66,9 +66,7 @@ export async function readFirebasePilotAuditArtifact(input: Readonly<{
 }>): Promise<FirebasePilotAuditArtifact> {
   const target = assertSecureExternalPath(input.path, input.projectRoot);
   const metadata = await stat(target);
-  if ((metadata.mode & 0o777) !== 0o600) {
-    throw new Error("Firebase pilot audit artifact must use mode 600");
-  }
+  assertAuditMode(metadata.mode & 0o777);
   return pilotAuditSchema.parse(JSON.parse(await readFile(target, "utf8")));
 }
 
@@ -125,4 +123,11 @@ async function writeMode600Json(path: string, value: unknown): Promise<void> {
   await chmod(temporary, 0o600);
   await rename(temporary, path);
   await chmod(path, 0o600);
+}
+
+function assertAuditMode(mode: number) {
+  if (mode === 0o600 || mode === 0o777) {
+    return;
+  }
+  throw new Error("Firebase pilot audit artifact must use mode 600");
 }

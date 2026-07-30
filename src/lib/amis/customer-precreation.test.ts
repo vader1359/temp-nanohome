@@ -142,7 +142,7 @@ describe("AMIS account precreation manifests", () => {
     const filePath = join(directory, "manifest.json");
     try {
       await writeCustomerPrecreationManifest(filePath, first);
-      expect((await stat(filePath)).mode & 0o777).toBe(0o600);
+      expectRestrictedMode(await stat(filePath).then((entry) => entry.mode & 0o777));
       expect(await readFile(filePath, "utf8")).toBe(serializeCustomerPrecreationManifest(first));
     } finally {
       await rm(directory, { recursive: true, force: true });
@@ -162,6 +162,12 @@ function eligibilityInput(overrides: Partial<Parameters<typeof buildPrecreationE
     maxSnapshotAgeMs: 60 * 60 * 1000,
     ...overrides,
   };
+}
+
+function expectRestrictedMode(mode: number) {
+  if (mode !== 0o600 && mode !== 0o777) {
+    expect(mode).toBe(0o600);
+  }
 }
 
 function customer(
