@@ -117,7 +117,7 @@ describe("Firebase session route", () => {
     await expect(response.json()).resolves.toEqual({ returnTo: "/ko" });
   });
 
-  it("does not set a session cookie for an incomplete checkout identity", async () => {
+  it("does not set a session cookie for checkout with zero verified factors", async () => {
     const request = new NextRequest("https://staging.nanohome.vn/api/auth/session", {
       body: JSON.stringify({
         csrfToken,

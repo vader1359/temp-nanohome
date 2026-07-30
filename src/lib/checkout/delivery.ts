@@ -15,6 +15,8 @@ export type CheckoutDelivery = z.infer<typeof checkoutDeliverySchema>;
 
 const checkoutDeliveryRequestSchema = z.object({
   fullName: z.string().trim().min(1).max(200),
+  email: z.string().trim().email().max(320),
+  phone: z.string().trim().min(1).max(50),
   addressId: z.string().uuid().nullable(),
   address: z.string().trim().min(1).max(500),
   city: z.string().trim().min(1).max(100).optional(),

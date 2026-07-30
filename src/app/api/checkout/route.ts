@@ -2,7 +2,10 @@ import { getAccountAuthPort } from "@/lib/account/account-ports.server";
 import {
   AccountCheckoutRepositoryError,
 } from "@/lib/checkout/account-checkout-repository.server";
-import { resolveCheckoutIdentity } from "@/lib/checkout/checkout-identity";
+import {
+  resolveCheckoutIdentity,
+  resolveCheckoutOrderContact,
+} from "@/lib/checkout/checkout-identity";
 import { getAccountCheckoutRepository } from "@/lib/checkout/account-checkout-runtime.server";
 import { checkoutRequestSchema } from "@/lib/checkout/delivery";
 import { isSameOriginPost } from "@/lib/auth/same-origin.server";
@@ -34,19 +37,29 @@ export async function POST(request: Request): Promise<Response> {
   if (!parsed.success) {
     return Response.json({ error: "invalid_checkout_data" }, { status: 400 });
   }
+  const contact = resolveCheckoutOrderContact(identity.identity, {
+    email: parsed.data.delivery.email,
+    phone: parsed.data.delivery.phone,
+  });
+  if (contact.kind === "invalid_contact") {
+    return Response.json({ error: "invalid_checkout_data" }, { status: 400 });
+  }
+  if (contact.kind === "verified_contact_mismatch") {
+    return Response.json({ error: "verified_contact_mismatch" }, { status: 409 });
+  }
 
   const checkoutInput = {
     address: parsed.data.delivery.address,
     city: parsed.data.delivery.city,
     district: parsed.data.delivery.district,
-    email: identity.identity.verifiedEmail,
+    email: contact.contact.email,
     fullName: parsed.data.delivery.fullName,
     idempotencyKey: parsed.data.idempotencyKey,
     note: parsed.data.vat === null
       ? undefined
       : `VAT: ${parsed.data.vat.companyName} | ${parsed.data.vat.taxCode} | ${parsed.data.vat.address}`,
     ward: parsed.data.delivery.ward,
-    phone: identity.identity.verifiedPhoneE164,
+    phone: contact.contact.phoneE164,
   };
 
   try {

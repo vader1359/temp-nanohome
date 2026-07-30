@@ -66,12 +66,31 @@ describe("localized checkout route", () => {
     });
   });
 
-  it("routes an authenticated account missing verified phone to identity completion", async () => {
+  it("renders checkout for an authenticated account with only verified email", async () => {
+    const cart = { items: [], total: { amount: 0, currency: "VND" }, version: 0 } as const;
     ports.getAuthenticatedAccount.mockResolvedValue({
       ...account,
       identities: [{ identifier: "customer@example.test", provider: "email", verified: true }],
     });
+    ports.getCart.mockResolvedValue(cart);
+    ports.getProfile.mockResolvedValue({ fullName: "Email Customer" });
 
+    const route = await CheckoutRoute({ params: Promise.resolve({ locale: "vi" }) });
+
+    expect(route.props.checkoutIdentity).toEqual({
+      accountId: "account-owned",
+      firebaseUid: "firebase-owned",
+      verifiedEmail: "customer@example.test",
+      verifiedPhoneE164: null,
+    });
+    expect(ports.getCart).toHaveBeenCalled();
+  });
+
+  it("routes an authenticated account with zero verified factors to identity completion", async () => {
+    ports.getAuthenticatedAccount.mockResolvedValue({
+      ...account,
+      identities: [{ identifier: "customer@example.test", provider: "email", verified: false }],
+    });
     await expect(CheckoutRoute({ params: Promise.resolve({ locale: "vi" }) }))
       .rejects.toThrow(
         "NEXT_REDIRECT:/vi/account/sign-in?returnTo=%2Fvi%2Fcheckout&intent=checkout",

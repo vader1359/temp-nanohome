@@ -90,7 +90,7 @@ describe("exchangeFirebaseIdToken", () => {
     })).resolves.toMatchObject({ firebaseUid: "firebase-user-01" });
   });
 
-  it("fails closed for a checkout intent until both verified contacts are present", async () => {
+  it("fails closed for a checkout intent with zero verified factors", async () => {
     await expect(exchangeFirebaseIdToken({
       auth,
       idToken,
@@ -102,12 +102,21 @@ describe("exchangeFirebaseIdToken", () => {
     expect(createSessionCookie).not.toHaveBeenCalled();
   });
 
-  it("accepts a checkout intent only with verified email and E.164 phone claims", async () => {
-    verifyIdToken.mockResolvedValueOnce(claims({
+  it.each([
+    {
+      email: "person@example.test",
+      email_verified: true,
+    },
+    {
+      phone_number: "+84901234567",
+    },
+    {
       email: "person@example.test",
       email_verified: true,
       phone_number: "+84901234567",
-    }));
+    },
+  ] as const)("accepts checkout with one or more verified factors %#", async (verifiedClaims) => {
+    verifyIdToken.mockResolvedValueOnce(claims(verifiedClaims));
 
     await expect(exchangeFirebaseIdToken({
       auth,
@@ -117,6 +126,33 @@ describe("exchangeFirebaseIdToken", () => {
       projectId,
       sessionTtlSeconds: 3_600,
     })).resolves.toMatchObject({ firebaseUid: "firebase-user-01" });
+  });
+
+  it("passes only verified factors into account resolution", async () => {
+    const resolveAccount = vi.fn<(input: FirebaseIdentityResolutionInput) => Promise<AccountIdentityResolution>>(async () => ({
+      accountId: "account-owned",
+      outcome: "existing_principal" as const,
+    }));
+    verifyIdToken.mockResolvedValueOnce(claims({
+      email: "unverified@example.test",
+      email_verified: false,
+      phone_number: "+84901234567",
+    }));
+
+    await exchangeFirebaseIdToken({
+      auth,
+      idToken,
+      intent: "checkout",
+      nowSeconds,
+      projectId,
+      resolveAccount,
+      sessionTtlSeconds: 3_600,
+    });
+
+    expect(resolveAccount).toHaveBeenCalledWith(expect.objectContaining({
+      email: null,
+      phoneE164: "+84901234567",
+    }));
   });
 
   it("resolves the account before creating a session cookie", async () => {

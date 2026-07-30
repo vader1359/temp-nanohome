@@ -58,7 +58,7 @@ describe("account identity resolver", () => {
     expect(repository.resolveOrCreateAccount).not.toHaveBeenCalled();
   });
 
-  it("replays an existing Firebase principal and preserves progressive assurance", async () => {
+  it("replays a phone-only Firebase principal as checkout-ready", async () => {
     const repository = createRepository();
     const resolver = createAccountIdentityResolver({
       lookupSecret: secret,
@@ -66,7 +66,7 @@ describe("account identity resolver", () => {
       resolveCustomerClaim: async () => ({
         accountId: "account-existing",
         assurance: {
-          checkoutReady: false,
+          checkoutReady: true,
           emailVerified: false,
           phoneVerified: true,
           registrationClaimed: true,
@@ -78,7 +78,7 @@ describe("account identity resolver", () => {
     await expect(resolver.resolveOrCreate({
       ...identity,
       email: null,
-      intent: "account",
+      intent: "checkout",
     })).resolves.toEqual({
       accountId: "account-existing",
       outcome: "existing_principal",
@@ -149,7 +149,42 @@ describe("account identity resolver", () => {
     expect(repository.resolveOrCreateAccount).not.toHaveBeenCalled();
   });
 
-  it("does not provision a partial checkout identity", async () => {
+  it("allows a phone-only verified factor for checkout without promoting email", async () => {
+    const repository = createRepository();
+    const resolveCustomerClaim = vi.fn(async () => ({
+      accountId: null,
+      assurance: null,
+      status: "not_claimable" as const,
+    }));
+    const resolver = createAccountIdentityResolver({
+      lookupSecret: secret,
+      repository,
+      resolveCustomerClaim,
+    });
+
+    await expect(resolver.resolveOrCreate({
+      ...identity,
+      email: null,
+      intent: "checkout",
+    })).resolves.toEqual({
+      accountId: "account-created",
+      outcome: "created",
+    });
+    expect(resolveCustomerClaim).toHaveBeenCalledWith({
+      emailVerified: false,
+      firebaseUid: identity.firebaseUid,
+      phoneVerified: true,
+      verifiedPhoneE164: identity.phoneE164,
+    });
+    expect(repository.resolveOrCreateAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emailDigest: null,
+        phoneDigest: hmac("phone\u0000+84901234567"),
+      }),
+    );
+  });
+
+  it("rejects checkout when no verified factor exists", async () => {
     const repository = createRepository();
     const resolveCustomerClaim = vi.fn();
     const resolver = createAccountIdentityResolver({
@@ -160,6 +195,7 @@ describe("account identity resolver", () => {
 
     await expect(resolver.resolveOrCreate({
       ...identity,
+      email: null,
       phoneE164: null,
     })).rejects.toMatchObject({
       code: "identity_incomplete",
@@ -167,7 +203,7 @@ describe("account identity resolver", () => {
     expect(resolveCustomerClaim).not.toHaveBeenCalled();
   });
 
-  it("allows one verified factor for a non-checkout account session", async () => {
+  it("allows an email-only verified factor for checkout", async () => {
     const repository = createRepository();
     const resolveCustomerClaim = vi.fn(async () => ({
       accountId: null,
@@ -182,20 +218,20 @@ describe("account identity resolver", () => {
 
     await resolver.resolveOrCreate({
       ...identity,
-      email: null,
-      intent: "account",
+      intent: "checkout",
+      phoneE164: null,
     });
 
     expect(resolveCustomerClaim).toHaveBeenCalledWith({
-      emailVerified: false,
+      emailVerified: true,
       firebaseUid: identity.firebaseUid,
-      phoneVerified: true,
-      verifiedPhoneE164: identity.phoneE164,
+      phoneVerified: false,
+      verifiedEmail: identity.email,
     });
     expect(repository.resolveOrCreateAccount).toHaveBeenCalledWith(
       expect.objectContaining({
-        emailDigest: null,
-        phoneDigest: hmac("phone\u0000+84901234567"),
+        emailDigest: hmac("email\u0000person@example.test"),
+        phoneDigest: null,
       }),
     );
   });

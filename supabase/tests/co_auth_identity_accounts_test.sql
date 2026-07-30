@@ -1,6 +1,6 @@
 begin;
 
-select plan(24);
+select plan(25);
 
 select has_table(
   'public',
@@ -117,6 +117,16 @@ select is(
   1::bigint,
   'one-factor registration stores only the verified identity'
 );
+select is(
+  (
+    select checkout_ready
+    from public.customer_account_identity_assurance(
+      'firebase-co-auth-phone-only'
+    )
+  ),
+  true,
+  'one verified phone factor is checkout ready'
+);
 
 select claim_status, phone_verified, email_verified, checkout_ready
 from public.claim_customer_account_precreation(
@@ -146,7 +156,7 @@ select is(
 select is(
   :'progressive_checkout_ready'::boolean,
   true,
-  'both verified identities make checkout ready'
+  'progressive verification remains checkout ready'
 );
 
 select checkout_ready

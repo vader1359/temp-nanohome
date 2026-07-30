@@ -31,10 +31,20 @@ const validBody = {
   delivery: {
     address: "1 Test Street",
     addressId: null,
+    email: " CUSTOMER@EXAMPLE.TEST ",
     fullName: "Test Customer",
+    phone: "090 123 4567",
   },
   vat: null,
 };
+const capturedOrder = {
+  amount: 125000,
+  currency: "VND",
+  merchantReference: "WEB-TEST001",
+  orderId: "00000000-0000-4000-8000-000000000301",
+  orderNumber: "ORD-TEST001",
+  replayed: false,
+} as const;
 
 function request(body: unknown, origin = "https://staging.nanohome.vn"): Request {
   return new Request("https://staging.nanohome.vn/api/checkout", {
@@ -62,16 +72,9 @@ describe("POST /api/checkout", () => {
     expect(mocks.captureOrder).not.toHaveBeenCalled();
   });
 
-  it("captures only validated delivery data for the server-resolved Firebase account", async () => {
+  it("captures both normalized contacts for the server-resolved Firebase account", async () => {
     mocks.getAuthenticatedAccount.mockResolvedValue(account);
-    mocks.captureOrder.mockResolvedValue({
-      amount: 125000,
-      currency: "VND",
-      merchantReference: "WEB-TEST001",
-      orderId: "00000000-0000-4000-8000-000000000301",
-      orderNumber: "ORD-TEST001",
-      replayed: false,
-    });
+    mocks.captureOrder.mockResolvedValue(capturedOrder);
 
     const response = await POST(request(validBody));
 
@@ -91,10 +94,41 @@ describe("POST /api/checkout", () => {
     }));
   });
 
-  it("requires both verified email and normalized E.164 phone before capture", async () => {
+  it.each([
+    {
+      factor: "email",
+      oneFactorAccount: {
+        ...account,
+        identities: [{ identifier: "Customer@Example.test", provider: "email", verified: true }],
+      },
+    },
+    {
+      factor: "phone",
+      oneFactorAccount: {
+        ...account,
+        identities: [{ identifier: "+84901234567", provider: "phone", verified: true }],
+      },
+    },
+  ] as const)("allows one verified $factor factor while requiring both order contacts", async ({ oneFactorAccount }) => {
+    mocks.getAuthenticatedAccount.mockResolvedValue(oneFactorAccount);
+    mocks.captureOrder.mockResolvedValue(capturedOrder);
+
+    const response = await POST(request(validBody));
+
+    expect(response.status).toBe(201);
+    expect(mocks.captureOrder).toHaveBeenCalledWith(
+      oneFactorAccount.accountId,
+      expect.objectContaining({
+        email: "customer@example.test",
+        phone: "+84901234567",
+      }),
+    );
+  });
+
+  it("requires at least one verified factor before capture", async () => {
     mocks.getAuthenticatedAccount.mockResolvedValue({
       ...account,
-      identities: [{ identifier: "Customer@Example.test", provider: "email", verified: true }],
+      identities: [{ identifier: "Customer@Example.test", provider: "email", verified: false }],
     });
 
     const response = await POST(request(validBody));
@@ -102,8 +136,46 @@ describe("POST /api/checkout", () => {
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: "identity_required",
-      missing: ["phone"],
+      missing: ["email", "phone"],
       returnTo: "/vi/checkout",
+    });
+    expect(mocks.captureOrder).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing/invalid order contacts and contradictions of a verified factor", async () => {
+    mocks.getAuthenticatedAccount.mockResolvedValue({
+      ...account,
+      identities: [{ identifier: "Customer@Example.test", provider: "email", verified: true }],
+    });
+
+    const missingPhone = await POST(request({
+      ...validBody,
+      delivery: {
+        ...validBody.delivery,
+        phone: "",
+      },
+    }));
+    expect(missingPhone.status).toBe(400);
+
+    const invalidPhone = await POST(request({
+      ...validBody,
+      delivery: {
+        ...validBody.delivery,
+        phone: "not-a-phone",
+      },
+    }));
+    expect(invalidPhone.status).toBe(400);
+
+    const mismatch = await POST(request({
+      ...validBody,
+      delivery: {
+        ...validBody.delivery,
+        email: "attacker@example.test",
+      },
+    }));
+    expect(mismatch.status).toBe(409);
+    await expect(mismatch.json()).resolves.toEqual({
+      error: "verified_contact_mismatch",
     });
     expect(mocks.captureOrder).not.toHaveBeenCalled();
   });

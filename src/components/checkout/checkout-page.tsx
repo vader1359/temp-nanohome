@@ -2,8 +2,14 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { InternationalPhoneField } from "@/components/account/international-phone-field";
 import { Link } from "@/i18n/navigation";
 import type { AccountCart } from "@/lib/account/cart-port";
+import { normalizeEmail } from "@/lib/auth/email-normalization";
+import {
+  DEFAULT_PHONE_COUNTRY,
+  normalizeInternationalPhone,
+} from "@/lib/auth/phone-e164";
 import { cartCheckoutReadiness } from "@/lib/checkout/cart-readiness";
 import type { CheckoutIdentity } from "@/lib/checkout/checkout-identity";
 import {
@@ -58,10 +64,11 @@ export function CheckoutPage({
   const readiness = cartCheckoutReadiness(initialAccountCart);
   const [form, setForm] = useState<CheckoutForm>({
     address: "",
-    email: checkoutIdentity.verifiedEmail,
+    email: checkoutIdentity.verifiedEmail ?? "",
     name: initialFullName,
-    phone: checkoutIdentity.verifiedPhoneE164,
+    phone: checkoutIdentity.verifiedPhoneE164 ?? "",
   });
+  const [phoneCountry, setPhoneCountry] = useState(DEFAULT_PHONE_COUNTRY);
   const [vatRequested, setVatRequested] = useState(false);
   const [vatCompanyName, setVatCompanyName] = useState("");
   const [vatTaxCode, setVatTaxCode] = useState("");
@@ -100,6 +107,18 @@ export function CheckoutPage({
       setStatus("error");
       return;
     }
+    const normalizedEmail = normalizeEmail(form.email);
+    if (normalizedEmail === null) {
+      setError(t("validationEmail"));
+      setStatus("error");
+      return;
+    }
+    const normalizedPhone = normalizeInternationalPhone(form.phone, phoneCountry);
+    if (normalizedPhone === null) {
+      setError(t("validationPhone"));
+      setStatus("error");
+      return;
+    }
     if (vatRequested && (!vatCompanyName.trim() || !vatTaxCode.trim() || !vatInvoiceAddress.trim())) {
       setError(t("validationRequired"));
       setStatus("error");
@@ -118,7 +137,9 @@ export function CheckoutPage({
           delivery: {
             address: form.address.trim(),
             addressId: null,
+            email: normalizedEmail,
             fullName: form.name.trim(),
+            phone: normalizedPhone,
           },
           vat: vatRequested
             ? {
@@ -221,30 +242,53 @@ export function CheckoutPage({
               />
             </label>
             <label className="grid gap-2 text-sm text-[#666666]" htmlFor="checkout-email">
-              {t("email")}
+              {t("email")} <span aria-hidden="true">*</span>
               <input
-                aria-readonly="true"
-                className="min-h-11 border-b border-[#E5E5E5] bg-[#FAFAFA] px-1 text-base text-[#666666] outline-none"
+                aria-label={t("email")}
+                aria-readonly={checkoutIdentity.verifiedEmail === null ? undefined : "true"}
+                className={checkoutIdentity.verifiedEmail === null
+                  ? "min-h-11 border-b border-[#E5E5E5] bg-transparent px-1 text-base text-[#1A1A1A] outline-none focus:border-[#1A1A1A]"
+                  : "min-h-11 border-b border-[#E5E5E5] bg-[#FAFAFA] px-1 text-base text-[#666666] outline-none"}
+                disabled={status === "submitting"}
                 id="checkout-email"
-                readOnly
+                onChange={(event) => setForm({ ...form, email: event.target.value })}
+                readOnly={checkoutIdentity.verifiedEmail !== null}
+                required
+                type="email"
                 value={form.email}
               />
             </label>
             <div className="grid gap-2 text-sm text-[#666666]">
-              <label htmlFor="checkout-phone">{t("phone")}</label>
-              <input
-                aria-readonly="true"
-                className="min-h-11 border-b border-[#E5E5E5] bg-[#FAFAFA] px-1 text-base text-[#666666] outline-none"
-                id="checkout-phone"
-                readOnly
-                value={form.phone}
-              />
-              <Link
-                className="text-xs text-[#666666] underline underline-offset-4"
-                href={`/account/sign-in?returnTo=${encodeURIComponent(`/${locale}/checkout`)}`}
-              >
-                {t("changeVerifiedPhone")}
-              </Link>
+              <span>{t("phone")} <span aria-hidden="true">*</span></span>
+              {checkoutIdentity.verifiedPhoneE164 === null ? (
+                <InternationalPhoneField
+                  country={phoneCountry}
+                  disabled={status === "submitting"}
+                  id="checkout-phone"
+                  onChange={(phone) => setForm({ ...form, phone })}
+                  onCountryChange={setPhoneCountry}
+                  required
+                  value={form.phone}
+                />
+              ) : (
+                <input
+                  aria-label={t("phone")}
+                  aria-readonly="true"
+                  className="min-h-11 border-b border-[#E5E5E5] bg-[#FAFAFA] px-1 text-base text-[#666666] outline-none"
+                  id="checkout-phone"
+                  readOnly
+                  required
+                  value={form.phone}
+                />
+              )}
+              {checkoutIdentity.verifiedPhoneE164 === null ? null : (
+                <Link
+                  className="text-xs text-[#666666] underline underline-offset-4"
+                  href={`/account/sign-in?returnTo=${encodeURIComponent(`/${locale}/checkout`)}`}
+                >
+                  {t("changeVerifiedPhone")}
+                </Link>
+              )}
               <p className="text-xs leading-5 text-[#666666]">
                 {t("verifiedContactNotice")}
               </p>
@@ -374,6 +418,7 @@ function apiErrorCode(value: unknown): string | null {
 function checkoutErrorMessage(errorCode: string | null, t: (key: string) => string): string {
   switch (errorCode) {
     case "identity_required": return t("identityRequired");
+    case "verified_contact_mismatch": return t("verifiedContactMismatch");
     case "invalid_checkout_data": return t("validationRequired");
     case "checkout_empty_cart": return t("checkoutEmptyCart");
     case "checkout_invalid_cart": return t("checkoutUnavailableCart");

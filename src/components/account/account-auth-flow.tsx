@@ -16,7 +16,6 @@ import { authCompletionState } from "@/lib/auth/checkout-identity";
 import { normalizeEmail } from "@/lib/auth/email-normalization";
 import {
   DEFAULT_PHONE_COUNTRY,
-  isE164Phone,
   normalizeInternationalPhone,
   type SupportedPhoneCountry,
 } from "@/lib/auth/phone-e164";
@@ -42,23 +41,13 @@ function authErrorCode(error: unknown): FirebaseAuthUiErrorCode {
   return error instanceof FirebaseAuthUiError ? error.code : "unknown";
 }
 
-function completionForUser(user: User, intent: AuthSessionIntent) {
-  const claims = {
+function completionForUser(user: User) {
+  return authCompletionState({
     email: user.email,
     email_verified: user.emailVerified,
     phone_number: user.phoneNumber,
     uid: user.uid,
-  };
-  if (
-    intent === "account"
-    && (
-      isE164Phone(claims.phone_number)
-      || (claims.email_verified && normalizeEmail(claims.email ?? "") !== null)
-    )
-  ) {
-    return "identity_complete" as const;
-  }
-  return authCompletionState(claims);
+  });
 }
 
 export function AccountAuthFlow({
@@ -109,19 +98,14 @@ export function AccountAuthFlow({
   }, []);
 
   const completeSession = useCallback(async (user: User) => {
-    const completion = completionForUser(user, intent);
+    const completion = completionForUser(user);
     if (completion !== "identity_complete") {
       setIdentityUser(user);
       setPending(false);
       setError(null);
-      if (completion === "phone_required") {
-        setMethod("phone_otp");
-        setPhone("");
-        setStep("entry");
-      } else {
-        setEmail(user.email ?? "");
-        setStep("email_required");
-      }
+      setMethod("phone_otp");
+      setPhone("");
+      setStep("entry");
       return;
     }
 
@@ -258,7 +242,7 @@ export function AccountAuthFlow({
     setError(null);
     try {
       const refreshedUser = await port.reloadUser(identityUser);
-      if (completionForUser(refreshedUser, intent) !== "identity_complete") {
+      if (completionForUser(refreshedUser) !== "identity_complete") {
         setIdentityUser(refreshedUser);
         setError("email_verification_pending");
         setPending(false);

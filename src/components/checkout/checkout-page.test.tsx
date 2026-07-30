@@ -69,7 +69,7 @@ describe("CheckoutPage", () => {
     expect(screen.getByRole("button", { name: "submit" })).toBeDisabled();
   });
 
-  it("renders verified contact identity read-only and posts only server-owned checkout data", async () => {
+  it("renders verified contacts read-only and posts both normalized order contacts", async () => {
     const mockFetch = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
         orderId: "00000000-0000-4000-8000-000000000601",
@@ -122,7 +122,9 @@ describe("CheckoutPage", () => {
       delivery: {
         address: "1 Test Street",
         addressId: null,
+        email: "customer@example.test",
         fullName: "Nguyen Van A",
+        phone: "+84901234567",
       },
       vat: null,
     });
@@ -146,5 +148,33 @@ describe("CheckoutPage", () => {
     );
     expect(screen.getByText("WEB0123456789AB")).toBeInTheDocument();
     expect(screen.getByText("sepayQrTestOnly")).toBeInTheDocument();
+  });
+
+  it("keeps the verified factor locked and requires the other order contact", () => {
+    const { rerender } = render(
+      <CheckoutPage
+        checkoutIdentity={{ ...identity, verifiedPhoneE164: null }}
+        initialAccountCart={readyCart}
+      />,
+    );
+
+    expect(screen.getByLabelText("email")).toHaveAttribute("readonly");
+    expect(screen.getByLabelText("email")).toBeRequired();
+    expect(screen.getByLabelText("phoneNumber")).not.toHaveAttribute("readonly");
+    expect(screen.getByLabelText("phoneNumber")).toBeRequired();
+    expect(screen.getByLabelText("countryCodeLabel")).toHaveValue("VN");
+    expect(screen.queryByRole("link", { name: "changeVerifiedPhone" })).not.toBeInTheDocument();
+
+    rerender(
+      <CheckoutPage
+        checkoutIdentity={{ ...identity, verifiedEmail: null }}
+        initialAccountCart={readyCart}
+      />,
+    );
+
+    expect(screen.getByLabelText("email")).not.toHaveAttribute("readonly");
+    expect(screen.getByLabelText("email")).toBeRequired();
+    expect(screen.getByLabelText("phone")).toHaveAttribute("readonly");
+    expect(screen.getByLabelText("phone")).toBeRequired();
   });
 });

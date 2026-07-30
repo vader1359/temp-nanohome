@@ -18,6 +18,7 @@ type InternationalPhoneFieldProps = Readonly<{
   readonly error?: string;
   readonly disabled?: boolean;
   readonly id: string;
+  readonly required?: boolean;
 }>;
 
 function displayValue(value: string, country: SupportedPhoneCountry): string {
@@ -33,6 +34,7 @@ export function InternationalPhoneField({
   id,
   onChange,
   onCountryChange,
+  required = false,
   value,
 }: InternationalPhoneFieldProps) {
   const t = useTranslations("Account.authFlow");
@@ -83,6 +85,7 @@ export function InternationalPhoneField({
               onChange(parsed !== null && isPastedInternational ? parsed.nationalNumber : nextValue);
             }}
             placeholder={DEFAULT_PHONE_COUNTRY.countryCode === country.countryCode ? "090 123 4567" : undefined}
+            required={required}
             type="tel"
             value={displayValue(value, country)}
           />

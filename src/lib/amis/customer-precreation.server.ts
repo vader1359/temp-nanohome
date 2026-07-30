@@ -471,7 +471,7 @@ function parseAssurance(value: Readonly<Record<string, unknown>>): CustomerIdent
     || typeof emailVerified !== "boolean"
     || typeof checkoutReady !== "boolean"
     || typeof registrationClaimed !== "boolean"
-    || checkoutReady !== (phoneVerified && emailVerified)) {
+    || checkoutReady !== (phoneVerified || emailVerified)) {
     return null;
   }
   return { registrationClaimed, phoneVerified, emailVerified, checkoutReady };

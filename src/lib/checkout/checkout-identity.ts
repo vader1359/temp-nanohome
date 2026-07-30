@@ -1,12 +1,14 @@
 import type { AuthenticatedAccount } from "@/lib/account/auth-port";
+import { normalizeEmail } from "@/lib/auth/email-normalization";
+import { normalizeInternationalPhone } from "@/lib/auth/phone-e164";
 
 const E164_PHONE_PATTERN = /^\+[1-9]\d{7,14}$/u;
 
 export type CheckoutIdentity = Readonly<{
   accountId: string;
   firebaseUid: string;
-  verifiedEmail: string;
-  verifiedPhoneE164: string;
+  verifiedEmail: string | null;
+  verifiedPhoneE164: string | null;
 }>;
 
 export type CheckoutIdentityResolution =
@@ -15,6 +17,17 @@ export type CheckoutIdentityResolution =
       kind: "identity_required";
       missing: readonly ("email" | "phone")[];
     }>;
+
+export type CheckoutOrderContactResolution =
+  | Readonly<{
+      kind: "ready";
+      contact: Readonly<{
+        email: string;
+        phoneE164: string;
+      }>;
+    }>
+  | Readonly<{ kind: "invalid_contact" }>
+  | Readonly<{ kind: "verified_contact_mismatch" }>;
 
 export function normalizeVerifiedE164Phone(value: string): string | null {
   const compact = value.trim().replace(/[\s().-]/gu, "");
@@ -27,20 +40,19 @@ export function resolveCheckoutIdentity(
   const verifiedEmailIdentity = account.identities.find((identity) =>
     identity.verified
     && (identity.provider === "email" || identity.provider === "google")
-    && /^[^@\s]+@[^@\s]+\.[^@\s]+$/u.test(identity.identifier.trim()),
+    && normalizeEmail(identity.identifier) !== null,
   );
   const verifiedPhoneIdentity = account.identities.find((identity) =>
     identity.provider === "phone" && identity.verified,
   );
-  const verifiedEmail = verifiedEmailIdentity?.identifier.trim().toLowerCase() ?? null;
+  const verifiedEmail = verifiedEmailIdentity === undefined
+    ? null
+    : normalizeEmail(verifiedEmailIdentity.identifier);
   const verifiedPhoneE164 = verifiedPhoneIdentity === undefined
     ? null
     : normalizeVerifiedE164Phone(verifiedPhoneIdentity.identifier);
-  const missing: ("email" | "phone")[] = [];
-  if (verifiedEmail === null) missing.push("email");
-  if (verifiedPhoneE164 === null) missing.push("phone");
-  if (missing.length > 0 || verifiedEmail === null || verifiedPhoneE164 === null) {
-    return { kind: "identity_required", missing };
+  if (verifiedEmail === null && verifiedPhoneE164 === null) {
+    return { kind: "identity_required", missing: ["email", "phone"] };
   }
 
   return {
@@ -50,6 +62,30 @@ export function resolveCheckoutIdentity(
       verifiedEmail,
       verifiedPhoneE164,
     },
+    kind: "ready",
+  };
+}
+
+export function resolveCheckoutOrderContact(
+  identity: CheckoutIdentity,
+  input: Readonly<{ email: string; phone: string }>,
+): CheckoutOrderContactResolution {
+  const email = normalizeEmail(input.email);
+  const phoneE164 = normalizeInternationalPhone(input.phone);
+  if (email === null || phoneE164 === null) {
+    return { kind: "invalid_contact" };
+  }
+  if (
+    (identity.verifiedEmail !== null && identity.verifiedEmail !== email)
+    || (
+      identity.verifiedPhoneE164 !== null
+      && identity.verifiedPhoneE164 !== phoneE164
+    )
+  ) {
+    return { kind: "verified_contact_mismatch" };
+  }
+  return {
+    contact: { email, phoneE164 },
     kind: "ready",
   };
 }

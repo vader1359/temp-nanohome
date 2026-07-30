@@ -174,7 +174,7 @@ describe("AccountAuthFlow", () => {
     expect(screen.getByRole("status")).toHaveTextContent("secure password-reset instructions");
   });
 
-  it("links a phone to an existing verified email identity before a checkout session", async () => {
+  it("starts a checkout session directly from a verified email identity", async () => {
     const { port } = createAuthPort();
     vi.mocked(port.signInPassword).mockResolvedValueOnce(emailOnlyUser);
     const { navigate } = renderAuthFlow(port, vi.fn(), "checkout");
@@ -184,26 +184,19 @@ describe("AccountAuthFlow", () => {
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "correct horse" } });
     fireEvent.click(screen.getByRole("button", { name: "Sign in with email" }));
 
-    const phoneInput = await screen.findByLabelText("Phone number");
-    expect(screen.getByText(/Add this phone/iu)).toBeInTheDocument();
-    fireEvent.change(phoneInput, { target: { value: "0901234567" } });
-    fireEvent.click(screen.getByRole("button", { name: "Link phone" }));
-    await screen.findByLabelText("Six-digit OTP");
-    expect(port.requestPhoneCode).toHaveBeenCalledWith(
-      "+84901234567",
-      "nanohome-phone-recaptcha",
+    await waitFor(() => expect(port.createServerSession).toHaveBeenCalledWith(
       emailOnlyUser,
-    );
-    fireEvent.change(screen.getByLabelText("Six-digit OTP"), { target: { value: "123456" } });
-    fireEvent.click(screen.getByRole("button", { name: "Verify code" }));
-
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/en/products"));
+      "en",
+      "/en/products?auth=login",
+      "checkout",
+    ));
+    expect(port.requestPhoneCode).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith("/en/products");
   });
 
-  it("requires an email verification step after phone sign-in for checkout and retries safely", async () => {
+  it("starts a checkout session directly from a verified phone identity", async () => {
     const { confirmation, port } = createAuthPort();
     vi.mocked(confirmation.confirm).mockResolvedValueOnce(phoneOnlyUser);
-    vi.mocked(port.reloadUser).mockResolvedValueOnce(phoneOnlyUser).mockResolvedValueOnce(firebaseUser);
     renderAuthFlow(port, vi.fn(), "checkout");
 
     fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "0901234567" } });
@@ -211,21 +204,14 @@ describe("AccountAuthFlow", () => {
     fireEvent.change(await screen.findByLabelText("Six-digit OTP"), { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Verify code" }));
 
-    const emailInput = await screen.findByLabelText("Email");
-    fireEvent.change(emailInput, { target: { value: "person@example.test" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send verification email" }));
-    await waitFor(() => expect(port.verifyEmailBeforeUpdate).toHaveBeenCalledWith(
+    await waitFor(() => expect(port.createServerSession).toHaveBeenCalledWith(
       phoneOnlyUser,
-      "person@example.test",
       "en",
       "/en/products?auth=login",
+      "checkout",
     ));
-    expect(screen.getByRole("status")).toHaveTextContent("person@example.test");
-
-    fireEvent.click(screen.getByRole("button", { name: "I verified my email" }));
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("not verified yet"));
-    fireEvent.click(screen.getByRole("button", { name: "I verified my email" }));
-    await waitFor(() => expect(port.createServerSession).toHaveBeenCalledWith(firebaseUser, "en", "/en/products?auth=login", "checkout"));
+    expect(port.verifyEmailBeforeUpdate).not.toHaveBeenCalled();
+    expect(screen.queryByText("Add a verified email")).not.toBeInTheDocument();
   });
 
   it("creates a regular account session after one verified factor", async () => {

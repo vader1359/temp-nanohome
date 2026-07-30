@@ -89,7 +89,7 @@ describe("customer precreation server contract", () => {
     expect(claim).not.toHaveBeenCalled();
   });
 
-  it("claims with one verified factor and leaves checkout assurance false", async () => {
+  it("claims with one verified factor and marks checkout assurance ready", async () => {
     const claim = vi.fn(async () => ({
       status: "claimed" as const,
       accountId: "00000000-0000-4000-8000-000000000401",
@@ -97,7 +97,7 @@ describe("customer precreation server contract", () => {
         registrationClaimed: true,
         phoneVerified: true,
         emailVerified: false,
-        checkoutReady: false,
+        checkoutReady: true,
       },
     }));
     const repository = { claim } as unknown as CustomerPrecreationRepository;
@@ -117,7 +117,7 @@ describe("customer precreation server contract", () => {
       registrationClaimed: true,
       phoneVerified: true,
       emailVerified: false,
-      checkoutReady: false,
+      checkoutReady: true,
     });
     expect(claim).toHaveBeenCalledWith(expect.objectContaining({
       phoneDigest: expect.stringMatching(/^[a-f0-9]{64}$/u),
@@ -166,7 +166,7 @@ describe("customer precreation server contract", () => {
       registration_claimed: true,
       phone_verified: true,
       email_verified: false,
-      checkout_ready: false,
+      checkout_ready: true,
     }]), { headers: { "content-type": "application/json" }, status: 200 }));
     const repository = createCustomerPrecreationRepository({
       baseUrl: "http://127.0.0.1:54321",
@@ -192,7 +192,7 @@ describe("customer precreation server contract", () => {
         registrationClaimed: true,
         phoneVerified: true,
         emailVerified: false,
-        checkoutReady: false,
+        checkoutReady: true,
       },
     });
     expect(fetcher).toHaveBeenCalledOnce();

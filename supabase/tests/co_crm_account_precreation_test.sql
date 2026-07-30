@@ -3,7 +3,7 @@ begin;
 \ir fixtures.sql
 
 set local role postgres;
-select plan(49);
+select plan(50);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.customer_account_precreation_batches'::regclass),
@@ -42,6 +42,10 @@ select ok(
 select ok(
   not has_function_privilege('authenticated', 'public.claim_customer_account_precreation(text,text,text,boolean,boolean,jsonb)', 'execute'),
   'authenticated callers cannot execute claim'
+);
+select ok(
+  not has_function_privilege('service_role', 'public.claim_customer_account_precreation_both_verified_v1(text,text,text,boolean,boolean,jsonb)', 'execute'),
+  'service role cannot bypass the superseding one-factor checkout projection'
 );
 select ok(
   has_function_privilege('service_role', 'public.customer_account_identity_assurance(text)', 'execute'),
@@ -99,7 +103,7 @@ from public.claim_customer_account_precreation(
 select is(:'phone_claim_claim_status'::text, 'claimed'::text, 'verified phone alone claims the account');
 select is(:'phone_claim_phone_verified'::boolean, true, 'phone assurance is recorded');
 select is(:'phone_claim_email_verified'::boolean, false, 'email remains unverified after phone claim');
-select is(:'phone_claim_checkout_ready'::boolean, false, 'one-factor claim is not checkout ready');
+select is(:'phone_claim_checkout_ready'::boolean, true, 'one verified phone factor is checkout ready');
 select is(
   (select count(*)::integer from public.customer_account_verified_identities where account_id = :'phone_claim_account_id'::uuid and status = 'active'),
   1,
@@ -129,7 +133,7 @@ from public.claim_customer_account_precreation(
 select is(:'progressive_claim_status'::text, 'already_claimed'::text, 'same UID can add a verified second factor');
 select is(:'progressive_phone_verified'::boolean, true, 'existing phone assurance is preserved');
 select is(:'progressive_email_verified'::boolean, true, 'new verified email assurance is recorded');
-select is(:'progressive_checkout_ready'::boolean, true, 'both verified identities make checkout ready');
+select is(:'progressive_checkout_ready'::boolean, true, 'progressive verification remains checkout ready');
 select is(
   (select count(*)::integer from public.customer_account_verified_identities where account_id = :'progressive_account_id'::uuid and status = 'active'),
   2,
@@ -147,7 +151,7 @@ from public.claim_customer_account_precreation(
 ) \gset email_claim_
 select is(:'email_claim_claim_status'::text, 'claimed'::text, 'verified email alone claims the account');
 select is(:'email_claim_phone_verified'::boolean, false, 'email-only claim has no verified phone');
-select is(:'email_claim_checkout_ready'::boolean, false, 'email-only claim is not checkout ready');
+select is(:'email_claim_checkout_ready'::boolean, true, 'one verified email factor is checkout ready');
 
 select claim_status
 from public.claim_customer_account_precreation(

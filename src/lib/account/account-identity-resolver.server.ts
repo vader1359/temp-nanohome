@@ -95,13 +95,7 @@ export function createAccountIdentityResolver(input: Readonly<{
 }
 
 function assertIdentityCompleteness(identity: FirebaseIdentityResolutionInput): void {
-  if (
-    (identity.email === null && identity.phoneE164 === null)
-    || (
-      identity.intent === "checkout"
-      && (identity.email === null || identity.phoneE164 === null)
-    )
-  ) {
+  if (identity.email === null && identity.phoneE164 === null) {
     throw new AccountIdentityResolutionError("identity_incomplete");
   }
 }
