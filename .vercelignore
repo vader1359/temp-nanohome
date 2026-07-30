@@ -1,3 +1,6 @@
 # Local backups and investigation outputs must never be part of a deployment.
 outputs/
-
+.agents/
+.omo/
+.env.local
+supabase/.temp/
