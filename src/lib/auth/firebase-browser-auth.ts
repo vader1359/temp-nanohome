@@ -14,11 +14,13 @@ import {
   signOut,
   setPersistence,
   verifyBeforeUpdateEmail,
+  type Auth,
   type ConfirmationResult,
   type User,
 } from "firebase/auth";
 
 import { getFirebaseBrowserAuth } from "./firebase-client";
+import { isFirebasePhoneTestModeAllowed } from "./firebase-phone-test-mode";
 import type { AuthSessionIntent } from "./session-intent";
 
 const GOOGLE_REDIRECT_MARKER = "nanohome-google-redirect-pending";
@@ -129,6 +131,23 @@ function parseCsrfResponse(input: unknown): string {
   return input.csrfToken;
 }
 
+async function shouldUseStagingPhoneTestMode(auth: Auth, linkUser: User | undefined): Promise<boolean> {
+  if (
+    linkUser === undefined
+    || window.location.origin !== "https://staging.nanohome.vn"
+    || auth.app.options.projectId !== "temp-nanohome"
+  ) {
+    return false;
+  }
+
+  const tokenResult = await linkUser.getIdTokenResult();
+  return isFirebasePhoneTestModeAllowed({
+    origin: window.location.origin,
+    projectId: auth.app.options.projectId,
+    stagingTestClaim: tokenResult.claims.stagingTest,
+  });
+}
+
 export function createFirebaseBrowserAuthPort(): FirebaseBrowserAuthPort {
   let recaptchaVerifier: RecaptchaVerifier | null = null;
 
@@ -142,11 +161,21 @@ export function createFirebaseBrowserAuthPort(): FirebaseBrowserAuthPort {
     async requestPhoneCode(phone, recaptchaContainerId, linkUser) {
       try {
         const auth = await getFirebaseBrowserAuth();
+        const previousAppVerificationSetting = auth.settings.appVerificationDisabledForTesting;
+        const useStagingPhoneTestMode = await shouldUseStagingPhoneTestMode(auth, linkUser);
+        if (useStagingPhoneTestMode) {
+          auth.settings.appVerificationDisabledForTesting = true;
+        }
         clearPhoneVerifier();
-        recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerId, { size: "invisible" });
-        const confirmation: ConfirmationResult = linkUser === undefined
-          ? await signInWithPhoneNumber(auth, phone, recaptchaVerifier)
-          : await linkWithPhoneNumber(linkUser, phone, recaptchaVerifier);
+        let confirmation: ConfirmationResult;
+        try {
+          recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerId, { size: "invisible" });
+          confirmation = linkUser === undefined
+            ? await signInWithPhoneNumber(auth, phone, recaptchaVerifier)
+            : await linkWithPhoneNumber(linkUser, phone, recaptchaVerifier);
+        } finally {
+          auth.settings.appVerificationDisabledForTesting = previousAppVerificationSetting;
+        }
         return {
           confirm: async (code) => {
             try {
