@@ -1,0 +1,13 @@
+{
+  "authorizedDomain": "staging.nanohome.vn",
+  "googleProviderEnabled": true,
+  "phoneProviderEnabled": true,
+  "projectId": "temp-nanohome",
+  "smsAllowedRegions": [
+    "VN"
+  ],
+  "smsRegionPolicyVerified": true,
+  "source": "Firebase console Authentication settings",
+  "stagingDomainAuthorized": true,
+  "verifiedAt": "2026-08-01T08:53:12.0215575Z"
+}

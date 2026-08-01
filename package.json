@@ -7,6 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "staging:doctor": "tsx scripts/staging-doctor.ts",
+    "staging:catalog-audit": "node scripts/staging-public-catalog-audit.mjs",
     "staging:catalog-snapshot": "tsx scripts/staging-catalog-snapshot.ts",
     "staging:catalog-source-audit": "node scripts/staging-catalog-source-audit.mjs",
     "staging:test-identities": "tsx scripts/staging-test-identities.ts",

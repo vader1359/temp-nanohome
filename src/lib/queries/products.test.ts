@@ -179,6 +179,18 @@ describe("getVariantProducts", () => {
     expect(state.chain.order).toHaveBeenNthCalledWith(4, "id", { ascending: true });
   });
 
+  it.each([
+    ["price_asc", "price", { ascending: true, nullsFirst: false }],
+    ["price_desc", "price", { ascending: false, nullsFirst: false }],
+    ["newest", "source_created_at", { ascending: false, nullsFirst: false }],
+  ] as const)("adds an id tie-breaker to %s pagination", async (sort, column, order) => {
+    await getVariantProducts({ page: 2, sort });
+
+    expect(state.chain.order).toHaveBeenNthCalledWith(1, column, order);
+    expect(state.chain.order).toHaveBeenNthCalledWith(2, "id", { ascending: true });
+    expect(state.chain.range).toHaveBeenCalledWith(24, 47);
+  });
+
   it("uses the AMIS stock balance for in-stock and out-of-stock filters", async () => {
     // Given: stock status filters from the UI.
     // When: the listing and its pagination count query the in-stock state.

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { inspectStagingConfiguration, parseEnvFile } from "./staging-doctor";
+import {
+  inspectSchemaFingerprint,
+  inspectStagingConfiguration,
+  parseEnvFile,
+} from "./staging-doctor";
 
 const complete = {
   ACCOUNT_CENTER_ENABLED: "true",
@@ -105,6 +109,25 @@ describe("staging doctor", () => {
     expect(checks.sepayConfig?.status).toBe("BLOCKED_CONFIG");
     expect(checks.sepayConfig?.detail).toMatchObject({
       testBankAccountConfigured: false,
+    });
+  });
+
+  it("accepts only a complete staging schema fingerprint", () => {
+    const completePaths = [
+      "/account_identity_events",
+      "/email_link_recovery_transactions",
+      "/rpc/begin_email_link_recovery_transaction",
+      "/rpc/consume_email_link_recovery_transaction",
+      "/rpc/customer_account_identity_assurance",
+      "/rpc/inspect_email_link_recovery_transaction",
+      "/rpc/resolve_or_create_account",
+      "/rpc/search_public_chat_catalog_v2",
+    ];
+
+    expect(inspectSchemaFingerprint(completePaths).status).toBe("PASS");
+    expect(inspectSchemaFingerprint(completePaths.slice(1))).toMatchObject({
+      detail: { present: 7, required: 8 },
+      status: "FAIL",
     });
   });
 });

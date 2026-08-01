@@ -126,6 +126,7 @@ export async function getProducts(options: ProductListOptions = {}): Promise<rea
       query = query.order("priority", { ascending: false, nullsFirst: false });
       break;
   }
+  query = query.order("id", { ascending: true });
 
   const { data, error } = await query.range(from, to);
   if (error !== null) {
@@ -329,10 +330,12 @@ export async function getVariantProducts(options: VariantProductQueryOptions = {
       query = query
         .order("stock", { ascending: false, nullsFirst: false })
         .order("filter_is_new_arrival", { ascending: false, nullsFirst: false })
-        .order("priority", { ascending: true, nullsFirst: false })
-        .order("id", { ascending: true });
+        .order("priority", { ascending: true, nullsFirst: false });
       break;
   }
+  // Offset pagination must end in a unique key. Price and timestamps contain
+  // many ties in the live catalog, otherwise adjacent pages can repeat rows.
+  query = query.order("id", { ascending: true });
 
   if (options.status === "sale") {
     // PostgREST cannot compare two columns in this query, so validate the bounded

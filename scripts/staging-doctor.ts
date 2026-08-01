@@ -438,7 +438,7 @@ async function runtimeChecks(
     };
   }
 
-  checks.supabaseLedger = await migrationLedgerCheck(root);
+  checks.supabaseLedger = await migrationLedgerCheck(root, environment);
 
   if (environment.CHAT_ENABLED === "true"
     && environment.DEEPSEEK_API_KEY
@@ -488,18 +488,83 @@ async function readJsonIfPresent(path: string): Promise<Readonly<Record<string, 
   }
 }
 
-async function migrationLedgerCheck(root: string): Promise<DoctorCheck> {
+const STAGING_SCHEMA_FINGERPRINT_PATHS = [
+  "/account_identity_events",
+  "/email_link_recovery_transactions",
+  "/rpc/begin_email_link_recovery_transaction",
+  "/rpc/consume_email_link_recovery_transaction",
+  "/rpc/customer_account_identity_assurance",
+  "/rpc/inspect_email_link_recovery_transaction",
+  "/rpc/resolve_or_create_account",
+  "/rpc/search_public_chat_catalog_v2",
+] as const;
+
+export function inspectSchemaFingerprint(paths: readonly string[]): DoctorCheck {
+  const available = new Set(paths);
+  const missing = STAGING_SCHEMA_FINGERPRINT_PATHS
+    .filter((path) => !available.has(path));
+  const present = STAGING_SCHEMA_FINGERPRINT_PATHS.length - missing.length;
+  return {
+    status: present === STAGING_SCHEMA_FINGERPRINT_PATHS.length ? "PASS" : "FAIL",
+    detail: {
+      method: "schemaFingerprint",
+      missing: missing.join(","),
+      present,
+      required: STAGING_SCHEMA_FINGERPRINT_PATHS.length,
+    },
+  };
+}
+
+async function schemaFingerprintCheck(
+  environment: Readonly<Record<string, string | undefined>>,
+): Promise<DoctorCheck> {
+  const supabaseUrl = environment.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = environment.SUPABASE_SERVICE_ROLE_KEY;
+  if (supabaseUrl === undefined || serviceRoleKey === undefined) {
+    return {
+      status: "BLOCKED_CONFIG",
+      detail: { method: "schemaFingerprint", supabaseConfigPresent: false },
+    };
+  }
+  const response = await safeFetch(`${supabaseUrl.replace(/\/+$/, "")}/rest/v1/`, {
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+    },
+  });
+  if (response?.ok !== true) {
+    return {
+      status: "FAIL",
+      detail: { method: "schemaFingerprint", status: response?.status ?? null },
+    };
+  }
+  try {
+    const payload: unknown = await response.json();
+    if (typeof payload !== "object" || payload === null || !("paths" in payload)
+      || typeof payload.paths !== "object" || payload.paths === null) {
+      return { status: "FAIL", detail: { method: "schemaFingerprint", parsed: false } };
+    }
+    return inspectSchemaFingerprint(Object.keys(payload.paths));
+  } catch {
+    return { status: "FAIL", detail: { method: "schemaFingerprint", parsed: false } };
+  }
+}
+
+async function migrationLedgerCheck(
+  root: string,
+  environment: Readonly<Record<string, string | undefined>>,
+): Promise<DoctorCheck> {
   try {
     const { stdout } = await execFileAsync("supabase", ["migration", "list", "--linked"], {
       cwd: root,
       timeout: 30_000,
     });
     const jsonLine = stdout.split(/\r?\n/).find((line) => line.trim().startsWith("{\"migrations\""));
-    if (jsonLine === undefined) return { status: "FAIL", detail: { parsed: false } };
+    if (jsonLine === undefined) return await schemaFingerprintCheck(environment);
     const payload: unknown = JSON.parse(jsonLine);
     if (typeof payload !== "object" || payload === null || !("migrations" in payload)
       || !Array.isArray(payload.migrations)) {
-      return { status: "FAIL", detail: { parsed: false } };
+      return await schemaFingerprintCheck(environment);
     }
     const rows = payload.migrations as readonly Readonly<{ local?: string; remote?: string }>[];
     const localOnly = rows.filter((row) => row.local && !row.remote).length;
@@ -509,7 +574,7 @@ async function migrationLedgerCheck(root: string): Promise<DoctorCheck> {
       detail: { localOnly, parsed: true, remoteOnly },
     };
   } catch {
-    return { status: "FAIL", detail: { parsed: false } };
+    return await schemaFingerprintCheck(environment);
   }
 }
 
