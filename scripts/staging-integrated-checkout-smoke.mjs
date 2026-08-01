@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { chromium } from "@playwright/test";
+import { createHmac, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
@@ -11,6 +12,9 @@ const allowedTargets = new Set(["localhost", "127.0.0.1", "staging.nanohome.vn"]
 const fixturePath = "/vi/products/stg-amis-lwlfl00026-10k";
 const fixtureName = "[STAGING TEST 10K]";
 const fixtureAmount = 10_000;
+const windowsPowerShell = process.platform === "linux"
+  ? "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+  : "powershell.exe";
 
 assert(allowedTargets.has(baseUrl.hostname), "unsupported_browser_smoke_target");
 assert(baseUrl.protocol === "http:" || baseUrl.protocol === "https:", "invalid_browser_smoke_protocol");
@@ -18,6 +22,17 @@ const base = baseUrl.origin;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function ipnHeaders(rawBody, secret, timestamp = Math.floor(Date.now() / 1_000)) {
+  const signature = createHmac("sha256", secret)
+    .update(`${timestamp}.${rawBody}`, "utf8")
+    .digest("hex");
+  return {
+    "content-type": "application/json",
+    "x-sepay-signature": `sha256=${signature}`,
+    "x-sepay-timestamp": String(timestamp),
+  };
 }
 
 function parseEnv(contents) {
@@ -29,7 +44,7 @@ function parseEnv(contents) {
 }
 
 function clearWindowsClipboard() {
-  spawnSync("powershell.exe", ["-NoProfile", "-Command", "Set-Clipboard -Value $null"], {
+  spawnSync(windowsPowerShell, ["-NoProfile", "-STA", "-Command", "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Clipboard]::Clear()"], {
     stdio: "ignore",
   });
 }
@@ -43,7 +58,7 @@ function secureField(field) {
   assert(copied.status === 0, "secure_identity_copy_failed");
 
   const read = spawnSync(
-    "powershell.exe",
+    windowsPowerShell,
     ["-NoProfile", "-Command", "Get-Clipboard -Raw"],
     { encoding: "utf8" },
   );
@@ -204,6 +219,75 @@ try {
     "payment_qr_not_image",
   );
 
+  const ipnSecret = env.SEPAY_WEBHOOK_HMAC_SECRET;
+  assert(typeof ipnSecret === "string" && ipnSecret.length >= 32, "ipn_secret_not_configured");
+  const ipnPath = `${base}/api/payments/sepay/ipn`;
+  const ipnPayload = {
+    code: payment.merchantReference,
+    id: `codex-${randomUUID()}`,
+    referenceCode: `staging-${randomUUID()}`,
+    transferAmount: fixtureAmount,
+    transferType: "in",
+  };
+  const ipnBody = JSON.stringify(ipnPayload);
+  const invalidSignatureResponse = await context.request.post(ipnPath, {
+    body: ipnBody,
+    headers: {
+      ...ipnHeaders(ipnBody, ipnSecret),
+      "x-sepay-signature": `sha256=${"0".repeat(64)}`,
+    },
+  });
+  assert(invalidSignatureResponse.status() === 401, "invalid_ipn_signature_accepted");
+
+  const mismatchedPayload = JSON.stringify({ ...ipnPayload, transferAmount: fixtureAmount + 1 });
+  const mismatchedResponse = await context.request.post(ipnPath, {
+    body: mismatchedPayload,
+    headers: ipnHeaders(mismatchedPayload, ipnSecret),
+  });
+  assert(mismatchedResponse.status() === 400, "mismatched_ipn_amount_accepted");
+
+  const pendingStatusResponse = await context.request.get(
+    `${base}/api/orders/${checkoutData.orderId}/payment-status`,
+  );
+  assert(pendingStatusResponse.status() === 200, "pending_status_read_failed");
+  const pendingStatus = await pendingStatusResponse.json();
+  assert(pendingStatus.paymentState === "pending", "invalid_ipn_changed_payment_state");
+
+  const successNavigation = page.waitForURL(
+    new RegExp(`/vi/checkout/sepay/success\\?orderId=${checkoutData.orderId}$`, "u"),
+    { timeout: 30_000 },
+  );
+  const validIpnResponse = await context.request.post(ipnPath, {
+    body: ipnBody,
+    headers: ipnHeaders(ipnBody, ipnSecret),
+  });
+  assert(validIpnResponse.status() === 201, "valid_ipn_not_applied");
+  await successNavigation;
+  await page.getByRole("heading", { level: 1 }).waitFor({ timeout: 30_000 });
+
+  const duplicateIpnResponse = await context.request.post(ipnPath, {
+    body: ipnBody,
+    headers: ipnHeaders(ipnBody, ipnSecret),
+  });
+  assert(duplicateIpnResponse.status() === 200, "duplicate_ipn_not_idempotent");
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { level: 1 }).waitFor({ timeout: 30_000 });
+  const successPageText = await page.locator("main").innerText();
+  assert(successPageText.length > 0, "success_page_empty_after_refresh");
+
+  await page.goto(`${base}/en/checkout/sepay/cancel?orderId=${checkoutData.orderId}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await page.getByRole("heading", { level: 1 }).waitFor();
+  assert((await page.locator('a[href*="/en/account/orders/"]').count()) === 1, "cancel_order_link_wrong_locale");
+
+  await page.goto(`${base}/ko/checkout/sepay/error?orderId=${checkoutData.orderId}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await page.getByRole("heading", { level: 1 }).waitFor();
+  assert((await page.locator('a[href*="/ko/account/orders/"]').count()) === 1, "error_order_link_wrong_locale");
+
   const cleanupDone = await clearAccountCart(context.request);
   await page.evaluate(() => localStorage.clear());
   await context.clearCookies();
@@ -216,7 +300,15 @@ try {
     guestRedirect: true,
     paymentEnvironment: payment.environment,
     paymentStatus: paymentResponse.status(),
+    ipn: {
+      duplicateStatus: duplicateIpnResponse.status(),
+      invalidSignatureStatus: invalidSignatureResponse.status(),
+      mismatchedAmountStatus: mismatchedResponse.status(),
+      pendingBeforeValid: pendingStatus.paymentState === "pending",
+      validStatus: validIpnResponse.status(),
+    },
     qrImage200: true,
+    successAfterRefresh: true,
     sensitiveValuesPrinted: false,
     sessionExchange: true,
   };

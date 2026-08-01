@@ -18,6 +18,7 @@ if (!/^[A-Za-z0-9._-]{1,120}$/u.test(sku)) throw new Error("invalid_fixture_sku"
 const listCartReady = process.argv.includes("--list-cart-ready");
 const auditBaseline = process.argv.includes("--baseline");
 const auditDetails = process.argv.includes("--details");
+const summaryOnly = process.argv.includes("--summary");
 const includeBaselineLines = process.argv.includes("--baseline-lines");
 const baselineMatch = process.argv.find((argument) => argument.startsWith("--baseline-match="))
   ?.slice("--baseline-match=".length)
@@ -63,7 +64,7 @@ if (auditBaseline) {
   });
   const baselineId = states[0]?.active_baseline_id;
   if (typeof baselineId !== "string") throw new Error("active_inventory_baseline_missing");
-  const [baselines, lines, catalogRows] = await Promise.all([
+  const [baselines, lines, catalogRows, variants] = await Promise.all([
     readRows("amis_inventory_baselines", {
       id: `eq.${baselineId}`,
       select: "completed_at,is_active",
@@ -75,7 +76,11 @@ if (auditBaseline) {
     }),
     readAllRows("catalog_eligibility", {
       order: "sku.asc",
-      select: "sku,stock,has_fresh_stock,catalog_approved_validated,reason_codes,cart,payment",
+      select: "sku,stock,has_fresh_stock,has_supported_media,catalog_approved_validated,reason_codes,storefront,cart,payment",
+    }),
+    readAllRows("variants", {
+      order: "id.asc",
+      select: "id,filter_category,filter_room",
     }),
   ]);
   const baselineBySku = new Map(lines.map((line) => [line.sku, line]));
@@ -93,12 +98,20 @@ if (auditBaseline) {
       ? Math.max(0, Math.round((Date.now() - Date.parse(completedAt)) / 1_000))
       : null,
     catalogCount: catalogRows.length,
+    catalogApprovedValidatedCount: catalogRows.filter((row) => row.catalog_approved_validated === true).length,
+    cartReadyCount: catalogRows.filter((row) => row.cart === true).length,
+    freshStockCount: catalogRows.filter((row) => row.has_fresh_stock === true).length,
+    mediaReadyCount: catalogRows.filter((row) => row.has_supported_media === true).length,
+    paymentReadyCount: catalogRows.filter((row) => row.payment === true).length,
+    storefrontReadyCount: catalogRows.filter((row) => row.storefront === true).length,
     intersectionCount: intersections.length,
-    intersections,
     unmatchedCatalogCount: unmatchedCatalogRows.length,
-    unmatchedCatalogRows,
     lineCount: lines.length,
     positiveStockCount: lines.filter((line) => Number(line.stock) > 0).length,
+    variantCount: variants.length,
+    variantsWithCategory: variants.filter((row) => typeof row.filter_category === "string" && row.filter_category !== "").length,
+    variantsWithRooms: variants.filter((row) => Array.isArray(row.filter_room) && row.filter_room.length > 0).length,
+    ...(summaryOnly ? {} : { intersections, unmatchedCatalogRows }),
     ...(baselineMatch
       ? { matchedBaselineLines: lines.filter((line) => line.sku.toLowerCase().includes(baselineMatch)) }
       : {}),

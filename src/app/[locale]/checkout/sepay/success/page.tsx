@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -13,6 +14,8 @@ import { useEffect, useState } from "react";
  */
 export default function SePaySuccessPage() {
   const searchParams = useSearchParams();
+  const locale = useLocale();
+  const t = useTranslations("Checkout");
   const orderId = searchParams.get("orderId");
   const [status, setStatus] = useState<"loading" | "paid" | "pending" | "error">(
     orderId ? "loading" : "error",
@@ -21,47 +24,61 @@ export default function SePaySuccessPage() {
   useEffect(() => {
     if (!orderId) return;
 
-    // Query server state, never trust redirect params
-    fetch(`/api/orders/${orderId}/payment-status`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error === "not_implemented") {
-          setStatus("pending");
-        } else if (data.paymentState === "paid") {
+    let active = true;
+    const timer = window.setInterval(() => void checkStatus(), 2_500);
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`/api/orders/${encodeURIComponent(orderId)}/payment-status`, {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+        if (!response.ok) throw new Error("payment_status_unavailable");
+        const data: unknown = await response.json();
+        if (!active || typeof data !== "object" || data === null || !("paymentState" in data)) return;
+        if (data.paymentState === "paid") {
+          active = false;
+          window.clearInterval(timer);
           setStatus("paid");
+        } else if (data.paymentState === "failed") {
+          active = false;
+          window.clearInterval(timer);
+          setStatus("error");
         } else {
           setStatus("pending");
         }
-      })
-      .catch(() => setStatus("error"));
+      } catch {
+        if (active) setStatus("error");
+      }
+    };
+    void checkStatus();
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
   }, [orderId]);
 
   if (status === "loading") {
-    return <div>Đang kiểm tra trạng thái thanh toán...</div>;
+    return <main className="mx-auto max-w-2xl px-6 py-20" aria-live="polite">{t("paymentStatusChecking")}</main>;
   }
 
   if (status === "paid") {
-    return (
-      <div>
-        <h1>Thanh toán thành công</h1>
-        <p>Đơn hàng của bạn đã được xác nhận.</p>
-      </div>
-    );
+    return <main className="mx-auto max-w-2xl px-6 py-20">
+      <h1 className="text-3xl">{t("successTitle")}</h1>
+      <p className="mt-4">{t("successDescription")}</p>
+      {orderId ? <a className="mt-8 inline-flex underline" href={`/${locale}/account/orders/${orderId}`}>{t("viewOrder")}</a> : null}
+    </main>;
   }
 
   if (status === "pending") {
-    return (
-      <div>
-        <h1>Đang chờ xác nhận</h1>
-        <p>Chúng tôi đang xác minh thanh toán của bạn. Vui lòng đợi trong giây lát.</p>
-      </div>
-    );
+    return <main className="mx-auto max-w-2xl px-6 py-20" aria-live="polite">
+      <h1 className="text-3xl">{t("pendingVerification")}</h1>
+      <p className="mt-4">{t("paymentPendingDescription")}</p>
+    </main>;
   }
 
-  return (
-    <div>
-      <h1>Có lỗi xảy ra</h1>
-      <p>Không thể kiểm tra trạng thái thanh toán.</p>
-    </div>
-  );
+  return <main className="mx-auto max-w-2xl px-6 py-20">
+    <h1 className="text-3xl">{t("paymentErrorTitle")}</h1>
+    <p className="mt-4">{t("paymentStatusError")}</p>
+    {orderId ? <a className="mt-8 inline-flex underline" href={`/${locale}/account/orders/${orderId}`}>{t("viewOrder")}</a> : null}
+  </main>;
 }

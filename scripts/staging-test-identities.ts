@@ -52,7 +52,9 @@ function isWsl(): boolean {
 
 function runWindowsPowerShell(script: string, input?: string) {
   return spawnSync(
-    "powershell.exe",
+    isWsl()
+      ? "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+      : "powershell.exe",
     ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script],
     {
       encoding: "utf8",
@@ -65,7 +67,9 @@ function runWindowsPowerShell(script: string, input?: string) {
 function readWindowsStoredIdentities(): string | null {
   const result = runWindowsPowerShell(`
     $ErrorActionPreference = 'Stop'
-    $taskDirectory = Join-Path $env:LOCALAPPDATA '${WINDOWS_STORE_DIRECTORY}'
+    $taskLocalAppData = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+    if ([string]::IsNullOrWhiteSpace($taskLocalAppData)) { throw 'Windows LocalApplicationData is unavailable.' }
+    $taskDirectory = Join-Path $taskLocalAppData '${WINDOWS_STORE_DIRECTORY}'
     $taskPath = Join-Path $taskDirectory '${WINDOWS_STORE_FILENAME}'
     if (-not (Test-Path -LiteralPath $taskPath -PathType Leaf)) { exit 4 }
     $taskEncrypted = [IO.File]::ReadAllText($taskPath)
@@ -75,7 +79,12 @@ function readWindowsStoredIdentities(): string | null {
   `);
   if (result.status === 4) return null;
   if (result.status !== 0) {
-    throw new Error("Unable to read the staging identity bundle from Windows DPAPI storage.");
+    const detail = typeof result.stderr === "string"
+      ? result.stderr.trim().split(/\r?\n/).at(-1)?.trim()
+      : result.error?.message;
+    throw new Error(
+      `Unable to read the staging identity bundle from Windows DPAPI storage${detail ? ` (${detail})` : ""}.`,
+    );
   }
   return result.stdout;
 }
@@ -83,7 +92,9 @@ function readWindowsStoredIdentities(): string | null {
 function writeWindowsStoredIdentities(value: string) {
   const result = runWindowsPowerShell(`
     $ErrorActionPreference = 'Stop'
-    $taskDirectory = Join-Path $env:LOCALAPPDATA '${WINDOWS_STORE_DIRECTORY}'
+    $taskLocalAppData = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+    if ([string]::IsNullOrWhiteSpace($taskLocalAppData)) { throw 'Windows LocalApplicationData is unavailable.' }
+    $taskDirectory = Join-Path $taskLocalAppData '${WINDOWS_STORE_DIRECTORY}'
     $taskPath = Join-Path $taskDirectory '${WINDOWS_STORE_FILENAME}'
     [IO.Directory]::CreateDirectory($taskDirectory) | Out-Null
     $taskPlaintext = [Console]::In.ReadToEnd()
@@ -99,7 +110,9 @@ function writeWindowsStoredIdentities(value: string) {
 function deleteWindowsStoredIdentities() {
   const result = runWindowsPowerShell(`
     $ErrorActionPreference = 'Stop'
-    $taskDirectory = Join-Path $env:LOCALAPPDATA '${WINDOWS_STORE_DIRECTORY}'
+    $taskLocalAppData = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+    if ([string]::IsNullOrWhiteSpace($taskLocalAppData)) { throw 'Windows LocalApplicationData is unavailable.' }
+    $taskDirectory = Join-Path $taskLocalAppData '${WINDOWS_STORE_DIRECTORY}'
     $taskPath = Join-Path $taskDirectory '${WINDOWS_STORE_FILENAME}'
     $taskResolvedDirectory = [IO.Path]::GetFullPath($taskDirectory)
     $taskResolvedPath = [IO.Path]::GetFullPath($taskPath)
@@ -196,7 +209,9 @@ function copyFieldToClipboard(field: string, identities: StoredIdentities) {
   const clipboardCommand = process.platform === "darwin"
     ? "pbcopy"
     : process.platform === "win32" || isWsl()
-      ? "clip.exe"
+      ? isWsl()
+        ? "/mnt/c/Windows/System32/clip.exe"
+        : "clip.exe"
       : null;
   if (clipboardCommand === null) {
     throw new Error("Secure clipboard copy is only supported on macOS, Windows, and WSL.");

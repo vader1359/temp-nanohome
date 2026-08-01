@@ -7,18 +7,20 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => getSearchParams(),
 }));
 
+vi.mock("next-intl", () => ({
+  useLocale: () => "vi",
+  useTranslations: () => (key: string) => key,
+}));
+
 import SePaySuccessPage from "./page";
 
 describe("SePaySuccessPage", () => {
   it("shows an error without an order ID", () => {
-    // Given: a browser return URL without an order identifier.
     getSearchParams.mockReturnValue(new URLSearchParams());
 
-    // When: the success page renders.
     render(<SePaySuccessPage />);
 
-    // Then: it reports the missing server-checkable payment reference.
-    expect(screen.getByRole("heading", { name: "Có lỗi xảy ra" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "paymentErrorTitle" })).toBeInTheDocument();
   });
 
   it("never trusts a browser success redirect to mark payment paid", async () => {
@@ -35,11 +37,12 @@ describe("SePaySuccessPage", () => {
     render(<SePaySuccessPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Đang chờ xác nhận" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "pendingVerification" })).toBeInTheDocument();
     });
     expect(fetcher).toHaveBeenCalledWith(
       "/api/orders/00000000-0000-4000-8000-000000000301/payment-status",
+      expect.objectContaining({ cache: "no-store", credentials: "same-origin" }),
     );
-    expect(screen.queryByRole("heading", { name: "Thanh toán thành công" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "successTitle" })).not.toBeInTheDocument();
   });
 });

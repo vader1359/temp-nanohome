@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 
 /**
@@ -10,19 +11,20 @@ import { useSearchParams } from "next/navigation";
  */
 export default function SePayCancelPage() {
   const searchParams = useSearchParams();
+  const locale = useLocale();
   const orderId = searchParams.get("orderId");
+  const t = useTranslations("Checkout");
 
   return (
-    <div>
-      <h1>Bạn đã hủy thanh toán</h1>
-      <p>Đơn hàng của bạn vẫn còn hiệu lực.</p>
+    <main className="mx-auto max-w-2xl px-6 py-20">
+      <h1 className="text-3xl">{t("cancelTitle")}</h1>
+      <p className="mt-4">{t("cancelDescription")}</p>
       {orderId && (
-        <p>
-          <a href={`/vi/orders/${orderId}`}>Xem chi tiết đơn hàng</a>
-          {" hoặc "}
-          <a href={`/vi/checkout?orderId=${orderId}`}>Tiếp tục thanh toán</a>
-        </p>
+        <div className="mt-8 flex flex-wrap gap-5">
+          <a className="underline" href={`/${locale}/account/orders/${orderId}`}>{t("viewOrder")}</a>
+          <a className="underline" href={`/${locale}/checkout?orderId=${encodeURIComponent(orderId)}`}>{t("retryPayment")}</a>
+        </div>
       )}
-    </div>
+    </main>
   );
 }

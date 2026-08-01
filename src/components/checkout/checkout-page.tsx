@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { InternationalPhoneField } from "@/components/account/international-phone-field";
@@ -77,8 +77,44 @@ export function CheckoutPage({
   const [status, setStatus] = useState<CheckoutStatus>("idle");
   const [error, setError] = useState("");
   const [payment, setPayment] = useState<PaymentResponse["payment"] | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
   const checkoutIdempotencyKey = useRef<string | null>(null);
   const paymentIdempotencyKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (status !== "payment_pending" || payment === null || orderId === null) return;
+
+    let active = true;
+    const timer = window.setInterval(() => void checkPaymentStatus(), 2_500);
+    const checkPaymentStatus = async () => {
+      try {
+        const response = await fetch(`/api/orders/${encodeURIComponent(orderId)}/payment-status`, {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+        if (!response.ok || !active) return;
+        const body: unknown = await response.json();
+        if (typeof body !== "object" || body === null || !("paymentState" in body)) return;
+        const paymentState = body.paymentState;
+        if (paymentState === "paid") {
+          active = false;
+          window.clearInterval(timer);
+          window.location.assign(`/${locale}/checkout/sepay/success?orderId=${encodeURIComponent(orderId)}`);
+        } else if (paymentState === "failed") {
+          active = false;
+          window.clearInterval(timer);
+          window.location.assign(`/${locale}/checkout/sepay/error?orderId=${encodeURIComponent(orderId)}`);
+        }
+      } catch {
+        // A transient poll failure must not claim payment success or destroy the pending state.
+      }
+    };
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [locale, orderId, payment, status]);
 
   const items = initialAccountCart.items.map((item) => ({
     badge: item.available ? "In stock" : "Unavailable",
@@ -174,6 +210,7 @@ export function CheckoutPage({
         throw new Error(paymentErrorMessage(apiErrorCode(paymentData), t));
       }
 
+      setOrderId(checkoutData.orderId);
       setPayment(paymentData.payment);
       setStatus("payment_pending");
     } catch (submissionError) {
