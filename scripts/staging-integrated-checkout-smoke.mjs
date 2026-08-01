@@ -194,6 +194,8 @@ try {
   assert([200, 201].includes(checkoutResponse.status()), "integrated_checkout_failed");
   assert([200, 201].includes(paymentResponse.status()), "integrated_payment_failed");
 
+  const checkoutData = await checkoutResponse.json();
+  assert(typeof checkoutData.orderId === "string", "integrated_checkout_order_id_missing");
   const paymentBody = await paymentResponse.json();
   const payment = paymentBody.payment;
   assert(payment?.environment === "sandbox", "payment_not_sandbox");
