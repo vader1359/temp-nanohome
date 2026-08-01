@@ -39,7 +39,7 @@ function parseEnv(contents) {
   return Object.fromEntries(contents.split(/\r?\n/u).flatMap((line) => {
     const match = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/u.exec(line);
     if (match === null) return [];
-    return [[match[1], match[2].replace(/^['"]|['"]$/gu, "")]];
+    return [[match[1], match[2].replace(/^['"]|['"]$/gu, "").trim()]];
   }));
 }
 
