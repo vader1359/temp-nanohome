@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 import { InternationalPhoneField } from "@/components/account/international-phone-field";
 import { Link } from "@/i18n/navigation";
 import type { AccountCart } from "@/lib/account/cart-port";
@@ -201,10 +202,13 @@ export function CheckoutPage({
         <section aria-live="polite" className="mx-auto max-w-3xl border border-[#E5E5E5] p-8 text-center sm:p-12">
           <h1 className="text-2xl text-[#1A1A1A]">{t("sepayQrTitle")}</h1>
           <p className="mt-3 text-sm text-[#666666]">{t("sepayQrInstructions")}</p>
-          <img
+          <Image
             alt={t("sepayQrAlt")}
             className="mx-auto mt-8 w-full max-w-md"
+            height={512}
             src={payment.paymentUrl}
+            unoptimized
+            width={512}
           />
           <dl className="mx-auto mt-8 grid max-w-md gap-4 border-t border-[#E5E5E5] pt-6 text-left text-sm">
             <div className="flex items-center justify-between gap-4">
@@ -367,7 +371,7 @@ export function CheckoutPage({
 function CheckoutItem({ item }: Readonly<{ item: Readonly<{ badge: string; category: string; id: string; image: string; name: string; price: string; quantity: number }> }>) {
   return (
     <li className="flex gap-4 py-5">
-      <img alt="" className="h-20 w-20 border border-[#E5E5E5] object-contain p-2" src={item.image} />
+      <Image alt="" className="h-20 w-20 border border-[#E5E5E5] object-contain p-2" height={80} src={item.image} width={80} />
       <div className="flex min-w-0 flex-1 items-start justify-between gap-4">
         <div>
           <h3 className="text-sm font-medium text-[#1A1A1A]">{item.name}</h3>

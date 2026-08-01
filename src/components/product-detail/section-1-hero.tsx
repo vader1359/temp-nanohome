@@ -250,7 +250,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
               fill
               sizes="(max-width:768px) 100vw, 520px"
               className="object-contain px-12 py-2 sm:px-16 sm:py-3 lg:px-20 lg:py-4"
-              priority
+              loading="eager"
             />
           </div>
 
@@ -275,6 +275,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
                     alt={""}
                     fill
                     sizes="80px"
+                    loading={i === 0 ? "eager" : "lazy"}
                     className="max-w-full object-cover"
                   />
                   {i === 4 && !active && hasMoreImages && (
@@ -295,7 +296,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
             {/* Brand logo */}
             {(() => {
               const isUsm = product.brand.toLowerCase() === "usm";
-              const logoUrl = isUsm ? "/images/usm_logo.png" : (product.brandLogoUrl ?? "/images/nanohome-logo.svg");
+              const logoUrl = isUsm ? "/images/usm_logo.png" : (product.brandLogoUrl || "/images/nanohome-logo.svg");
               return (
                 <Image
                   src={logoUrl}
@@ -303,6 +304,7 @@ export function Section1Hero({ product = fallbackProduct }: Section1HeroProps) {
                   width={120}
                   height={24}
                   unoptimized
+                  loading="eager"
                   className="h-[24px] w-auto self-start object-contain object-left"
                 />
               );

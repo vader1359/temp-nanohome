@@ -148,7 +148,7 @@ async function verifyRestoredRows() {
 }
 
 if (!apply) {
-  const reportPath = await writeReport({ generatedAt: new Date().toISOString(), mode: "audit", backupDirectory, catalogRows: catalogs.length, files: tasks.map(({ sourcePath, ...task }) => task), totalBytes: manifest.totalBytes });
+  const reportPath = await writeReport({ generatedAt: new Date().toISOString(), mode: "audit", backupDirectory, catalogRows: catalogs.length, files: tasks.map((task) => Object.fromEntries(Object.entries(task).filter(([key]) => key !== "sourcePath"))), totalBytes: manifest.totalBytes });
   console.log(`Audit passed: ${catalogs.length} catalog rows, ${tasks.length} PDFs, ${manifest.totalBytes} bytes`);
   console.log(`Report: ${path.relative(root, reportPath)}`);
   process.exit(0);

@@ -1,17 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { COLORS } from "./mock-data";
-import { cn } from "@/lib/utils";
-
-export function ColorSelector({
-  header = "MÀU SẮC:",
-  colors = COLORS,
-  className,
-}: {
+type ColorSelectorProps = Readonly<{
   header?: string;
-  colors?: { name: string; hex: string }[];
+  colors?: readonly Readonly<{ name: string; hex: string }>[];
   className?: string;
-}) {
+}>;
+
+export function ColorSelector(props: ColorSelectorProps) {
+  void props;
   return null;
 }

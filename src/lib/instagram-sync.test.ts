@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createHash } from "crypto";
 
 const mockEnv = {
   INSTAGRAM_ACCESS_TOKEN: undefined as string | undefined,
@@ -21,7 +20,6 @@ vi.mock("@/lib/env", () => ({
 import {
   validateMetaUrl,
   redactError,
-  parseCloudinaryUrl,
   runInstagramSync,
   parseWistiaStatus,
   importVideoToWistia,
@@ -251,7 +249,7 @@ describe("Instagram Ingestion Pipeline", () => {
       let feedCalled = false;
       let beginCalled = false;
 
-      mockSupabase.rpc.mockImplementation(async (rpcName, args) => {
+      mockSupabase.rpc.mockImplementation(async (rpcName) => {
         if (rpcName === "begin_instagram_snapshot_stage") {
           beginCalled = true;
           return { data: "new-stage", error: null };
@@ -306,7 +304,7 @@ describe("Instagram Ingestion Pipeline", () => {
         error: null
       });
 
-      mockSupabase.rpc.mockImplementation(async (rpcName, args) => {
+      mockSupabase.rpc.mockImplementation(async (rpcName) => {
         if (rpcName === "get_instagram_stage_work") {
           return {
             data: [{
@@ -534,7 +532,7 @@ describe("Instagram Ingestion Pipeline", () => {
 
       let publishCalled = false;
 
-      mockSupabase.rpc.mockImplementation(async (rpcName, args) => {
+      mockSupabase.rpc.mockImplementation(async (rpcName) => {
         if (rpcName === "get_instagram_stage_work") {
           return { data: [], error: null };
         }
@@ -641,21 +639,3 @@ describe("Instagram Ingestion Pipeline", () => {
     });
   });
 });
-
-function selectionToWork(selection: any[]): any[] {
-  return selection.map(item => ({
-    id: item.id,
-    media_type: item.media_type,
-    permalink: item.permalink,
-    caption: item.caption,
-    sort_order: item.sort_order,
-    source_url_fingerprint: item.source_url_fingerprint,
-    meta_image_url: item.image_url,
-    meta_video_url: item.video_url,
-    draft_image_url: null as string | null,
-    draft_video_url: null as string | null,
-    draft_thumbnail_url: null as string | null,
-    wistia_hashed_id: null as string | null,
-    wistia_status: null as string | null
-  }));
-}

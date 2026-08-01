@@ -1,88 +1,96 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const guest = vi.hoisted(() => ({ clearCart: vi.fn(), items: [{ id: "", quantity: 0 }].slice(0) }));
-vi.mock("@/components/cart/cart-context", () => ({ useCart: () => guest }));
+const cartContext = vi.hoisted(() => ({ reconcileAccountCart: vi.fn() }));
+vi.mock("@/components/cart/cart-context", () => ({ useCart: () => cartContext }));
 import { AccountCart } from "./account-cart";
 
 const variantId = "00000000-0000-4000-8000-000000000001";
-const cart = { items: [{ available: true, href: "/vi/products/chair-oak", lineTotal: { amount: 1290000, currency: "VND" }, quantity: 1, title: "Ghế gỗ sồi", unitPrice: { amount: 1290000, currency: "VND" }, variantId }], total: { amount: 1290000, currency: "VND" }, version: 1 } as const;
+const cart = {
+  items: [{
+    available: true,
+    href: "/vi/products/chair-oak",
+    lineTotal: { amount: 1290000, currency: "VND" },
+    quantity: 1,
+    title: "Ghế gỗ sồi",
+    unitPrice: { amount: 1290000, currency: "VND" },
+    variantId,
+  }],
+  total: { amount: 1290000, currency: "VND" },
+  version: 1,
+} as const;
+
 describe("AccountCart", () => {
-  beforeEach(() => { guest.clearCart.mockReset(); guest.items = []; });
+  beforeEach(() => {
+    cartContext.reconcileAccountCart.mockReset();
+  });
+
+  it("reconciles its server-rendered cart with the shared header cart", async () => {
+    render(<AccountCart checkoutHref="/vi/checkout" initialCart={cart} />);
+    await waitFor(() => expect(cartContext.reconcileAccountCart).toHaveBeenCalledWith(cart));
+  });
+
   it("reconciles a conflict without automatically replaying the mutation", async () => {
-    // Given: a mutation endpoint that reports a current conflict cart.
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ cart: { ...cart, version: 2 } }), { status: 409 })); vi.stubGlobal("fetch", fetchMock);
-    // When: the user changes quantity.
-    render(<AccountCart checkoutHref="/vi/checkout" initialCart={cart} />); fireEvent.change(screen.getByLabelText("Số lượng Ghế gỗ sồi"), { target: { value: "2" } });
-    // Then: it reconciles once and asks for explicit retry.
-    await waitFor(() => expect(screen.getByText("Giỏ hàng đã thay đổi. Vui lòng thử lại thao tác.")).toBeInTheDocument()); expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-  it("merges selection-only guest items and clears them only after success", async () => {
-    // Given: an account cart and a local guest item with untrusted display data.
-    guest.items = [{ id: variantId, quantity: 1 }]; const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ cart }), { status: 200 })); vi.stubGlobal("fetch", fetchMock);
-    // When: the user imports the guest cart.
-    render(<AccountCart checkoutHref="/vi/checkout" initialCart={cart} />); fireEvent.click(screen.getByRole("button", { name: "Nhập giỏ hàng khách" }));
-    // Then: only id and quantity are submitted before local state is cleared.
-    await waitFor(() => expect(guest.clearCart).toHaveBeenCalledOnce()); expect(fetchMock).toHaveBeenCalledWith("/api/account/cart/merge-guest", expect.objectContaining({ body: expect.stringContaining(`"variantId":"${variantId}"`), method: "POST" }));
-  });
-
-  it("retains the same idempotency key across failed merge retries and generates a new key after success", async () => {
-    // Given: a guest cart item to merge.
-    guest.items = [{ id: "00000000-0000-4000-8000-000000000002", quantity: 1 }];
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "Temporary error" }), { status: 500 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ cart }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ cart }), { status: 200 }));
+    const conflictCart = { ...cart, version: 2 };
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ cart: conflictCart }), { status: 409 }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     render(<AccountCart checkoutHref="/vi/checkout" initialCart={cart} />);
+    fireEvent.change(screen.getByLabelText("Số lượng Ghế gỗ sồi"), {
+      target: { value: "2" },
+    });
 
-    // When: first merge click fails.
-    fireEvent.click(screen.getByRole("button", { name: "Nhập giỏ hàng khách" }));
-    await waitFor(() => expect(screen.getByText("Không thể nhập giỏ hàng khách.")).toBeInTheDocument());
-    expect(guest.clearCart).not.toHaveBeenCalled();
-
-    const firstCallBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    const firstKey = firstCallBody.idempotencyKey;
-
-    // When: retrying the merge click.
-    fireEvent.click(screen.getByRole("button", { name: "Nhập giỏ hàng khách" }));
-    await waitFor(() => expect(guest.clearCart).toHaveBeenCalledOnce());
-
-    const secondCallBody = JSON.parse(fetchMock.mock.calls[1][1].body as string);
-    const secondKey = secondCallBody.idempotencyKey;
-
-    // Then: the retry uses the EXACT same idempotency key.
-    expect(firstKey).toBe(secondKey);
-
-    // Given: guest items are set again for a subsequent merge after success.
-    guest.items = [{ id: "00000000-0000-4000-8000-000000000003", quantity: 1 }];
-
-    // When: another merge is initiated after previous success.
-    fireEvent.click(screen.getByRole("button", { name: "Nhập giỏ hàng khách" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-
-    const thirdCallBody = JSON.parse(fetchMock.mock.calls[2][1].body as string);
-    const thirdKey = thirdCallBody.idempotencyKey;
-
-    // Then: a new key is generated after previous success.
-    expect(thirdKey).not.toBe(secondKey);
+    await waitFor(() => {
+      expect(screen.getByText("Giỏ hàng đã thay đổi. Vui lòng thử lại thao tác.")).toBeInTheDocument();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(cartContext.reconcileAccountCart).toHaveBeenCalledWith(conflictCart);
   });
 
-  it("handles fetch rejections gracefully without throwing from event handlers", async () => {
-    // Given: fetch throws a network failure.
-    guest.items = [{ id: variantId, quantity: 1 }];
-    const fetchMock = vi.fn().mockRejectedValue(new TypeError("Network request failed"));
+  it("sends the current version and blocks checkout while a mutation is pending", async () => {
+    let resolveResponse: ((response: Response) => void) | undefined;
+    const fetchMock = vi.fn().mockReturnValue(new Promise<Response>((resolve) => {
+      resolveResponse = resolve;
+    }));
     vi.stubGlobal("fetch", fetchMock);
 
     render(<AccountCart checkoutHref="/vi/checkout" initialCart={cart} />);
+    fireEvent.change(screen.getByLabelText("Số lượng Ghế gỗ sồi"), {
+      target: { value: "2" },
+    });
 
-    // When: user clicks merge guest cart.
-    fireEvent.click(screen.getByRole("button", { name: "Nhập giỏ hàng khách" }));
+    expect(screen.queryByRole("link", { name: "Tiếp tục thanh toán" })).not.toBeInTheDocument();
+    expect(screen.getByText("Đang đồng bộ giỏ hàng...")).toBeInTheDocument();
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
+      expectedVersion: 1,
+      quantity: 2,
+      variantId,
+    });
 
-    // Then: UI displays error message instead of throwing.
-    await waitFor(() => expect(screen.getByText("Không thể nhập giỏ hàng khách.")).toBeInTheDocument());
-    expect(guest.clearCart).not.toHaveBeenCalled();
+    const updatedCart = {
+      ...cart,
+      items: [{ ...cart.items[0], quantity: 2 }],
+      version: 2,
+    };
+    resolveResponse?.(new Response(JSON.stringify({ cart: updatedCart }), { status: 200 }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: "Tiếp tục thanh toán" })).toBeInTheDocument();
+    });
+    expect(cartContext.reconcileAccountCart).toHaveBeenCalledWith(updatedCart);
+  });
+
+  it("restores the previous cart after a network failure", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Network request failed")));
+    render(<AccountCart checkoutHref="/vi/checkout" initialCart={cart} />);
+
+    fireEvent.change(screen.getByLabelText("Số lượng Ghế gỗ sồi"), {
+      target: { value: "2" },
+    });
+
+    await waitFor(() => expect(screen.getByText("Không thể cập nhật giỏ hàng.")).toBeInTheDocument());
+    expect(screen.getByLabelText("Số lượng Ghế gỗ sồi")).toHaveValue(1);
   });
 });

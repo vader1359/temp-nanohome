@@ -67,7 +67,17 @@ export function Header() {
       document.documentElement.style.removeProperty("--header-height");
     };
   }, []);
-  const { items, addItem, clearCart, getItemCount, removeItem, updateQuantity } = useCart();
+  const {
+    items,
+    addItem,
+    clearCart,
+    getItemCount,
+    isSyncing: isCartSyncing,
+    removeItem,
+    retrySync: retryCartSync,
+    syncError: cartSyncError,
+    updateQuantity,
+  } = useCart();
   const { items: wishlistItems, clearWishlist, getItemCount: getWishlistCount, removeItem: removeWishlistItem } = useWishlist();
   const { isAuthenticated, openAuth } = useAuthContext();
   const cartCount = getItemCount();
@@ -280,6 +290,7 @@ export function Header() {
               alt="nanoHome"
               width={154}
               height={32}
+              loading="eager"
               className="h-auto w-[100px] lg:w-auto"
             />
           </Link>
@@ -461,6 +472,10 @@ export function Header() {
           wishlistItems={wishlistItems}
           onClearWishlist={clearWishlist}
           onRemoveWishlist={removeWishlistItem}
+          isCartSyncing={isCartSyncing}
+          cartSyncError={cartSyncError}
+          onRetryCartSync={retryCartSync}
+          useDurableCheckout={isAuthenticated}
         />
       ) : null}
     </header>

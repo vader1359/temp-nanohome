@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Variant } from "@/types/db";
 
@@ -62,3 +63,5 @@ export async function getVariantBySlug(slug: string): Promise<Variant | null> {
 
   return data;
 }
+
+export const getCachedVariantBySlug = cache(getVariantBySlug);

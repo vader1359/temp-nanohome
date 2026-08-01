@@ -4,7 +4,6 @@ const state = vi.hoisted(() => ({
   getBrandsForVariants: vi.fn(async (): Promise<readonly unknown[]> => []),
   getCategories: vi.fn(async (): Promise<readonly unknown[]> => []),
   getDesignersForProducts: vi.fn(async (): Promise<readonly unknown[]> => []),
-  getVariantProductCount: vi.fn(async (): Promise<number> => 1),
   getVariantProducts: vi.fn(async (): Promise<readonly unknown[]> => []),
   searchNews: vi.fn(async (): Promise<readonly unknown[]> => []),
 }));
@@ -13,7 +12,7 @@ vi.mock("./brands", () => ({ getBrandsForVariants: state.getBrandsForVariants })
 vi.mock("./categories", () => ({ getCategories: state.getCategories }));
 vi.mock("./designers", () => ({ getDesignersForProducts: state.getDesignersForProducts }));
 vi.mock("./news", () => ({ searchNews: state.searchNews }));
-vi.mock("./products", () => ({ getVariantProductCount: state.getVariantProductCount, getVariantProducts: state.getVariantProducts }));
+vi.mock("./products", () => ({ getVariantProducts: state.getVariantProducts }));
 
 import { normalizeSearchQuery, unifiedSearch } from "./unified-search";
 
@@ -65,8 +64,7 @@ describe("unifiedSearch", () => {
     const result = await unifiedSearch(" Ikebana ", "ko");
 
     // Then: the catalog query and relationship sections share canonical product identifiers.
-    expect(state.getVariantProductCount).toHaveBeenCalledWith({ search: "Ikebana" });
-    expect(state.getVariantProducts).toHaveBeenCalledWith({ page: 1, pageSize: 1, search: "Ikebana", sort: "priority" });
+    expect(state.getVariantProducts).toHaveBeenCalledWith({ page: 1, pageSize: 6, search: "Ikebana", sort: "priority" });
     expect(state.getBrandsForVariants).toHaveBeenCalledWith({ productIds: ["product-ikebana"], variantBrandIds: [] });
     expect(state.getDesignersForProducts).toHaveBeenCalledWith({ productIds: ["product-ikebana"], variantDesignerIds: ["designer-jaime"] });
     expect(state.searchNews).toHaveBeenCalledWith("Ikebana", "ko", { pageSize: 6 });
@@ -76,7 +74,6 @@ describe("unifiedSearch", () => {
   });
 
   it("prioritizes product-name matches over other matching fields", async () => {
-    state.getVariantProductCount.mockResolvedValue(2);
     state.getVariantProducts.mockResolvedValue([
       { id: "variant-sku-match", name: "Chair", sku: "BALCONY-01" },
       { id: "variant-name-match", name: "Balcony Chair", sku: "CHAIR-01" },
@@ -85,6 +82,18 @@ describe("unifiedSearch", () => {
     const result = await unifiedSearch("balcony", "en");
 
     expect(result.products.items.map((variant) => variant.id)).toEqual(["variant-name-match", "variant-sku-match"]);
+  });
+
+  it("bounds the aggregate product preview to six results", async () => {
+    state.getVariantProducts.mockResolvedValue(Array.from({ length: 8 }, (_, index) => ({
+      id: `variant-${index + 1}`,
+      name: `Chair ${index + 1}`,
+    })));
+
+    const result = await unifiedSearch("chair", "en");
+
+    expect(state.getVariantProducts).toHaveBeenCalledWith({ page: 1, pageSize: 6, search: "chair", sort: "priority" });
+    expect(result.products.items).toHaveLength(6);
   });
 
   it("isolates each independent source failure while retaining successful sections", async () => {

@@ -49,6 +49,23 @@ export const supabaseCheckoutFetch: typeof fetch = async (input, init) => {
   return supabaseNetworkFetch(request, signal);
 };
 
+const EMAIL_LINK_RECOVERY_RPC_PATHS = new Set([
+  "/rest/v1/rpc/begin_email_link_recovery_transaction",
+  "/rest/v1/rpc/consume_email_link_recovery_transaction",
+  "/rest/v1/rpc/inspect_email_link_recovery_transaction",
+]);
+
+export const supabaseEmailLinkRecoveryFetch: typeof fetch = async (input, init) => {
+  const { request, signal } = safeCreateRequest(input, init);
+  const method = request.method.toUpperCase();
+
+  if (method !== "POST" || !EMAIL_LINK_RECOVERY_RPC_PATHS.has(new URL(request.url).pathname)) {
+    throw new RemoteWriteBlockedError("Supabase", method, request.url);
+  }
+
+  return supabaseNetworkFetch(request, signal);
+};
+
 const AMIS_SYNC_SUPABASE_WRITES = new Map<string, ReadonlySet<string>>([
   ["/rest/v1/rpc/apply_amis_inventory_sync", new Set(["POST"])],
   ["/rest/v1/amis_sync_log", new Set(["POST", "PATCH"])],

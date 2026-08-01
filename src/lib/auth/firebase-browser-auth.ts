@@ -1,9 +1,12 @@
 "use client";
 
 import {
+  ActionCodeOperation,
   GoogleAuthProvider,
   RecaptchaVerifier,
+  applyActionCode,
   browserSessionPersistence,
+  checkActionCode,
   getRedirectResult,
   linkWithPhoneNumber,
   sendPasswordResetEmail,
@@ -40,6 +43,7 @@ export type FirebaseAuthUiErrorCode =
   | "account_conflict"
   | "email_verification_pending"
   | "email_link_invalid"
+  | "email_link_used"
   | "recent_sign_in_required"
   | "unauthorized_domain"
   | "unknown";
@@ -55,6 +59,13 @@ export type FirebasePhoneConfirmation = Readonly<{
   confirm: (code: string) => Promise<User>;
 }>;
 
+export type EmailLinkRecoveryInput = Readonly<{
+  actionCode?: string;
+  locale: string;
+  mode?: string;
+  state: string;
+}>;
+
 export interface FirebaseBrowserAuthPort {
   readonly requestPhoneCode: (phone: string, recaptchaContainerId: string, linkUser?: User) => Promise<FirebasePhoneConfirmation>;
   readonly signInGoogle: () => Promise<User>;
@@ -62,8 +73,8 @@ export interface FirebaseBrowserAuthPort {
   readonly consumeGoogleRedirect: () => Promise<User | null>;
   readonly signInPassword: (email: string, password: string) => Promise<User>;
   readonly sendPasswordReset: (email: string, locale: string) => Promise<void>;
-  readonly verifyEmailBeforeUpdate: (user: User, email: string, locale: string, returnTo: string, intent?: AuthSessionIntent) => Promise<void>;
-  readonly recoverEmailLinkSession: (locale: string, returnTo: string, intent?: AuthSessionIntent) => Promise<string | null>;
+  readonly verifyEmailBeforeUpdate: (user: User, email: string, locale: string, returnTo: string, intent?: AuthSessionIntent) => Promise<string>;
+  readonly recoverEmailLinkSession: (input: EmailLinkRecoveryInput) => Promise<string | null>;
   readonly reloadUser: (user: User) => Promise<User>;
   readonly createServerSession: (user: User, locale: string, returnTo: string, intent?: AuthSessionIntent) => Promise<string>;
   readonly clearPhoneVerifier: () => void;
@@ -134,6 +145,65 @@ function parseCsrfResponse(input: unknown): string {
     throw new FirebaseAuthUiError("unknown");
   }
   return input.csrfToken;
+}
+
+function parseRecoveryState(input: unknown): string {
+  if (
+    typeof input !== "object"
+    || input === null
+    || !("state" in input)
+    || typeof input.state !== "string"
+    || !/^[A-Za-z0-9_-]{43}$/u.test(input.state)
+  ) {
+    throw new FirebaseAuthUiError("unknown");
+  }
+  return input.state;
+}
+
+function parseRecoveryMetadata(input: unknown): Readonly<{
+  intent: AuthSessionIntent;
+  locale: string;
+  returnTo: string;
+}> {
+  if (
+    typeof input !== "object"
+    || input === null
+    || !("intent" in input)
+    || (input.intent !== "account" && input.intent !== "checkout")
+    || !("locale" in input)
+    || typeof input.locale !== "string"
+    || !("returnTo" in input)
+    || typeof input.returnTo !== "string"
+  ) {
+    throw new FirebaseAuthUiError("unknown");
+  }
+  return { intent: input.intent, locale: input.locale, returnTo: input.returnTo };
+}
+
+async function recoveryResponseError(response: Response): Promise<FirebaseAuthUiError> {
+  let code = "";
+  try {
+    const body: unknown = await response.json();
+    if (typeof body === "object" && body !== null && "error" in body && typeof body.error === "string") {
+      code = body.error;
+    }
+  } catch {
+    // The status fallback below remains fail-closed.
+  }
+  if (response.status === 410 || code === "recovery_expired") return new FirebaseAuthUiError("code_expired");
+  if (code === "recovery_replayed") return new FirebaseAuthUiError("email_link_used");
+  if (code === "recent_sign_in_required") return new FirebaseAuthUiError("recent_sign_in_required");
+  if (response.status >= 400 && response.status < 500) return new FirebaseAuthUiError("email_link_invalid");
+  return new FirebaseAuthUiError("unknown");
+}
+
+async function validateRecoveryState(state: string): Promise<void> {
+  const response = await fetch(`/api/auth/email-link/recovery?state=${encodeURIComponent(state)}`, {
+    cache: "no-store",
+    credentials: "same-origin",
+    method: "GET",
+  });
+  if (!response.ok) throw await recoveryResponseError(response);
 }
 
 async function createServerSessionForUser(
@@ -286,22 +356,63 @@ export function createFirebaseBrowserAuthPort(): FirebaseBrowserAuthPort {
     },
     async verifyEmailBeforeUpdate(user, email, locale, returnTo, intent = "account") {
       try {
+        const idToken = await user.getIdToken();
+        const recoveryResponse = await fetch("/api/auth/email-link/recovery", {
+          body: JSON.stringify({ email, idToken, intent, locale, returnTo }),
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        if (!recoveryResponse.ok) throw await recoveryResponseError(recoveryResponse);
+        const state = parseRecoveryState(await recoveryResponse.json());
+        const auth = await getFirebaseBrowserAuth();
+        auth.languageCode = locale;
         await verifyBeforeUpdateEmail(user, email, {
           handleCodeInApp: false,
-          url: `${window.location.origin}/${locale}/auth/email-link?intent=${intent}&returnTo=${encodeURIComponent(returnTo)}`,
+          url: `${window.location.origin}/${locale}/auth/email-link?state=${encodeURIComponent(state)}`,
         });
+        return state;
       } catch (error) {
+        if (error instanceof FirebaseAuthUiError) throw error;
         throw mapFirebaseError(error);
       }
     },
-    async recoverEmailLinkSession(locale, returnTo, intent = "account") {
+    async recoverEmailLinkSession(input) {
       try {
+        await validateRecoveryState(input.state);
         const auth = await getFirebaseBrowserAuth();
+        if (input.actionCode !== undefined || input.mode !== undefined) {
+          if (
+            input.actionCode === undefined
+            || input.actionCode.length === 0
+            || input.actionCode.length > 2_048
+            || (input.mode !== "verifyEmail" && input.mode !== "verifyAndChangeEmail")
+          ) {
+            throw new FirebaseAuthUiError("email_link_invalid");
+          }
+          const action = await checkActionCode(auth, input.actionCode);
+          if (
+            action.operation !== ActionCodeOperation.VERIFY_EMAIL
+            && action.operation !== ActionCodeOperation.VERIFY_AND_CHANGE_EMAIL
+          ) {
+            throw new FirebaseAuthUiError("email_link_invalid");
+          }
+          await applyActionCode(auth, input.actionCode);
+        }
         await auth.authStateReady();
         const user = auth.currentUser;
         if (user === null) return null;
         await user.reload();
-        return await createServerSessionForUser(user, locale, returnTo, intent);
+        const idToken = await user.getIdToken(true);
+        const consumeResponse = await fetch("/api/auth/email-link/recovery", {
+          body: JSON.stringify({ idToken, state: input.state }),
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          method: "PUT",
+        });
+        if (!consumeResponse.ok) throw await recoveryResponseError(consumeResponse);
+        const metadata = parseRecoveryMetadata(await consumeResponse.json());
+        return await createServerSessionForUser(user, metadata.locale, metadata.returnTo, metadata.intent);
       } catch (error) {
         if (error instanceof FirebaseAuthUiError) throw error;
         throw mapFirebaseError(error);

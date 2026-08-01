@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { usePathname } from "@/i18n/navigation";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { SectionHeader } from "./SectionHeader";
 import { FilterSidebar } from "./FilterSidebar";

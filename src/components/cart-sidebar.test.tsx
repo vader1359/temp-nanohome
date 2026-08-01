@@ -1,5 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import enMessages from "../../messages/en.json";
+import viMessages from "../../messages/vi.json";
 import { CartSidebar } from "./cart-sidebar";
 
 vi.mock("next/image", () => ({
@@ -7,10 +11,20 @@ vi.mock("next/image", () => ({
 }));
 
 vi.mock("next/link", () => ({
-  default: ({ children, href, prefetch, ...props }: any) => (
-    <a href={href} {...props}>{children}</a>
-  ),
+  default: (input: any) => {
+    const { children, href, ...props } = input;
+    delete props.prefetch;
+    return <a href={href} {...props}>{children}</a>;
+  },
 }));
+
+function withIntl(ui: ReactElement, locale: "vi" | "en" = "vi") {
+  return (
+    <NextIntlClientProvider locale={locale} messages={locale === "en" ? enMessages : viMessages}>
+      {ui}
+    </NextIntlClientProvider>
+  );
+}
 
 describe("CartSidebar mobile checkout flow", () => {
   beforeEach(() => {
@@ -51,7 +65,7 @@ describe("CartSidebar mobile checkout flow", () => {
     // Mock mobile viewport
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 500 });
 
-    render(<CartSidebar {...defaultProps} />);
+    render(withIntl(<CartSidebar {...defaultProps} />));
 
     // The redundant mobile order-summary card is removed; the fixed bottom bar retains order costs.
     expect(screen.queryByText("Tổng tạm tính")).not.toBeInTheDocument();
@@ -102,5 +116,53 @@ describe("CartSidebar mobile checkout flow", () => {
     const lastCallBody = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(lastCallBody.cartItems).toHaveLength(1);
     expect(lastCallBody.cartItems[0].id).toBe("item-1");
+  });
+
+  it("routes an authenticated mobile cart through the canonical checkout", () => {
+    render(withIntl(<CartSidebar {...defaultProps} useDurableCheckout />));
+
+    expect(screen.queryByRole("button", { name: "Đặt hàng" })).not.toBeInTheDocument();
+    const checkoutLinks = screen.getAllByRole("link", { name: "Hoàn tất giỏ hàng" });
+    expect(checkoutLinks).toHaveLength(2);
+    expect(checkoutLinks.every((link) => link.getAttribute("href") === "/vi/checkout")).toBe(true);
+  });
+
+  it("blocks checkout during account sync and allows an explicit retry after failure", () => {
+    const onRetryCartSync = vi.fn();
+    const { rerender } = render(withIntl(
+      <CartSidebar
+        {...defaultProps}
+        isCartSyncing
+        onRetryCartSync={onRetryCartSync}
+        useDurableCheckout
+      />,
+    ));
+
+    expect(screen.getAllByRole("button", { name: /Đang đồng bộ giỏ hàng/ })).toHaveLength(2);
+    expect(screen.queryByTestId("checkout-link")?.tagName).toBe("BUTTON");
+
+    rerender(withIntl(
+      <CartSidebar
+        {...defaultProps}
+        cartSyncError="Không thể đồng bộ giỏ hàng."
+        onRetryCartSync={onRetryCartSync}
+        useDurableCheckout
+      />,
+    ));
+    fireEvent.click(screen.getAllByRole("button", { name: "Thử lại đồng bộ giỏ hàng" })[0]);
+    expect(onRetryCartSync).toHaveBeenCalledOnce();
+    expect(screen.getAllByRole("alert")[0]).toHaveTextContent("Không thể đồng bộ giỏ hàng.");
+  });
+
+  it("localizes cart controls and empty state in English", () => {
+    render(withIntl(
+      <CartSidebar {...defaultProps} items={[]} locale="en" />,
+      "en",
+    ));
+
+    expect(screen.getByRole("dialog", { name: "Cart" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Close cart" })).toHaveLength(3);
+    expect(screen.getAllByText("Your cart is empty")).not.toHaveLength(0);
+    expect(screen.queryByText("Giỏ hàng của bạn đang trống")).not.toBeInTheDocument();
   });
 });

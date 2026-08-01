@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "playwright-report/**",
+    "test-results/**",
+    "blob-report/**",
   ]),
   // Block client-side imports of the server-only Supabase admin client.
   //

@@ -6,6 +6,7 @@ import {
   RemoteWriteBlockedError,
   supabaseAmisSyncFetch,
   supabaseCheckoutFetch,
+  supabaseEmailLinkRecoveryFetch,
   supabaseInstagramSyncFetch,
   supabaseReadOnlyFetch,
 } from "@/lib/remote-read-only";
@@ -136,6 +137,35 @@ describe("remote read-only safeguard", () => {
 
     // Then: the write is rejected before network I/O.
     await expect(request).rejects.toBeInstanceOf(RemoteWriteBlockedError);
+    expect(networkFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "begin_email_link_recovery_transaction",
+    "consume_email_link_recovery_transaction",
+    "inspect_email_link_recovery_transaction",
+  ])("allows only the email-recovery RPC POST for %s", async (functionName) => {
+    const networkFetch = vi.fn(async () => new Response("true"));
+    vi.stubGlobal("fetch", networkFetch);
+
+    await expect(supabaseEmailLinkRecoveryFetch(
+      `https://example.supabase.co/rest/v1/rpc/${functionName}`,
+      { method: "POST" },
+    )).resolves.toBeInstanceOf(Response);
+    expect(networkFetch).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["GET", "/rest/v1/rpc/inspect_email_link_recovery_transaction"],
+    ["PATCH", "/rest/v1/rpc/consume_email_link_recovery_transaction"],
+    ["POST", "/rest/v1/rpc/other_function"],
+    ["POST", "/rest/v1/email_link_recovery_transactions"],
+  ])("blocks email-recovery scoped Supabase %s on %s", async (method, path) => {
+    const networkFetch = vi.fn();
+    vi.stubGlobal("fetch", networkFetch);
+
+    await expect(supabaseEmailLinkRecoveryFetch(`https://example.supabase.co${path}`, { method }))
+      .rejects.toBeInstanceOf(RemoteWriteBlockedError);
     expect(networkFetch).not.toHaveBeenCalled();
   });
 

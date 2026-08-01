@@ -11,7 +11,7 @@ import { COLORS } from "@/components/product-detail/mock-data";
 import { getVariantProducts, type VariantProductListItem } from "@/lib/queries/products";
 import { loadPdpRecommendations } from "@/lib/recommendations/pdp";
 import { variantDetailHref } from "@/lib/queries/variant-url";
-import { getVariantBySlug, getVariantsByProductId } from "@/lib/queries/variants";
+import { getCachedVariantBySlug, getVariantsByProductId } from "@/lib/queries/variants";
 import { getDesignerById } from "@/lib/queries/designers";
 import { localizedText } from "@/lib/i18n/content";
 import { isUsmContactVariant, isUsmVariant } from "@/lib/products/usm";
@@ -236,7 +236,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
     updating: t("updating"),
   };
 
-  const variant = await getVariantBySlug(decodeURIComponent(slug));
+  const variant = await getCachedVariantBySlug(decodeURIComponent(slug));
   if (variant === null) {
     notFound();
   }

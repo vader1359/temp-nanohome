@@ -9,6 +9,7 @@ vi.mock("next-intl", () => ({
 
 vi.mock("next/image", () => ({
   default: ({ alt, src }: { readonly alt: string; readonly src: string }) => (
+    // eslint-disable-next-line @next/next/no-img-element -- This deliberately lightweight element mocks next/image.
     <img alt={alt} data-testid="instagram-image" src={src} />
   ),
 }));

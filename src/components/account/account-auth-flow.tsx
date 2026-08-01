@@ -22,7 +22,7 @@ import {
 import {
   EMAIL_LINK_RECOVERY_CHANNEL,
   EMAIL_LINK_RECOVERY_STORAGE_KEY,
-  isFreshEmailLinkRecoverySignal,
+  freshEmailLinkRecoveryState,
   readEmailLinkRecoverySignal,
 } from "@/lib/auth/email-link-recovery";
 import type { AuthSessionIntent } from "@/lib/auth/session-intent";
@@ -75,6 +75,7 @@ export function AccountAuthFlow({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [identityUser, setIdentityUser] = useState<User | null>(null);
+  const [emailRecoveryState, setEmailRecoveryState] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<FirebasePhoneConfirmation | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState<FirebaseAuthUiErrorCode | null>(null);
@@ -229,8 +230,9 @@ export function AccountAuthFlow({
     setPending(true);
     setError(null);
     try {
-      await port.verifyEmailBeforeUpdate(identityUser, normalizedEmail, locale, returnTo, intent);
+      const recoveryState = await port.verifyEmailBeforeUpdate(identityUser, normalizedEmail, locale, returnTo, intent);
       setEmail(normalizedEmail);
+      setEmailRecoveryState(recoveryState);
       setStep("email_verification");
       setPending(false);
     } catch (caught) {
@@ -238,56 +240,58 @@ export function AccountAuthFlow({
     }
   };
 
-  const checkEmailVerification = useCallback(async () => {
-    if (identityUser === null) {
-      setError("unknown");
+  const checkEmailVerification = useCallback(async (recoveryState = emailRecoveryState) => {
+    if (identityUser === null || recoveryState === null) {
+      setError("email_link_invalid");
       return;
     }
 
     setPending(true);
     setError(null);
     try {
-      const refreshedUser = await port.reloadUser(identityUser);
-      if (completionForUser(refreshedUser) !== "identity_complete") {
-        setIdentityUser(refreshedUser);
-        setError("email_verification_pending");
-        setPending(false);
-        return;
-      }
-      await completeSession(refreshedUser);
+      const destination = await port.recoverEmailLinkSession({ locale, state: recoveryState });
+      if (destination === null) throw new FirebaseAuthUiError("email_link_invalid");
+      setEmailRecoveryState(null);
+      setIdentityUser(null);
+      setPending(false);
+      goTo(destination);
     } catch (caught) {
       handleFailure(caught);
     }
-  }, [completeSession, handleFailure, identityUser, port]);
+  }, [emailRecoveryState, goTo, handleFailure, identityUser, locale, port]);
 
   useEffect(() => {
     if (step !== "email_verification" || identityUser === null) return;
 
     let completed = false;
-    const recover = () => {
+    const recover = (recoveryState: string) => {
       if (completed) return;
+      if (recoveryState !== emailRecoveryState) return;
       completed = true;
-      void checkEmailVerification();
+      void checkEmailVerification(recoveryState);
     };
     const channel = typeof BroadcastChannel === "undefined"
       ? null
       : new BroadcastChannel(EMAIL_LINK_RECOVERY_CHANNEL);
     channel?.addEventListener("message", (event: MessageEvent<unknown>) => {
-      if (isFreshEmailLinkRecoverySignal(event.data)) recover();
+      const recoveryState = freshEmailLinkRecoveryState(event.data);
+      if (recoveryState !== null) recover(recoveryState);
     });
     const onStorage = (event: StorageEvent) => {
-      if (event.key === EMAIL_LINK_RECOVERY_STORAGE_KEY && isFreshEmailLinkRecoverySignal(readEmailLinkRecoverySignal())) {
-        recover();
+      if (event.key === EMAIL_LINK_RECOVERY_STORAGE_KEY) {
+        const recoveryState = freshEmailLinkRecoveryState(readEmailLinkRecoverySignal());
+        if (recoveryState !== null) recover(recoveryState);
       }
     };
     window.addEventListener("storage", onStorage);
-    if (isFreshEmailLinkRecoverySignal(readEmailLinkRecoverySignal())) recover();
+    const storedRecoveryState = freshEmailLinkRecoveryState(readEmailLinkRecoverySignal());
+    if (storedRecoveryState !== null) recover(storedRecoveryState);
 
     return () => {
       channel?.close();
       window.removeEventListener("storage", onStorage);
     };
-  }, [checkEmailVerification, identityUser, step]);
+  }, [checkEmailVerification, emailRecoveryState, identityUser, step]);
 
   const changePhone = () => {
     port.clearPhoneVerifier();

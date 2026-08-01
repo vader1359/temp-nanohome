@@ -49,7 +49,7 @@ function createAuthPort() {
     signInGoogle: vi.fn(async () => firebaseUser),
     signInPassword: vi.fn(async () => firebaseUser),
     startGoogleRedirect: vi.fn(async () => undefined),
-    verifyEmailBeforeUpdate: vi.fn(async () => undefined),
+    verifyEmailBeforeUpdate: vi.fn(async () => "s".repeat(43)),
     reloadUser: vi.fn(async (user) => user),
   };
   return { confirmation, port };

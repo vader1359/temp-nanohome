@@ -47,7 +47,7 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
   return (
     <NextIntlClientProvider messages={messages} locale={locale}>
       <div className="locale-shell" lang={locale}>
-        <Providers>
+        <Providers isAuthenticated={isAuthenticated}>
           <Toaster position="top-center" offset="168px" mobileOffset="96px" />
           <Suspense fallback={null}>
             <AuthProvider isAuthenticated={isAuthenticated}>

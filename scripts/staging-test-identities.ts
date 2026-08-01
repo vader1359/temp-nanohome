@@ -9,6 +9,8 @@ const EXPECTED_PROJECT_ID = "temp-nanohome";
 const EXPECTED_ORIGIN = "https://staging.nanohome.vn";
 const KEYCHAIN_SERVICE = "com.nanohome.staging.ui-test-identities";
 const KEYCHAIN_ACCOUNT = EXPECTED_PROJECT_ID;
+const WINDOWS_STORE_DIRECTORY = "nanoHome";
+const WINDOWS_STORE_FILENAME = "staging-ui-test-identities.dpapi";
 
 type StoredIdentities = {
   version: 1;
@@ -38,14 +40,96 @@ function parseEnvFile(path: string) {
   );
 }
 
-function readStoredIdentities(): StoredIdentities | null {
-  const result = spawnSync(
-    "security",
-    ["find-generic-password", "-a", KEYCHAIN_ACCOUNT, "-s", KEYCHAIN_SERVICE, "-w"],
-    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+function isWsl(): boolean {
+  if (process.platform !== "linux") return false;
+  if (process.env.WSL_DISTRO_NAME) return true;
+  try {
+    return readFileSync("/proc/sys/kernel/osrelease", "utf8").toLowerCase().includes("microsoft");
+  } catch {
+    return false;
+  }
+}
+
+function runWindowsPowerShell(script: string, input?: string) {
+  return spawnSync(
+    "powershell.exe",
+    ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script],
+    {
+      encoding: "utf8",
+      input,
+      stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+    },
   );
-  if (result.status !== 0) return null;
-  const parsed = JSON.parse(result.stdout.trim()) as StoredIdentities;
+}
+
+function readWindowsStoredIdentities(): string | null {
+  const result = runWindowsPowerShell(`
+    $ErrorActionPreference = 'Stop'
+    $taskDirectory = Join-Path $env:LOCALAPPDATA '${WINDOWS_STORE_DIRECTORY}'
+    $taskPath = Join-Path $taskDirectory '${WINDOWS_STORE_FILENAME}'
+    if (-not (Test-Path -LiteralPath $taskPath -PathType Leaf)) { exit 4 }
+    $taskEncrypted = [IO.File]::ReadAllText($taskPath)
+    $taskSecure = ConvertTo-SecureString $taskEncrypted
+    $taskCredential = [Management.Automation.PSCredential]::new('nanohome-staging', $taskSecure)
+    [Console]::Out.Write($taskCredential.GetNetworkCredential().Password)
+  `);
+  if (result.status === 4) return null;
+  if (result.status !== 0) {
+    throw new Error("Unable to read the staging identity bundle from Windows DPAPI storage.");
+  }
+  return result.stdout;
+}
+
+function writeWindowsStoredIdentities(value: string) {
+  const result = runWindowsPowerShell(`
+    $ErrorActionPreference = 'Stop'
+    $taskDirectory = Join-Path $env:LOCALAPPDATA '${WINDOWS_STORE_DIRECTORY}'
+    $taskPath = Join-Path $taskDirectory '${WINDOWS_STORE_FILENAME}'
+    [IO.Directory]::CreateDirectory($taskDirectory) | Out-Null
+    $taskPlaintext = [Console]::In.ReadToEnd()
+    $taskSecure = ConvertTo-SecureString $taskPlaintext -AsPlainText -Force
+    $taskEncrypted = ConvertFrom-SecureString $taskSecure
+    [IO.File]::WriteAllText($taskPath, $taskEncrypted, [Text.UTF8Encoding]::new($false))
+  `, value);
+  if (result.status !== 0) {
+    throw new Error("Unable to store the staging identity bundle with Windows DPAPI.");
+  }
+}
+
+function deleteWindowsStoredIdentities() {
+  const result = runWindowsPowerShell(`
+    $ErrorActionPreference = 'Stop'
+    $taskDirectory = Join-Path $env:LOCALAPPDATA '${WINDOWS_STORE_DIRECTORY}'
+    $taskPath = Join-Path $taskDirectory '${WINDOWS_STORE_FILENAME}'
+    $taskResolvedDirectory = [IO.Path]::GetFullPath($taskDirectory)
+    $taskResolvedPath = [IO.Path]::GetFullPath($taskPath)
+    if (-not $taskResolvedPath.StartsWith($taskResolvedDirectory + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+      throw 'Unsafe Windows identity store target.'
+    }
+    if (-not (Test-Path -LiteralPath $taskPath -PathType Leaf)) { exit 4 }
+    Remove-Item -LiteralPath $taskPath -Force
+  `);
+  if (result.status !== 0 && result.status !== 4) {
+    throw new Error("Unable to remove the staging identity bundle from Windows DPAPI storage.");
+  }
+}
+
+function readStoredIdentities(): StoredIdentities | null {
+  let stored: string | null;
+  if (process.platform === "darwin") {
+    const result = spawnSync(
+      "security",
+      ["find-generic-password", "-a", KEYCHAIN_ACCOUNT, "-s", KEYCHAIN_SERVICE, "-w"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+    stored = result.status === 0 ? result.stdout.trim() : null;
+  } else if (process.platform === "win32" || isWsl()) {
+    stored = readWindowsStoredIdentities();
+  } else {
+    throw new Error("Secure staging identity storage is only supported on macOS, Windows, and WSL.");
+  }
+  if (stored === null) return null;
+  const parsed = JSON.parse(stored) as StoredIdentities;
   if (parsed.projectId !== EXPECTED_PROJECT_ID || parsed.version !== 1) {
     throw new Error("Stored staging identity bundle has an unexpected target or version.");
   }
@@ -53,34 +137,50 @@ function readStoredIdentities(): StoredIdentities | null {
 }
 
 function writeStoredIdentities(identities: StoredIdentities) {
-  const result = spawnSync(
-    "security",
-    [
-      "add-generic-password",
-      "-U",
-      "-a",
-      KEYCHAIN_ACCOUNT,
-      "-s",
-      KEYCHAIN_SERVICE,
-      "-w",
-      JSON.stringify(identities),
-    ],
-    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-  );
-  if (result.status !== 0) {
-    throw new Error("Unable to store the staging identity bundle in macOS Keychain.");
+  if (process.platform === "darwin") {
+    const result = spawnSync(
+      "security",
+      [
+        "add-generic-password",
+        "-U",
+        "-a",
+        KEYCHAIN_ACCOUNT,
+        "-s",
+        KEYCHAIN_SERVICE,
+        "-w",
+        JSON.stringify(identities),
+      ],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+    if (result.status !== 0) {
+      throw new Error("Unable to store the staging identity bundle in macOS Keychain.");
+    }
+    return;
   }
+  if (process.platform === "win32" || isWsl()) {
+    writeWindowsStoredIdentities(JSON.stringify(identities));
+    return;
+  }
+  throw new Error("Secure staging identity storage is only supported on macOS, Windows, and WSL.");
 }
 
 function deleteStoredIdentities() {
-  const result = spawnSync(
-    "security",
-    ["delete-generic-password", "-a", KEYCHAIN_ACCOUNT, "-s", KEYCHAIN_SERVICE],
-    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-  );
-  if (result.status !== 0) {
-    throw new Error("Unable to remove the staging identity bundle from macOS Keychain.");
+  if (process.platform === "darwin") {
+    const result = spawnSync(
+      "security",
+      ["delete-generic-password", "-a", KEYCHAIN_ACCOUNT, "-s", KEYCHAIN_SERVICE],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+    if (result.status !== 0) {
+      throw new Error("Unable to remove the staging identity bundle from macOS Keychain.");
+    }
+    return;
   }
+  if (process.platform === "win32" || isWsl()) {
+    deleteWindowsStoredIdentities();
+    return;
+  }
+  throw new Error("Secure staging identity storage is only supported on macOS, Windows, and WSL.");
 }
 
 function copyFieldToClipboard(field: string, identities: StoredIdentities) {
@@ -93,7 +193,15 @@ function copyFieldToClipboard(field: string, identities: StoredIdentities) {
   if (!Object.hasOwn(values, field)) {
     throw new Error("Copy field must be one of: email, password, phone, phoneCode.");
   }
-  const result = spawnSync("pbcopy", [], {
+  const clipboardCommand = process.platform === "darwin"
+    ? "pbcopy"
+    : process.platform === "win32" || isWsl()
+      ? "clip.exe"
+      : null;
+  if (clipboardCommand === null) {
+    throw new Error("Secure clipboard copy is only supported on macOS, Windows, and WSL.");
+  }
+  const result = spawnSync(clipboardCommand, [], {
     input: values[field],
     encoding: "utf8",
     stdio: ["pipe", "ignore", "pipe"],
@@ -148,7 +256,7 @@ function sanitizedSummary(
 ) {
   return {
     projectId: identities.projectId,
-    keychainService: KEYCHAIN_SERVICE,
+    credentialStore: process.platform === "darwin" ? KEYCHAIN_SERVICE : "windows-dpapi",
     aliases: {
       email: "AUTH_EMAIL_VERIFIED",
       google: "AUTH_GOOGLE_TEST",
@@ -267,6 +375,26 @@ async function main() {
   const identities = readStoredIdentities();
   if (identities === null) throw new Error("Staging identity bundle is not provisioned.");
 
+  if (command === "rotate") {
+    const nextIdentities: StoredIdentities = {
+      ...identities,
+      password: randomBytes(24).toString("base64url"),
+    };
+    writeStoredIdentities(nextIdentities);
+    try {
+      await adminAuth.updateUser(identities.emailUid, { password: nextIdentities.password });
+    } catch (error) {
+      writeStoredIdentities(identities);
+      throw error;
+    }
+    console.log(JSON.stringify({
+      projectId: EXPECTED_PROJECT_ID,
+      passwordRotated: true,
+      valuesPrinted: false,
+    }));
+    return;
+  }
+
   if (command === "rollback") {
     const config = await getIdentityToolkitConfig(accessToken.access_token);
     const nextTestPhones = { ...(config.signIn?.phoneNumber?.testPhoneNumbers ?? {}) };
@@ -287,7 +415,7 @@ async function main() {
   }
 
   if (command !== "check") {
-    throw new Error("Command must be one of: provision, check, copy, rollback.");
+    throw new Error("Command must be one of: provision, check, copy, rotate, rollback.");
   }
   const config = await getIdentityToolkitConfig(accessToken.access_token);
   let emailUserPresent = true;

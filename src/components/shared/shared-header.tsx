@@ -511,7 +511,7 @@ function CartSidebar({
               {checkoutStatus === "success" ? <p className="mt-3 text-[12px] leading-4 text-nh-green">Đã gửi giỏ hàng.</p> : null}
               {checkoutStatus === "error" ? <p className="mt-3 text-[12px] leading-4 text-nh-red">{checkoutError || "Không thể gửi giỏ hàng. Vui lòng thử lại."}</p> : null}
               <button type="button" onClick={handleCheckout} disabled={items.length === 0 || checkoutStatus === "submitting"} className="mt-6 h-[52px] w-full bg-nh-ink text-[14px] font-medium leading-5 text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-                {checkoutStatus === "submitting" ? "Đang mở..." : "Hoàn thất giỏ hàng"}
+                {checkoutStatus === "submitting" ? "Đang mở..." : "Hoàn tất giỏ hàng"}
               </button>
             </div>
           </div>

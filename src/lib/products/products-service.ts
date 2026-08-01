@@ -19,8 +19,6 @@ import type { Variant } from "@/types/db";
 import { isSupportedLocale, type Locale } from "@/i18n/routing";
 import { type CanonicalFilters, PAGE_SIZE } from "./filter-utils";
 
-const FEATURED_FIRST_BRAND = "fritz-hansen";
-
 const NUMBER_FORMAT_LOCALE: Record<Locale, string> = {
   vi: "vi-VN",
   en: "en-US",
@@ -207,23 +205,6 @@ function getImageUrl(variant: VariantProductListItem): string {
   ]) || "/images/p_lc2.png";
 }
 
-function mergePreferredBrandFirst(
-  preferredVariants: readonly VariantProductListItem[],
-  variants: readonly VariantProductListItem[],
-): readonly VariantProductListItem[] {
-  const seen = new Set<string>();
-  const merged: VariantProductListItem[] = [];
-
-  for (const variant of [...preferredVariants, ...variants]) {
-    if (seen.has(variant.id)) continue;
-    seen.add(variant.id);
-    merged.push(variant);
-    if (merged.length >= PAGE_SIZE) break;
-  }
-
-  return merged;
-}
-
 export type ProductPageData = {
   products: ProductGridItem[];
   totalCount: number;
@@ -260,21 +241,8 @@ export async function getProductPage(locale: string, filters: CanonicalFilters):
     page: filters.page ?? 1,
     pageSize: PAGE_SIZE,
   };
-  const shouldPreferFritzHansen =
-    queryOptions.sort === "priority" &&
-    queryOptions.page === 1 &&
-    queryOptions.brand === undefined &&
-    queryOptions.search === undefined;
-  const preferredBrandQueryOptions: VariantProductQueryOptions = {
-    ...queryOptions,
-    brand: [FEATURED_FIRST_BRAND],
-  };
-
-  const [variants, preferredBrandVariants, totalCount, brands, categories, facets] = await Promise.all([
+  const [variants, totalCount, brands, categories, facets] = await Promise.all([
     getVariantProducts(queryOptions),
-    shouldPreferFritzHansen
-      ? getVariantProducts(preferredBrandQueryOptions)
-      : Promise.resolve([]),
     getVariantProductCount(queryOptions),
     getProductFilterBrands(),
     getCategories(),
@@ -381,10 +349,7 @@ export async function getProductPage(locale: string, filters: CanonicalFilters):
 
   const roomOptions = getRoomOptions(supportedLocale);
 
-  const prioritizedVariants = shouldPreferFritzHansen
-    ? mergePreferredBrandFirst(preferredBrandVariants, variants)
-    : variants;
-  const products = prioritizedVariants.map(toGridItem);
+  const products = variants.map(toGridItem);
 
   return {
     products,

@@ -1,11 +1,8 @@
 import type {
   PaymentCancellationResult,
   PaymentGateway,
-  PaymentNotification,
   PaymentNotificationVerificationResult,
-  PaymentRequest,
   PaymentResponse,
-  PaymentRetrieval,
   PaymentRetrievalResult,
 } from "@/lib/contracts";
 
@@ -17,16 +14,16 @@ export class PaymentDisabledError extends Error {
 }
 
 export const createDisabledPaymentGateway = (): PaymentGateway => ({
-  createPayment(_input: PaymentRequest): Promise<PaymentResponse> {
+  createPayment(): Promise<PaymentResponse> {
     return Promise.reject(new PaymentDisabledError());
   },
-  retrievePayment(_input: PaymentRetrieval): Promise<PaymentRetrievalResult> {
+  retrievePayment(): Promise<PaymentRetrievalResult> {
     return Promise.resolve({ kind: "unpaid" });
   },
-  cancelUnpaid(_input: PaymentRetrieval): Promise<PaymentCancellationResult> {
+  cancelUnpaid(): Promise<PaymentCancellationResult> {
     return Promise.resolve({ kind: "cancelled" });
   },
-  verifyNotification(_input: PaymentNotification): Promise<PaymentNotificationVerificationResult> {
+  verifyNotification(): Promise<PaymentNotificationVerificationResult> {
     return Promise.resolve({ kind: "rejected" });
   },
 });

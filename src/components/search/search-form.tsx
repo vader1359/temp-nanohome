@@ -1,8 +1,3 @@
-"use client";
-
-import { useRouter } from "@/i18n/navigation";
-import { type FormEvent } from "react";
-
 interface SearchFormProps {
   readonly locale: string;
   readonly defaultValue: string;
@@ -18,18 +13,10 @@ export function SearchForm({
   submitText,
   labelText,
 }: SearchFormProps) {
-  const router = useRouter();
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const q = formData.get("q")?.toString() || "";
-    router.push(`/search?q=${encodeURIComponent(q)}`);
-  };
-
   return (
     <form
-      onSubmit={handleSubmit}
+      action={`/${locale}/search`}
+      method="get"
       className="flex w-full border border-nh-border bg-nh-surface-primary p-1 text-left sm:w-auto"
     >
       <label className="sr-only" htmlFor="site-search">

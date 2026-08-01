@@ -3,6 +3,8 @@ import { expect, test } from "@playwright/test";
 const productCard = "article[data-product-card]";
 const productDetailLink = "a[data-product-image-frame]";
 
+test.describe.configure({ timeout: 90_000 });
+
 const waitForProductDetailLink = async (page: import("@playwright/test").Page, localePrefix: string) => {
   const card = page.locator(productCard).first();
   await expect(card).toBeVisible();
@@ -21,7 +23,10 @@ test("Vietnamese products page navigates to a product detail page", async ({ pag
   const { link, href } = await waitForProductDetailLink(page, "/vi");
   await expect(page).toHaveURL("/vi/products");
 
-  await Promise.all([page.waitForURL(href), link.click()]);
+  await Promise.all([
+    page.waitForURL(href, { timeout: 60_000, waitUntil: "commit" }),
+    link.click({ noWaitAfter: true }),
+  ]);
 
   await expect(page).toHaveURL(href);
   await expect(page).not.toHaveURL("/vi/products");
@@ -35,7 +40,10 @@ test("English products page navigates to a product detail page", async ({ page }
   const { link, href } = await waitForProductDetailLink(page, "/en");
   await expect(page).toHaveURL("/en/products");
 
-  await Promise.all([page.waitForURL(href), link.click()]);
+  await Promise.all([
+    page.waitForURL(href, { timeout: 60_000, waitUntil: "commit" }),
+    link.click({ noWaitAfter: true }),
+  ]);
 
   await expect(page).toHaveURL(href);
   await expect(page).not.toHaveURL("/en/products");

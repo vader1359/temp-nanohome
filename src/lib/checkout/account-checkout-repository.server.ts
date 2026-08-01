@@ -117,8 +117,16 @@ function assertSafeHost(url: URL, projectRef: string): void {
 }
 
 function deliveryFromInput(input: AccountCheckoutInput): CheckoutDelivery {
-  const { idempotencyKey: _idempotencyKey, ...delivery } = input;
-  return delivery;
+  return {
+    address: input.address,
+    city: input.city,
+    district: input.district,
+    email: input.email,
+    fullName: input.fullName,
+    note: input.note,
+    phone: input.phone,
+    ward: input.ward,
+  };
 }
 
 function digestDelivery(delivery: CheckoutDelivery): string {

@@ -6,7 +6,7 @@ import { createAmisClientConfig, fetchAmisStockLedger } from "@/lib/amis/client"
 import { fetchAmisSaleOrders, type AmisSaleOrder } from "@/lib/amis/sale-order-client";
 import { env } from "@/lib/env";
 import { createAmisSyncAdminClient } from "@/lib/supabase/admin";
-import type { Database, Json, TypedSupabaseClient } from "@/types/db";
+import type { Database, TypedSupabaseClient } from "@/types/db";
 
 const INVENTORY_SYNC_KEY = "inventory";
 const rpcResultSchema = z.object({ items_processed: z.number().int().nonnegative() });
@@ -100,4 +100,3 @@ function latestWatermark(current: string | null, dates: readonly string[]): stri
 function failed(error: string): InventorySyncResult {
   return { status: "failed", itemsProcessed: 0, error };
 }
-
