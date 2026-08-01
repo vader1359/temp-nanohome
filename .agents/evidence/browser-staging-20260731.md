@@ -1,9 +1,9 @@
 # Staging browser run — checkout/email-link recovery
 
-- Date: 2026-07-31
+- Date: 2026-08-01 (final follow-up)
 - Target: `https://staging.nanohome.vn`
 - Local branch: `codex/ai-commerce-five-worktree-integration`
-- Local HEAD: `f4b37bc`
+- Local HEAD: `26a4f2e`
 - Secrets/PII recorded: no
 
 ## EL-001 — missing recovery state
@@ -136,6 +136,28 @@ The staging deployment does not match the branch under test, so the remaining st
 - `git diff --check`: PASS.
 - `PAYMENT_MODE=sepay_sandbox SEPAY_ENV=sandbox npm run build`: PASS, 110/110 pages generated.
 
-## Remaining deployment boundary
+## Final staging env parity and redeploy — 2026-08-01
 
-`https://staging.nanohome.vn` is still an older deployment and does not contain the current worktree fixes. No commit, push, or deployment was performed in this run. The stale staging invalid-link result above remains a deployment mismatch, not a failure of the final local/current-branch acceptance run; rerun staging-domain acceptance after the current branch is deployed.
+- Local `.env.local`: 72 distinct variable names; Vercel Preview/branch lookup: 72/72 present.
+- Vercel-only variables retained: the explicit Firebase Admin pair plus `PREVIEW_SECRET` and `REVALIDATE_SECRET`; local ADC was intentionally not copied to Vercel.
+- Supabase URL/project-ref were synchronized for global Preview and `codex/ai-commerce-staging` Preview.
+- Vercel `GOOGLE_APPLICATION_CREDENTIALS` was removed so Firebase uses the explicit Admin credential mode in the deployed environment.
+- SePay sandbox configuration is complete: staging origin, sandbox API host, test bank account, `PAYMENT_MODE=sepay_sandbox`, and HMAC secret configured. Secret values were not recorded.
+- Runtime HMAC probe accepted the local signature on both `https://staging.nanohome.vn` and the branch deployment URL; invalid signatures still returned `401`.
+- Final staging deployment `26a4f2e` on `codex/ai-commerce-staging`: **Ready**.
+
+### Final staging browser and payment run
+
+- Public browser matrix: **4/4 PASS** — desktop `vi/en/ko`, mobile `vi`; no broken images or horizontal overflow.
+- Integrated checkout/payment smoke: **PASS** — checkout `201`, payment `201`, sandbox QR `200`, valid IPN `201`, duplicate IPN `200`, invalid signature `401`, amount mismatch `400`, pending-before-IPN, success-after-refresh, and cleanup.
+- The smoke harness was corrected to send IPN payloads through Playwright `data` JSON; Playwright `body` string encoding caused false `401` results despite a correct HMAC.
+
+### Final automated gates after env sync
+
+- `npx eslint src scripts/staging-integrated-checkout-smoke.mjs scripts/staging-doctor.ts`: **PASS**.
+- `npm test -- --run`: **PASS**, 261 files / 1,530 tests.
+- `npm run staging:doctor -- --target staging --json`: **PASS**, 26/26 checks; 0 blocked, 0 failed, 0 warnings.
+- `npm run build`: **PASS**, 110 routes generated.
+- `git diff --check`: **PASS**.
+
+The earlier invalid-link staging failure remains historical evidence from the stale deployment; the final staging deployment now contains the current branch and the final browser/payment acceptance run passes.
