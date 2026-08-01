@@ -233,7 +233,7 @@ try {
   };
   const ipnBody = JSON.stringify(ipnPayload);
   const invalidSignatureResponse = await context.request.post(ipnPath, {
-    body: ipnBody,
+    data: ipnPayload,
     headers: {
       ...ipnHeaders(ipnBody, ipnSecret),
       "x-sepay-signature": `sha256=${"0".repeat(64)}`,
@@ -243,7 +243,7 @@ try {
 
   const mismatchedPayload = JSON.stringify({ ...ipnPayload, transferAmount: fixtureAmount + 1 });
   const mismatchedResponse = await context.request.post(ipnPath, {
-    body: mismatchedPayload,
+    data: JSON.parse(mismatchedPayload),
     headers: ipnHeaders(mismatchedPayload, ipnSecret),
   });
   const mismatchedBody = await mismatchedResponse.json().catch(() => ({}));
@@ -264,7 +264,7 @@ try {
     { timeout: 30_000 },
   );
   const validIpnResponse = await context.request.post(ipnPath, {
-    body: ipnBody,
+    data: ipnPayload,
     headers: ipnHeaders(ipnBody, ipnSecret),
   });
   assert(validIpnResponse.status() === 201, "valid_ipn_not_applied");
@@ -272,7 +272,7 @@ try {
   await page.getByRole("heading", { level: 1 }).waitFor({ timeout: 30_000 });
 
   const duplicateIpnResponse = await context.request.post(ipnPath, {
-    body: ipnBody,
+    data: ipnPayload,
     headers: ipnHeaders(ipnBody, ipnSecret),
   });
   assert(duplicateIpnResponse.status() === 200, "duplicate_ipn_not_idempotent");
