@@ -581,8 +581,10 @@ async function migrationLedgerCheck(
 function parseArguments(argv: readonly string[]): Readonly<{ json: boolean; target: "staging" }> {
   const targetIndex = argv.indexOf("--target");
   const target = targetIndex >= 0 ? argv[targetIndex + 1] : undefined;
-  if (target !== "staging") throw new Error("Only --target staging is allowed");
-  return { json: argv.includes("--json"), target };
+  if (target !== undefined && target !== "staging") {
+    throw new Error("Only --target staging is allowed");
+  }
+  return { json: argv.includes("--json"), target: "staging" };
 }
 
 async function main() {

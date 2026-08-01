@@ -27,13 +27,13 @@ async function pageFacts(page) {
 
 async function publicSmoke(page, locale, viewportName) {
   await page.goto(`${baseUrl.origin}/${locale}`, { waitUntil: "domcontentloaded" });
-  await page.locator("h1").waitFor({ timeout: 30_000 });
+  await page.locator("h1").first().waitFor({ timeout: 30_000 });
   const home = await pageFacts(page);
   assert(home.lang === locale, `home_locale_${locale}_${viewportName}`);
   assert(home.hasH1 && home.brokenImages === 0 && !home.overflow, `home_layout_${locale}_${viewportName}`);
 
   await page.goto(`${baseUrl.origin}/${locale}/search?q=sofa`, { waitUntil: "domcontentloaded" });
-  await page.locator("h1").waitFor({ timeout: 30_000 });
+  await page.locator("h1").first().waitFor({ timeout: 30_000 });
   await page.waitForTimeout(1_500);
   const search = await pageFacts(page);
   const resultCount = await page.locator("article").count();
@@ -57,7 +57,7 @@ try {
     }
 
     await page.goto(`${baseUrl.origin}${fixturePath}`, { waitUntil: "domcontentloaded" });
-    await page.getByRole("heading", { level: 1 }).waitFor({ timeout: 30_000 });
+    await page.locator("h1").first().waitFor({ timeout: 30_000 });
     const fixture = await pageFacts(page);
     assert(fixture.lang === "vi" && fixture.brokenImages === 0 && !fixture.overflow, `fixture_layout_${viewportName}`);
     await page.getByRole("button", { name: /Thêm vào giỏ|Add to cart|장바구니에 추가/iu }).click();

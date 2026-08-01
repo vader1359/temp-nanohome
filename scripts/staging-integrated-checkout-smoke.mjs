@@ -244,7 +244,11 @@ try {
     body: mismatchedPayload,
     headers: ipnHeaders(mismatchedPayload, ipnSecret),
   });
-  assert(mismatchedResponse.status() === 400, "mismatched_ipn_amount_accepted");
+  const mismatchedBody = await mismatchedResponse.json().catch(() => ({}));
+  assert(
+    mismatchedResponse.status() === 400,
+    `mismatched_ipn_amount_accepted_status_${mismatchedResponse.status()}_${mismatchedBody.error ?? "unknown"}`,
+  );
 
   const pendingStatusResponse = await context.request.get(
     `${base}/api/orders/${checkoutData.orderId}/payment-status`,
