@@ -199,7 +199,7 @@ export function variantToProductGridItem(variant: ProductGridVariant, options: P
   const rawSubtitle = variantRawText(variant, "sub_category") || variantRawText(variant, "filter_sub_category") || variantRawText(variant, "category");
   const subtitle = formatSubtitle(rawSubtitle, options.locale);
 
-  const status = (variant.on_sale && hasValidDiscount) ? "sale" : isInStock(variant) ? "in_stock" : "out_of_stock";
+  const status = !isInStock(variant) ? "out_of_stock" : (variant.on_sale && hasValidDiscount) ? "sale" : "in_stock";
 
   return {
     id: variant.id,

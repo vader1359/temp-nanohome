@@ -149,11 +149,11 @@ function toProductGridItem(variant: VariantProductListItem, locale: Locale): Pro
   const rawPrice = variant.price !== null ? Number(variant.price) : 0;
   const hasValidDiscount = !useContactPrice && rawPrice > 0 && rawComparePrice > rawPrice;
 
-  const status: ProductStatusKind = (variant.on_sale && hasValidDiscount)
-    ? "sale"
-    : isInStock(variant)
-      ? "in_stock"
-      : "out_of_stock";
+  const status: ProductStatusKind = !isInStock(variant)
+    ? "out_of_stock"
+    : (variant.on_sale && hasValidDiscount)
+      ? "sale"
+      : "in_stock";
 
   const rawSubtitle = variantText(variant.filter_sub_category, variantText(variant.filter_category));
   const subtitle = formatSubtitle(rawSubtitle, locale);

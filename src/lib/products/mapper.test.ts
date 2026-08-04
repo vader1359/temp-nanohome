@@ -99,6 +99,27 @@ describe("variantToProductGridItem", () => {
     expect(product.status).toBe("in_stock");
   });
 
+  it("marks a discounted product as out of stock when AMIS stock is zero", () => {
+    const product = variantToProductGridItem({
+      id: "sold-out-sale",
+      name: "Product",
+      name_vi: "Sản phẩm",
+      slug: "product",
+      slug_vi: "san-pham",
+      sku: "TBLBB00002",
+      stock: 0,
+      price: 80,
+      compare_at_price: 100,
+      discount_percent: 20,
+      on_sale: true,
+      in_stock: true,
+      packshot_url: null,
+      gallery_urls: [],
+    });
+
+    expect(product.status).toBe("out_of_stock");
+  });
+
   it("localizes the complete Accessories hierarchy in every supported locale", () => {
     const baseVariant = {
       id: "accessory",
